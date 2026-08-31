@@ -1,0 +1,70 @@
+import { createApp } from "./app";
+import { env } from "./config/env";
+import { APP_CONFIG } from "./config/app.config";
+import { logger } from "./common/utils/logger";
+import { connectDatabase, closeDatabasePool } from "./config/database";
+import http from "http";
+
+const bootstrap = async () => {
+  try {
+    // 1. Connect to PostgreSQL database
+    await connectDatabase();
+
+    // 2. Initialize Express application
+    const app = createApp();
+    const server = http.createServer(app);
+
+    // 3. Start HTTP server
+    server.listen(env.PORT, () => {
+      logger.info(
+        `🚀 ${APP_CONFIG.serviceName} started in [${env.NODE_ENV}] mode on port ${env.PORT}`
+      );
+      logger.info(
+        `🔗 API Base URL: http://localhost:${env.PORT}${APP_CONFIG.apiPrefix}`
+      );
+      logger.info(`🌐 Allowed Frontend: ${env.FRONTEND_URL}`);
+    });
+
+    // Graceful shutdown handling
+    const shutdown = async (signal: string) => {
+      logger.warn(`Received ${signal}. Starting graceful shutdown...`);
+
+      server.close(async (err) => {
+        if (err) {
+          logger.error({ err }, "Error during HTTP server close");
+        } else {
+          logger.info("HTTP server closed cleanly.");
+        }
+
+        // Close database pool
+        await closeDatabasePool();
+
+        logger.info("Graceful shutdown complete. Exiting process.");
+        process.exit(err ? 1 : 0);
+      });
+
+      // Force close after 10s timeout
+      setTimeout(() => {
+        logger.error("Forced shutdown after timeout.");
+        process.exit(1);
+      }, 10000).unref();
+    };
+
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
+    process.on("SIGINT", () => shutdown("SIGINT"));
+
+    process.on("unhandledRejection", (reason) => {
+      logger.fatal({ reason }, "Unhandled Promise Rejection detected");
+    });
+
+    process.on("uncaughtException", (err) => {
+      logger.fatal({ err }, "Uncaught Exception detected");
+      process.exit(1);
+    });
+  } catch (error) {
+    logger.fatal({ error }, "Application bootstrap failed");
+    process.exit(1);
+  }
+};
+
+bootstrap();
