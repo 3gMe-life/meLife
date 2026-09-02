@@ -3,6 +3,7 @@ import { env } from "./config/env";
 import { APP_CONFIG } from "./config/app.config";
 import { logger } from "./common/utils/logger";
 import { connectDatabase, closeDatabasePool } from "./config/database";
+import { authRepository } from "./modules/auth/auth.repository";
 import http from "http";
 
 const bootstrap = async () => {
@@ -10,11 +11,14 @@ const bootstrap = async () => {
     // 1. Connect to PostgreSQL database
     await connectDatabase();
 
-    // 2. Initialize Express application
+    // 2. Ensure initial role permissions are seeded
+    await authRepository.seedRolePermissions();
+
+    // 3. Initialize Express application
     const app = createApp();
     const server = http.createServer(app);
 
-    // 3. Start HTTP server
+    // 4. Start HTTP server
     server.listen(env.PORT, () => {
       logger.info(
         `🚀 ${APP_CONFIG.serviceName} started in [${env.NODE_ENV}] mode on port ${env.PORT}`
