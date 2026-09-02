@@ -20,12 +20,12 @@ export function EmptyState({
   icon,
 }: EmptyStateProps) {
   return (
-    <div className="rounded-3xl bg-slate-900/40 border border-white/10 p-8 sm:p-12 text-center flex flex-col items-center justify-center max-w-lg mx-auto">
-      <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 mb-4 shadow-inner">
+    <div className="rounded-3xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-white/10 p-8 sm:p-12 text-center flex flex-col items-center justify-center max-w-lg mx-auto shadow-xs dark:shadow-none">
+      <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-500 dark:text-slate-400 mb-4 shadow-inner">
         {icon || <FolderOpen className="w-6 h-6 text-[#14B8A6]" />}
       </div>
-      <h3 className="text-base font-bold text-white mb-1.5">{title}</h3>
-      <p className="text-xs text-slate-400 leading-relaxed mb-6 max-w-sm">
+      <h3 className="text-base font-bold text-slate-900 dark:text-white mb-1.5">{title}</h3>
+      <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-6 max-w-sm">
         {description}
       </p>
 

@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   :root {
     --brand-primary: #2563EB;
@@ -12,6 +14,39 @@
     --brand-surface: #F1F5F9;
     --brand-border: rgba(37, 99, 235, 0.12);
     --brand-glass: rgba(255, 255, 255, 0.82);
+
+    /* Semantic Dashboard Design Tokens - Light Mode */
+    --dash-bg: #F8FAFC;
+    --dash-sidebar-bg: rgba(255, 255, 255, 0.95);
+    --dash-sidebar-border: rgba(226, 232, 240, 0.9);
+    --dash-header-bg: rgba(255, 255, 255, 0.85);
+    --dash-header-border: rgba(226, 232, 240, 0.8);
+    --dash-card-bg: rgba(255, 255, 255, 0.92);
+    --dash-card-border: rgba(226, 232, 240, 0.85);
+    --dash-text-primary: #0F172A;
+    --dash-text-secondary: #334155;
+    --dash-text-muted: #64748B;
+  }
+
+  .dark {
+    --brand-dark: #F8FAFC;
+    --brand-muted: #94A3B8;
+    --brand-bg: #070D1E;
+    --brand-surface: #0F172A;
+    --brand-border: rgba(255, 255, 255, 0.1);
+    --brand-glass: rgba(15, 23, 42, 0.85);
+
+    /* Semantic Dashboard Design Tokens - Dark Mode */
+    --dash-bg: #070D1E;
+    --dash-sidebar-bg: rgba(2, 6, 23, 0.85);
+    --dash-sidebar-border: rgba(255, 255, 255, 0.1);
+    --dash-header-bg: rgba(2, 6, 23, 0.7);
+    --dash-header-border: rgba(255, 255, 255, 0.1);
+    --dash-card-bg: rgba(15, 23, 42, 0.7);
+    --dash-card-border: rgba(255, 255, 255, 0.1);
+    --dash-text-primary: #F8FAFC;
+    --dash-text-secondary: #CBD5E1;
+    --dash-text-muted: #94A3B8;
   }
 
   html {

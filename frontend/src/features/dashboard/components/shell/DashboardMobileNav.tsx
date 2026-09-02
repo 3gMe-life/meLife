@@ -31,20 +31,20 @@ export function DashboardMobileNav({
     <div className="fixed inset-0 z-50 lg:hidden flex">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200"
+        className="fixed inset-0 bg-slate-950/60 dark:bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200"
         onClick={onClose}
       />
 
       {/* Drawer */}
-      <div className="relative w-4/5 max-w-xs bg-slate-950/95 backdrop-blur-2xl border-r border-white/10 h-full flex flex-col justify-between text-white p-5 shadow-2xl z-10 animate-in slide-in-from-left duration-200">
+      <div className="relative w-4/5 max-w-xs bg-white dark:bg-slate-950/95 backdrop-blur-2xl border-r border-slate-200 dark:border-white/10 h-full flex flex-col justify-between text-slate-900 dark:text-white p-5 shadow-2xl z-10 animate-in slide-in-from-left duration-200">
         <div>
           {/* Header */}
-          <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#2563EB] to-[#14B8A6] flex items-center justify-center font-black text-xs text-white">
                 3G
               </div>
-              <span className="text-base font-black tracking-tight text-white">
+              <span className="text-base font-black tracking-tight text-slate-900 dark:text-white">
                 MeLife
               </span>
             </div>
@@ -52,7 +52,7 @@ export function DashboardMobileNav({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -63,7 +63,7 @@ export function DashboardMobileNav({
             {navigation.map((section) => (
               <div key={section.id} className="space-y-1">
                 {section.title && (
-                  <h4 className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  <h4 className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
                     {section.title}
                   </h4>
                 )}
@@ -81,7 +81,7 @@ export function DashboardMobileNav({
                       className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
                         isActive
                           ? "bg-[#2563EB] text-white"
-                          : "text-slate-300 hover:text-white hover:bg-white/10"
+                          : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10"
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
@@ -89,7 +89,7 @@ export function DashboardMobileNav({
                         <span>{item.label}</span>
                       </div>
                       {item.badge && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/20">
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-white/20 text-slate-800 dark:text-white">
                           {item.badge}
                         </span>
                       )}
@@ -102,16 +102,16 @@ export function DashboardMobileNav({
         </div>
 
         {/* Footer User Card */}
-        <div className="pt-4 border-t border-white/10">
+        <div className="pt-4 border-t border-slate-200 dark:border-white/10">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#2563EB] to-[#14B8A6] flex items-center justify-center font-bold text-xs text-white">
               {user.firstName?.[0] || "U"}
             </div>
             <div className="flex flex-col truncate">
-              <span className="text-xs font-bold text-white truncate">
+              <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
                 {user.firstName} {user.lastName}
               </span>
-              <span className="text-[10px] text-slate-400 truncate">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
                 {user.email}
               </span>
             </div>

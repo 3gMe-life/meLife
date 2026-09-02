@@ -83,7 +83,7 @@ export default function ParticipantAssessmentsPage() {
             <button
               type="button"
               onClick={() => setIsVoucherModalOpen(true)}
-              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#2563EB]/20 to-[#14B8A6]/20 hover:from-[#2563EB]/30 hover:to-[#14B8A6]/30 border border-[#2563EB]/30 text-xs font-semibold text-[#60A5FA] hover:text-white transition-all flex items-center gap-2 cursor-pointer"
+              className="px-4 py-2.5 rounded-xl bg-[#2563EB]/10 dark:bg-gradient-to-r dark:from-[#2563EB]/20 dark:to-[#14B8A6]/20 hover:bg-[#2563EB]/20 dark:hover:from-[#2563EB]/30 dark:hover:to-[#14B8A6]/30 border border-[#2563EB]/20 dark:border-[#2563EB]/30 text-xs font-semibold text-[#2563EB] dark:text-[#60A5FA] transition-all flex items-center gap-2 cursor-pointer shadow-2xs"
             >
               <KeyRound className="w-4 h-4 text-[#14B8A6]" />
               <span>Redeem Assessment Code</span>
@@ -101,7 +101,7 @@ export default function ParticipantAssessmentsPage() {
               className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
                 filter === f
                   ? "bg-[#2563EB] text-white shadow-sm shadow-[#2563EB]/25"
-                  : "bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10"
+                  : "bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10"
               }`}
             >
               {f === "ALL" ? "All Assessments (4)" : f === "PENDING" ? "Pending (2)" : "Completed (2)"}

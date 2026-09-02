@@ -29,46 +29,46 @@ export default function ParticipantSettingsPage() {
         />
 
         {saved && (
-          <div className="p-4 rounded-2xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-500/40 text-emerald-800 dark:text-emerald-300 text-xs flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
             <span>Profile calibration updated successfully.</span>
           </div>
         )}
 
         <form onSubmit={handleSave} className="space-y-6">
           {/* Personal Info */}
-          <div className="rounded-3xl bg-slate-900/60 border border-white/10 p-6 space-y-4">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+          <div className="rounded-3xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 p-6 space-y-4 shadow-xs dark:shadow-none transition-colors duration-200">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
               <User className="w-4 h-4 text-[#14B8A6]" />
               <span>Personal Identity</span>
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   First Name
                 </label>
                 <input
                   type="text"
                   defaultValue={user?.firstName}
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white text-xs focus:outline-none focus:ring-2 focus:ring-[#2563EB]/40"
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-[#2563EB]/40"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Last Name
                 </label>
                 <input
                   type="text"
                   defaultValue={user?.lastName}
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white text-xs focus:outline-none focus:ring-2 focus:ring-[#2563EB]/40"
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-[#2563EB]/40"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 Email Address
               </label>
               <div className="relative">
@@ -76,30 +76,30 @@ export default function ParticipantSettingsPage() {
                   type="email"
                   disabled
                   value={user?.email || ""}
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-800/40 border border-slate-700/60 text-slate-400 text-xs cursor-not-allowed"
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 text-xs cursor-not-allowed"
                 />
-                <ShieldCheck className="w-4 h-4 text-emerald-400 absolute right-3.5 top-3" />
+                <ShieldCheck className="w-4 h-4 text-emerald-500 dark:text-emerald-400 absolute right-3.5 top-3" />
               </div>
             </div>
           </div>
 
           {/* Educational Stage */}
-          <div className="rounded-3xl bg-slate-900/60 border border-white/10 p-6 space-y-4">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+          <div className="rounded-3xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 p-6 space-y-4 shadow-xs dark:shadow-none transition-colors duration-200">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
               <GraduationCap className="w-4 h-4 text-[#2563EB]" />
               <span>Educational Calibration</span>
             </h3>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 Current Class / Education Stage
               </label>
               <select
                 defaultValue={onboarding?.educationStage || "grade_10"}
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white text-xs focus:outline-none focus:ring-2 focus:ring-[#2563EB]/40"
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-[#2563EB]/40 cursor-pointer"
               >
                 {EDUCATION_STAGES.map((stage) => (
-                  <option key={stage.id} value={stage.id}>
+                  <option key={stage.id} value={stage.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
                     {stage.label} ({stage.category})
                   </option>
                 ))}
