@@ -2,10 +2,12 @@ import { Request, Response, NextFunction } from "express";
 import { AppError } from "../common/errors/app-error";
 import { authTokenService } from "../modules/auth/auth.token.service";
 import { userRepository } from "../modules/users/user.repository";
+import { sessionRepository } from "../modules/sessions/session.repository";
+import { env } from "../config/env";
 
 /**
  * Authentication middleware that verifies the Bearer JWT access token
- * and attaches the security context to req.user.
+ * or validates the active HttpOnly session cookie, and attaches the security context to req.user.
  */
 export const authenticate = async (
   req: Request,
@@ -14,42 +16,56 @@ export const authenticate = async (
 ): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      throw AppError.unauthorized(
-        "Authentication required. Missing or malformed Bearer token.",
-        "AUTH_UNAUTHORIZED"
-      );
+
+    // 1. Bearer Token Verification
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.split(" ")[1];
+      if (token) {
+        try {
+          const payload = authTokenService.verifyAccessToken(token);
+          const user = await userRepository.findById(payload.sub);
+          if (user && user.status !== "SUSPENDED" && user.status !== "DISABLED") {
+            req.user = {
+              id: payload.sub,
+              email: user.email,
+              role: payload.role,
+              permissions: payload.permissions,
+              sessionId: payload.sessionId,
+            };
+            return next();
+          }
+        } catch {
+          // Fall through to cookie verification if access token expired or invalid
+        }
+      }
     }
 
-    const token = authHeader.split(" ")[1];
-    if (!token) {
-      throw AppError.unauthorized(
-        "Authentication required. Bearer token is empty.",
-        "AUTH_UNAUTHORIZED"
-      );
+    // 2. Fallback: HttpOnly Refresh Token / Session Cookie Verification
+    const rawRefreshToken = req.cookies?.[env.REFRESH_COOKIE_NAME];
+    if (rawRefreshToken) {
+      const tokenHash = authTokenService.hashRefreshToken(rawRefreshToken);
+      const session = await sessionRepository.findActiveSessionByTokenHash(tokenHash);
+
+      if (session) {
+        const user = await userRepository.findById(session.user_id);
+        if (user && user.status !== "SUSPENDED" && user.status !== "DISABLED") {
+          const { roles, permissions } = await userRepository.getUserRolesAndPermissions(user.id);
+          req.user = {
+            id: user.id,
+            email: user.email,
+            role: roles[0] || "PARTICIPANT",
+            permissions,
+            sessionId: session.id,
+          };
+          return next();
+        }
+      }
     }
 
-    // Cryptographically verify signature, issuer, audience, and expiration
-    const payload = authTokenService.verifyAccessToken(token);
-
-    // Optional quick check to ensure user still exists and is not suspended/disabled
-    const user = await userRepository.findById(payload.sub);
-    if (!user || user.status === "SUSPENDED" || user.status === "DISABLED") {
-      throw AppError.unauthorized(
-        "User account is inactive or no longer exists.",
-        "AUTH_ACCOUNT_INACTIVE"
-      );
-    }
-
-    req.user = {
-      id: payload.sub,
-      email: user.email,
-      role: payload.role,
-      permissions: payload.permissions,
-      sessionId: payload.sessionId,
-    };
-
-    next();
+    throw AppError.unauthorized(
+      "Authentication required. Missing, invalid, or expired session credentials.",
+      "AUTH_UNAUTHORIZED"
+    );
   } catch (err) {
     next(err);
   }

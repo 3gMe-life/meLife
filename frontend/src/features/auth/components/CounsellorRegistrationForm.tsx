@@ -194,7 +194,7 @@ export function CounsellorRegistrationForm() {
 
         <div className="text-[10px] text-slate-400 text-left pt-1 leading-relaxed">
           By registering, you agree to comply with ethical guidance standards and 3G MeLife&apos;s{" "}
-          <span className="text-[#14B8A6] font-medium">Terms of Service</span>.
+          <span className="text-[#00BFA5] font-medium">Terms of Service</span>.
         </div>
 
         <div className="pt-2">

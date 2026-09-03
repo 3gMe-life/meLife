@@ -80,5 +80,7 @@ export interface MeResponseDTO {
   onboarding: {
     completed: boolean;
     educationStage?: string | null;
+    gradeLevel?: string | null;
+    dateOfBirth?: string | null;
   };
 }

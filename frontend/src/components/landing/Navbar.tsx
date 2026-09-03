@@ -22,13 +22,13 @@ import { NAV_LINKS, type NavItem } from "@/data/landing";
 import { cn } from "@/lib/utils";
 
 const navIcons: Record<string, React.ReactNode> = {
-  Home: <Sparkles className="w-4 h-4 text-[#2563EB]" />,
-  About: <HelpCircle className="w-4 h-4 text-[#2563EB]" />,
-  Assessments: <BookOpen className="w-4 h-4 text-[#2563EB]" />,
-  "How It Works": <Compass className="w-4 h-4 text-[#2563EB]" />,
-  Dimensions: <Layers className="w-4 h-4 text-[#2563EB]" />,
-  "For Institutions": <Building2 className="w-4 h-4 text-[#2563EB]" />,
-  Contact: <Phone className="w-4 h-4 text-[#2563EB]" />,
+  Home: <Sparkles className="w-4 h-4 text-[#00BFA5]" />,
+  About: <HelpCircle className="w-4 h-4 text-[#00BFA5]" />,
+  Assessments: <BookOpen className="w-4 h-4 text-[#00BFA5]" />,
+  "How It Works": <Compass className="w-4 h-4 text-[#00BFA5]" />,
+  Dimensions: <Layers className="w-4 h-4 text-[#00BFA5]" />,
+  "For Institutions": <Building2 className="w-4 h-4 text-[#00BFA5]" />,
+  Contact: <Phone className="w-4 h-4 text-[#00BFA5]" />,
 };
 
 export function Navbar() {
@@ -83,9 +83,9 @@ export function Navbar() {
           {/* Left: Brand Logo Capsule */}
           <Link
             href="/"
-            className="flex items-center gap-2.5 pr-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] rounded-full group select-none"
+            className="flex items-center gap-2.5 pr-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00BFA5] rounded-full group select-none"
           >
-            <div className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-full p-0.5 bg-gradient-to-tr from-[#2563EB] via-[#3B82F6] to-[#14B8A6] shadow-[0_2px_10px_rgba(37,99,235,0.25)] flex items-center justify-center overflow-hidden transition-transform duration-300 group-hover:scale-105">
+            <div className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-full p-0.5 bg-gradient-to-tr from-[#00B8D4] via-[#00BFA5] to-[#00C896] shadow-[0_2px_10px_rgba(0,191,165,0.25)] flex items-center justify-center overflow-hidden transition-transform duration-300 group-hover:scale-105">
               <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
                 <Image
                   src="/melifelogo.png"
@@ -98,10 +98,10 @@ export function Navbar() {
               </div>
             </div>
             <div className="flex flex-col text-left">
-              <span className="text-xs sm:text-sm font-extrabold tracking-tight text-[#0F172A] leading-none group-hover:text-[#2563EB] transition-colors">
+              <span className="text-xs sm:text-sm font-extrabold tracking-tight text-[#172B2A] leading-none group-hover:text-[#008F83] transition-colors">
                 3G ME LIFE
               </span>
-              <span className="text-[9px] font-semibold text-[#2563EB] tracking-wider uppercase mt-0.5">
+              <span className="text-[9px] font-semibold text-[#008F83] tracking-wider uppercase mt-0.5">
                 Psychometrics
               </span>
             </div>
@@ -121,8 +121,8 @@ export function Navbar() {
                   className={cn(
                     "text-xs font-semibold px-3.5 py-1.5 rounded-full transition-all duration-200",
                     isActive
-                      ? "bg-white text-[#2563EB] shadow-[0_2px_8px_rgba(37,99,235,0.15)] border border-[#2563EB]/20"
-                      : "text-[#64748B] hover:text-[#0F172A] hover:bg-white/60"
+                      ? "bg-white text-[#008F83] shadow-[0_2px_8px_rgba(0,191,165,0.2)] border border-[#00BFA5]/30 font-bold"
+                      : "text-[#526866] hover:text-[#172B2A] hover:bg-white/60"
                   )}
                 >
                   {link.label}
@@ -135,14 +135,14 @@ export function Navbar() {
           <div className="hidden lg:flex items-center gap-2">
             <Link
               href="/login"
-              className="text-xs font-semibold text-[#0F172A] hover:text-[#2563EB] px-3.5 py-1.5 rounded-full border border-slate-200 bg-white/70 hover:bg-white shadow-2xs transition-all duration-200 flex items-center gap-1.5"
+              className="text-xs font-semibold text-[#172B2A] hover:text-[#008F83] px-3.5 py-1.5 rounded-full border border-[#E3ECEA] bg-white/70 hover:bg-white shadow-2xs transition-all duration-200 flex items-center gap-1.5"
             >
-              <LogIn className="w-3.5 h-3.5 text-[#2563EB]" />
+              <LogIn className="w-3.5 h-3.5 text-[#008F83]" />
               <span>Sign In</span>
             </Link>
             <Link
               href="#assessments"
-              className="liquid-pill-btn text-white text-xs font-semibold px-4 py-2 rounded-full transition-all duration-200 flex items-center gap-1.5 group select-none btn-shimmer"
+              className="liquid-pill-btn text-[#172B2A] font-bold text-xs px-4 py-2 rounded-full transition-all duration-200 flex items-center gap-1.5 group select-none btn-shimmer shadow-md"
             >
               <span>Explore Assessments</span>
               <ArrowRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
@@ -153,21 +153,21 @@ export function Navbar() {
           <div className="lg:hidden flex items-center gap-1.5">
             <Link
               href="/login"
-              className="text-[11px] font-semibold text-[#2563EB] px-3 py-1 rounded-full bg-white/80 border border-slate-200 shadow-2xs"
+              className="text-[11px] font-semibold text-[#008F83] px-3 py-1 rounded-full bg-white/80 border border-[#E3ECEA] shadow-2xs"
             >
               Sign In
             </Link>
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-1.5 rounded-full bg-white/80 hover:bg-white text-[#0F172A] border border-slate-200 shadow-2xs focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+              className="p-1.5 rounded-full bg-white/80 hover:bg-white text-[#172B2A] border border-[#E3ECEA] shadow-2xs focus:outline-none focus:ring-2 focus:ring-[#00BFA5]"
               aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
               aria-expanded={mobileMenuOpen}
             >
               {mobileMenuOpen ? (
-                <X className="w-5 h-5 text-[#0F172A]" />
+                <X className="w-5 h-5 text-[#172B2A]" />
               ) : (
-                <Menu className="w-5 h-5 text-[#0F172A]" />
+                <Menu className="w-5 h-5 text-[#172B2A]" />
               )}
             </button>
           </div>
@@ -177,14 +177,14 @@ export function Navbar() {
         {mobileMenuOpen && (
           <div className="lg:hidden mt-2 p-4 sm:p-5 liquid-glass-sheet rounded-[28px] animate-in fade-in slide-in-from-top-3 duration-200">
             {/* Top Sheet Header Pill */}
-            <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200/80">
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#E3ECEA]">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[#14B8A6] animate-pulse" />
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[#2563EB]">
+                <div className="w-2 h-2 rounded-full bg-[#00BFA5] animate-pulse" />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#008F83]">
                   MeLife Navigation Island
                 </span>
               </div>
-              <span className="text-[10px] text-[#64748B] bg-white/90 px-2 py-0.5 rounded-full border border-slate-200">
+              <span className="text-[10px] text-[#526866] bg-white/90 px-2 py-0.5 rounded-full border border-[#E3ECEA]">
                 v1.0
               </span>
             </div>
@@ -199,12 +199,12 @@ export function Navbar() {
                   className={cn(
                     "flex items-center gap-2.5 p-2.5 rounded-2xl border transition-all text-xs font-semibold",
                     activeSection === link.href
-                      ? "bg-[#F1F5F9] border-[#2563EB]/30 text-[#2563EB] shadow-2xs"
-                      : "bg-white/70 hover:bg-white border-slate-200/80 text-[#0F172A]"
+                      ? "bg-[#EBF2F0] border-[#00BFA5]/30 text-[#008F83] shadow-2xs"
+                      : "bg-white/70 hover:bg-white border-[#E3ECEA] text-[#172B2A]"
                   )}
                 >
-                  <div className="w-7 h-7 rounded-xl bg-white border border-[#2563EB]/20 flex items-center justify-center shrink-0 shadow-2xs">
-                    {navIcons[link.label] || <Sparkles className="w-3.5 h-3.5 text-[#2563EB]" />}
+                  <div className="w-7 h-7 rounded-xl bg-white border border-[#00BFA5]/20 flex items-center justify-center shrink-0 shadow-2xs">
+                    {navIcons[link.label] || <Sparkles className="w-3.5 h-3.5 text-[#00BFA5]" />}
                   </div>
                   <span>{link.label}</span>
                 </Link>
@@ -212,17 +212,17 @@ export function Navbar() {
             </nav>
 
             {/* Bottom Actions Capsule */}
-            <div className="mt-4 pt-3 border-t border-slate-200/80 flex flex-col gap-2">
+            <div className="mt-4 pt-3 border-t border-[#E3ECEA] flex flex-col gap-2">
               <Link
                 href="#assessments"
                 onClick={() => setMobileMenuOpen(false)}
-                className="liquid-pill-btn text-white text-xs font-semibold py-3 px-4 rounded-2xl flex items-center justify-center gap-2 shadow-md btn-shimmer"
+                className="liquid-pill-btn text-[#172B2A] font-bold text-xs py-3 px-4 rounded-2xl flex items-center justify-center gap-2 shadow-md btn-shimmer"
               >
                 <span>Explore Assessments</span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
-              <div className="flex items-center justify-center gap-1.5 pt-1 text-[11px] text-[#64748B]">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#14B8A6]" />
+              <div className="flex items-center justify-center gap-1.5 pt-1 text-[11px] text-[#526866]">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#00BFA5]" />
                 <span>Evidence-informed psychometric platform</span>
               </div>
             </div>

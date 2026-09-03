@@ -85,7 +85,7 @@ export function RegisterForm() {
       {/* Submission Feedback Card (For Counsellor/Institution review state) */}
       {submissionFeedback ? (
         <div className="py-4 text-center animate-in fade-in zoom-in-95 duration-200">
-          <div className="w-12 h-12 rounded-2xl bg-[#14B8A6] text-white flex items-center justify-center mx-auto mb-4 shadow-lg">
+          <div className="w-12 h-12 rounded-2xl bg-[#00BFA5] text-[#172B2A] flex items-center justify-center mx-auto mb-4 shadow-lg font-bold">
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <h2 className="text-base font-bold text-white mb-2">
@@ -105,7 +105,7 @@ export function RegisterForm() {
             <button
               type="button"
               onClick={resetFlow}
-              className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#2563EB] text-white text-xs font-bold hover:bg-[#1D4ED8] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#00BFA5] text-[#172B2A] text-xs font-bold hover:bg-[#008F83] hover:text-white transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
             >
               <span>Submit another inquiry</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -168,7 +168,7 @@ export function RegisterForm() {
         <span>Already have an account? </span>
         <Link
           href="/login"
-          className="font-bold text-[#14B8A6] hover:text-[#2DD4BF] hover:underline"
+          className="font-bold text-[#00BFA5] hover:text-[#00C896] hover:underline"
         >
           Sign in
         </Link>

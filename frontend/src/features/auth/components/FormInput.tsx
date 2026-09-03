@@ -38,7 +38,7 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
             className="text-xs font-semibold text-slate-200 tracking-tight"
           >
             {label}
-            {required && <span className="text-[#14B8A6] ml-0.5">*</span>}
+            {required && <span className="text-[#00BFA5] ml-0.5">*</span>}
           </label>
           {rightElement}
         </div>
@@ -59,7 +59,7 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
             className={cn(
               "w-full px-3.5 py-2.5 rounded-xl text-sm text-white bg-slate-800/60 border border-slate-700/80 transition-all duration-200",
               "placeholder:text-slate-400 placeholder:text-xs sm:placeholder:text-sm",
-              "focus:outline-none focus:ring-2 focus:ring-[#14B8A6]/25 focus:border-[#14B8A6] focus:bg-slate-800/90",
+              "focus:outline-none focus:ring-2 focus:ring-[#00BFA5]/25 focus:border-[#00BFA5] focus:bg-slate-800/90",
               leftIcon ? "pl-10" : "pl-3.5",
               error
                 ? "border-red-400 bg-red-950/30 focus:border-red-500 focus:ring-red-500/30"

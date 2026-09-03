@@ -1,20 +1,30 @@
 import React from "react";
 import Link from "next/link";
-import { Clock, HelpCircle, CheckCircle2, Play, Sparkles, ArrowRight } from "lucide-react";
+import { Clock, HelpCircle, CheckCircle2, Play, Sparkles, ArrowRight, ShieldCheck } from "lucide-react";
+import type { ParticipantAssessmentItem } from "@/features/assessments/types/assessment.types";
 import type { AssessmentItem } from "../../types/dashboard.types";
 
+export type AssessmentCardItem = (ParticipantAssessmentItem | AssessmentItem) & {
+  title?: string;
+  name?: string;
+  code?: string;
+  activeAttemptId?: string | null;
+  eligibilityReason?: string;
+};
+
 interface AssessmentProgressCardProps {
-  assessment: AssessmentItem;
+  assessment: AssessmentCardItem;
 }
 
 export function AssessmentProgressCard({ assessment }: AssessmentProgressCardProps) {
   const isCompleted = assessment.status === "COMPLETED";
   const isInProgress = assessment.status === "IN_PROGRESS";
+  const title = assessment.name || assessment.title || "Psychometric Assessment";
 
   const getStatusBadge = () => {
     if (isCompleted) {
       return (
-        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 dark:border-emerald-500/30">
+        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#00C896]/15 text-[#008F83] dark:text-[#00C896] border border-[#00C896]/30">
           <CheckCircle2 className="w-3 h-3" />
           <span>Completed</span>
         </span>
@@ -22,67 +32,75 @@ export function AssessmentProgressCard({ assessment }: AssessmentProgressCardPro
     }
     if (isInProgress) {
       return (
-        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#2563EB]/10 dark:bg-[#2563EB]/15 text-[#2563EB] dark:text-[#60A5FA] border border-[#2563EB]/20 dark:border-[#2563EB]/30">
+        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5] border border-[#00BFA5]/30">
           <Play className="w-3 h-3 fill-current" />
           <span>In Progress</span>
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-        <span>Ready</span>
+      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#EBF2F0] dark:bg-white/5 text-[#526866] dark:text-[#9FB3B0] border border-[#E3ECEA] dark:border-white/10">
+        <span>Available</span>
       </span>
     );
   };
 
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/90 dark:border-white/10 p-5 sm:p-6 flex flex-col justify-between hover:border-slate-300 dark:hover:border-white/20 shadow-xs dark:shadow-none transition-all duration-300 hover:shadow-lg group">
+    <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-[#172B2A] backdrop-blur-xl border border-[#E3ECEA] dark:border-[rgba(227,236,234,0.12)] p-5 sm:p-6 flex flex-col justify-between hover:border-[#00BFA5]/50 dark:hover:border-[#00BFA5]/40 shadow-xs dark:shadow-none transition-all duration-300 hover:shadow-lg group">
       <div>
         {/* Top Meta */}
         <div className="flex items-center justify-between gap-2 mb-3">
-          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#EBF2F0] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 text-[#526866] dark:text-[#9FB3B0] uppercase tracking-wider">
             {assessment.category}
           </span>
           {getStatusBadge()}
         </div>
 
         {/* Title & Description */}
-        <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white group-hover:text-[#2563EB] dark:group-hover:text-[#60A5FA] transition-colors mb-1.5 line-clamp-1">
-          {assessment.title}
+        <h3 className="text-base sm:text-lg font-bold text-[#172B2A] dark:text-[#F7FAF9] group-hover:text-[#008F83] dark:group-hover:text-[#00BFA5] transition-colors mb-1.5 line-clamp-1">
+          {title}
         </h3>
-        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-4 line-clamp-2">
+        <p className="text-xs text-[#526866] dark:text-[#9FB3B0] leading-relaxed mb-3.5 line-clamp-2">
           {assessment.description}
         </p>
 
+        {/* Eligibility Reason Badge */}
+        {assessment.eligibilityReason && (
+          <div className="mb-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#00BFA5]/10 dark:bg-[#00BFA5]/15 border border-[#00BFA5]/25 text-[11px] font-semibold text-[#008F83] dark:text-[#00BFA5]">
+            <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-[#00BFA5]" />
+            <span className="truncate">{assessment.eligibilityReason}</span>
+          </div>
+        )}
+
         {/* Details: Duration & Questions */}
-        <div className="flex items-center gap-4 text-[11px] text-slate-500 dark:text-slate-400 mb-5">
+        <div className="flex items-center gap-4 text-[11px] text-[#728B88] dark:text-[#7D9491] mb-5">
           <div className="flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-[#14B8A6]" />
+            <Clock className="w-3.5 h-3.5 text-[#00B8D4]" />
             <span>~{assessment.estimatedMinutes} mins</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <HelpCircle className="w-3.5 h-3.5 text-[#2563EB]" />
+            <HelpCircle className="w-3.5 h-3.5 text-[#00BFA5]" />
             <span>{assessment.questionCount} Questions</span>
           </div>
         </div>
       </div>
 
       {/* Bottom Progress & Action CTA */}
-      <div className="pt-4 border-t border-slate-100 dark:border-white/10 space-y-3">
+      <div className="pt-4 border-t border-[#E3ECEA] dark:border-[rgba(227,236,234,0.1)] space-y-3">
         {/* Progress Bar */}
         <div>
-          <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1.5">
+          <div className="flex items-center justify-between text-[10px] font-bold text-[#728B88] dark:text-[#7D9491] mb-1.5">
             <span>Progress</span>
-            <span className={isCompleted ? "text-emerald-600 dark:text-emerald-400" : "text-slate-900 dark:text-white"}>
+            <span className={isCompleted ? "text-[#008F83] dark:text-[#00C896]" : "text-[#172B2A] dark:text-[#F7FAF9]"}>
               {assessment.progressPercentage}%
             </span>
           </div>
-          <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+          <div className="w-full h-1.5 rounded-full bg-[#EBF2F0] dark:bg-black/30 overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-500 ${
                 isCompleted
-                  ? "bg-gradient-to-r from-emerald-500 to-teal-400"
-                  : "bg-gradient-to-r from-[#2563EB] to-[#14B8A6]"
+                  ? "bg-gradient-to-r from-[#00BFA5] to-[#00C896]"
+                  : "bg-gradient-to-r from-[#00B8D4] via-[#00BFA5] to-[#00C896]"
               }`}
               style={{ width: `${assessment.progressPercentage}%` }}
             />
@@ -93,16 +111,20 @@ export function AssessmentProgressCard({ assessment }: AssessmentProgressCardPro
         <div>
           {isCompleted ? (
             <Link
-              href="/participant/results"
-              className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/15 text-xs font-bold text-slate-800 dark:text-white transition-colors flex items-center justify-center gap-2 group/btn"
+              href={
+                assessment.activeAttemptId
+                  ? `/participant/results/${assessment.activeAttemptId}`
+                  : `/participant/results`
+              }
+              className="w-full py-2.5 px-4 rounded-xl bg-[#EBF2F0] hover:bg-[#E3ECEA] dark:bg-white/5 dark:hover:bg-white/10 border border-[#E3ECEA] dark:border-white/15 text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9] transition-colors flex items-center justify-center gap-2 group/btn"
             >
-              <Sparkles className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
+              <Sparkles className="w-3.5 h-3.5 text-[#00BFA5]" />
               <span>Review Psychometric Insights</span>
             </Link>
           ) : isInProgress ? (
             <Link
-              href={`/participant/assessments/${assessment.id}`}
-              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] text-xs font-bold text-white transition-all shadow-md shadow-[#2563EB]/25 flex items-center justify-center gap-2"
+              href={`/participant/assessments/${assessment.activeAttemptId || assessment.code || assessment.id}`}
+              className="w-full py-2.5 px-4 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white text-xs font-bold transition-all shadow-md shadow-[#00BFA5]/25 flex items-center justify-center gap-2"
             >
               <Play className="w-3.5 h-3.5 fill-current" />
               <span>Resume Assessment</span>
@@ -110,8 +132,8 @@ export function AssessmentProgressCard({ assessment }: AssessmentProgressCardPro
             </Link>
           ) : (
             <Link
-              href={`/participant/assessments/${assessment.id}`}
-              className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 border border-slate-200 dark:border-white/20 text-xs font-bold text-slate-800 dark:text-white transition-colors flex items-center justify-center gap-2"
+              href={`/participant/assessments/${assessment.code || assessment.id}`}
+              className="w-full py-2.5 px-4 rounded-xl bg-[#EBF2F0] hover:bg-[#E3ECEA] dark:bg-white/10 dark:hover:bg-white/20 border border-[#E3ECEA] dark:border-white/20 text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9] transition-colors flex items-center justify-center gap-2"
             >
               <span>Start Assessment</span>
               <ArrowRight className="w-3.5 h-3.5" />

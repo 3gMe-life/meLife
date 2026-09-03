@@ -11,7 +11,7 @@ export function MultiDimensionSection() {
         <Reveal animation="fade-up">
           <SectionHeading
             badge="The Multi-Dimensional Principle"
-            badgeVariant="blue"
+            badgeVariant="teal"
             title="Beyond Single-Score Decisions"
             subtitle="Educational and career choices should never rely on single exam percentages, isolated test scores, or arbitrary stereotypes."
           />
@@ -19,55 +19,55 @@ export function MultiDimensionSection() {
 
         {/* The Multi-Dimensional Formula Visual Banner */}
         <Reveal animation="zoom-in" delay={100}>
-          <div className="rounded-3xl p-6 sm:p-10 bg-[#F1F5F9] border border-slate-200/80 shadow-[0_10px_30px_-10px_rgba(15,23,42,0.04)] mb-12 text-center">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#2563EB] mb-4 inline-block bg-white px-3 py-1 rounded-full border border-slate-200 shadow-2xs">
+          <div className="rounded-3xl p-6 sm:p-10 bg-[#F7FAF9] border border-[#E3ECEA] shadow-[0_10px_30px_-10px_rgba(23,43,42,0.04)] mb-12 text-center">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#008F83] mb-4 inline-block bg-white px-3 py-1 rounded-full border border-[#E3ECEA] shadow-2xs">
               The 3G MeLife Diagnostic Formula
             </span>
 
             <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 my-6">
               {/* Box 1 */}
-              <div className="px-4 py-3 sm:px-6 sm:py-4 rounded-2xl bg-white border border-slate-200 shadow-2xs interactive-card">
-                <span className="text-xs font-semibold text-[#2563EB] uppercase block">Dimension 1</span>
-                <span className="text-sm sm:text-base font-bold text-[#0F172A]">Cognitive Aptitude</span>
+              <div className="px-4 py-3 sm:px-6 sm:py-4 rounded-2xl bg-white border border-[#E3ECEA] shadow-2xs interactive-card">
+                <span className="text-xs font-semibold text-[#008F83] uppercase block">Dimension 1</span>
+                <span className="text-sm sm:text-base font-bold text-[#172B2A]">Cognitive Aptitude</span>
               </div>
 
-              <span className="text-xl font-extrabold text-[#2563EB]">+</span>
+              <span className="text-xl font-extrabold text-[#00BFA5]">+</span>
 
               {/* Box 2 */}
-              <div className="px-4 py-3 sm:px-6 sm:py-4 rounded-2xl bg-white border border-slate-200 shadow-2xs interactive-card">
-                <span className="text-xs font-semibold text-[#2563EB] uppercase block">Dimension 2</span>
-                <span className="text-sm sm:text-base font-bold text-[#0F172A]">Curiosity & Interests</span>
+              <div className="px-4 py-3 sm:px-6 sm:py-4 rounded-2xl bg-white border border-[#E3ECEA] shadow-2xs interactive-card">
+                <span className="text-xs font-semibold text-[#008F83] uppercase block">Dimension 2</span>
+                <span className="text-sm sm:text-base font-bold text-[#172B2A]">Curiosity & Interests</span>
               </div>
 
-              <span className="text-xl font-extrabold text-[#2563EB]">+</span>
+              <span className="text-xl font-extrabold text-[#00BFA5]">+</span>
 
               {/* Box 3 */}
-              <div className="px-4 py-3 sm:px-6 sm:py-4 rounded-2xl bg-white border border-slate-200 shadow-2xs interactive-card">
-                <span className="text-xs font-semibold text-[#2563EB] uppercase block">Dimension 3</span>
-                <span className="text-sm sm:text-base font-bold text-[#0F172A]">Execution Strengths</span>
+              <div className="px-4 py-3 sm:px-6 sm:py-4 rounded-2xl bg-white border border-[#E3ECEA] shadow-2xs interactive-card">
+                <span className="text-xs font-semibold text-[#008F83] uppercase block">Dimension 3</span>
+                <span className="text-sm sm:text-base font-bold text-[#172B2A]">Execution Strengths</span>
               </div>
 
-              <span className="text-xl font-extrabold text-[#2563EB]">+</span>
+              <span className="text-xl font-extrabold text-[#00BFA5]">+</span>
 
               {/* Box 4 */}
-              <div className="px-4 py-3 sm:px-6 sm:py-4 rounded-2xl bg-white border border-slate-200 shadow-2xs interactive-card">
-                <span className="text-xs font-semibold text-[#2563EB] uppercase block">Dimension 4</span>
-                <span className="text-sm sm:text-base font-bold text-[#0F172A]">Ecosystem Reality</span>
+              <div className="px-4 py-3 sm:px-6 sm:py-4 rounded-2xl bg-white border border-[#E3ECEA] shadow-2xs interactive-card">
+                <span className="text-xs font-semibold text-[#008F83] uppercase block">Dimension 4</span>
+                <span className="text-sm sm:text-base font-bold text-[#172B2A]">Ecosystem Reality</span>
               </div>
 
-              <span className="text-xl font-extrabold text-[#14B8A6]">=</span>
+              <span className="text-xl font-extrabold text-[#00B8D4]">=</span>
 
               {/* Result Pill */}
-              <div className="px-5 py-3 sm:px-7 sm:py-4 rounded-2xl bg-gradient-to-r from-[#2563EB] to-[#14B8A6] text-white shadow-md">
-                <span className="text-xs font-semibold text-blue-100 uppercase block">Guidance Result</span>
-                <span className="text-sm sm:text-base font-extrabold text-white flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-white" />
+              <div className="px-5 py-3 sm:px-7 sm:py-4 rounded-2xl bg-gradient-to-r from-[#00B8D4] via-[#00BFA5] to-[#00C896] text-[#172B2A] shadow-md font-bold">
+                <span className="text-xs font-semibold text-[#008F83] uppercase block">Guidance Result</span>
+                <span className="text-sm sm:text-base font-extrabold text-[#172B2A] flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-[#172B2A]" />
                   <span>Confident, Defensible Direction</span>
                 </span>
               </div>
             </div>
 
-            <p className="text-xs sm:text-sm text-[#64748B] max-w-2xl mx-auto leading-relaxed">
+            <p className="text-xs sm:text-sm text-[#526866] max-w-2xl mx-auto leading-relaxed">
               When interest is validated by cognitive velocity and grounded in personal execution habits, students make decisions they are excited to pursue and sustain.
             </p>
           </div>
@@ -81,11 +81,11 @@ export function MultiDimensionSection() {
               <div>
                 <div className="flex items-center gap-2 mb-4 text-red-700">
                   <ShieldAlert className="w-5 h-5 text-red-600" />
-                  <h3 className="text-lg font-bold text-[#0F172A]">
+                  <h3 className="text-lg font-bold text-[#172B2A]">
                     Traditional Decision Pressures
                   </h3>
                 </div>
-                <ul className="space-y-3.5 text-xs sm:text-sm text-[#64748B]">
+                <ul className="space-y-3.5 text-xs sm:text-sm text-[#526866]">
                   <li className="flex items-start gap-2.5">
                     <X className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
                     <span>Relying exclusively on raw board exam marks for career suitability.</span>
@@ -112,34 +112,34 @@ export function MultiDimensionSection() {
 
           {/* The MeLife Multi-Dimensional Advantage */}
           <Reveal animation="fade-left" delay={200}>
-            <div className="p-7 sm:p-8 rounded-3xl bg-[#F8FAFC] border border-[#2563EB]/25 shadow-2xs h-full flex flex-col justify-between">
+            <div className="p-7 sm:p-8 rounded-3xl bg-[#F7FAF9] border border-[#00BFA5]/30 shadow-2xs h-full flex flex-col justify-between">
               <div>
-                <div className="flex items-center gap-2 mb-4 text-[#2563EB]">
-                  <ShieldCheck className="w-5 h-5 text-[#14B8A6]" />
-                  <h3 className="text-lg font-bold text-[#0F172A]">
+                <div className="flex items-center gap-2 mb-4 text-[#008F83]">
+                  <ShieldCheck className="w-5 h-5 text-[#00BFA5]" />
+                  <h3 className="text-lg font-bold text-[#172B2A]">
                     The MeLife Multi-Dimensional Approach
                   </h3>
                 </div>
-                <ul className="space-y-3.5 text-xs sm:text-sm text-[#64748B]">
+                <ul className="space-y-3.5 text-xs sm:text-sm text-[#526866]">
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#14B8A6] shrink-0 mt-0.5" />
+                    <Check className="w-4 h-4 text-[#00BFA5] shrink-0 mt-0.5" />
                     <span>Evaluates cognitive reasoning, interests, and execution readiness together.</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#14B8A6] shrink-0 mt-0.5" />
+                    <Check className="w-4 h-4 text-[#00BFA5] shrink-0 mt-0.5" />
                     <span>Developmental continuum that evolves with the student across years.</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#14B8A6] shrink-0 mt-0.5" />
+                    <Check className="w-4 h-4 text-[#00BFA5] shrink-0 mt-0.5" />
                     <span>Non-judgmental profiling with actionable counselling frameworks.</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#14B8A6] shrink-0 mt-0.5" />
+                    <Check className="w-4 h-4 text-[#00BFA5] shrink-0 mt-0.5" />
                     <span>Clear reports that parents, students, and counsellors can discuss constructively.</span>
                   </li>
                 </ul>
               </div>
-              <div className="mt-6 pt-4 border-t border-slate-200 text-xs font-semibold text-[#2563EB]">
+              <div className="mt-6 pt-4 border-t border-[#E3ECEA] text-xs font-semibold text-[#008F83]">
                 Outcome: Scientific clarity and confidence across critical transition milestones.
               </div>
             </div>

@@ -79,7 +79,7 @@ export function InstitutionRegistrationForm() {
     <div className="w-full">
       {/* Notice Card */}
       <div className="mb-3.5 p-3 rounded-2xl bg-teal-950/40 border border-teal-500/40 text-teal-200 text-xs flex items-start gap-2.5">
-        <Building2 className="w-4 h-4 text-[#14B8A6] shrink-0 mt-0.5" />
+        <Building2 className="w-4 h-4 text-[#00BFA5] shrink-0 mt-0.5" />
         <div className="text-left">
           <span className="font-bold block text-teal-300 mb-0.5 text-xs">
             Institutional Partner Licensing
@@ -122,14 +122,14 @@ export function InstitutionRegistrationForm() {
             htmlFor="institution-type"
             className="text-xs font-semibold text-slate-200 tracking-tight"
           >
-            Institution type <span className="text-[#14B8A6]">*</span>
+            Institution type <span className="text-[#00BFA5]">*</span>
           </label>
           <select
             id="institution-type"
             name="institutionType"
             value={formData.institutionType}
             onChange={handleChange}
-            className="w-full px-3.5 py-2.5 rounded-xl text-sm text-white bg-slate-800/60 border border-slate-700/80 focus:outline-none focus:ring-2 focus:ring-[#14B8A6]/25 focus:border-[#14B8A6] cursor-pointer"
+            className="w-full px-3.5 py-2.5 rounded-xl text-sm text-white bg-slate-800/60 border border-slate-700/80 focus:outline-none focus:ring-2 focus:ring-[#00BFA5]/25 focus:border-[#00BFA5] cursor-pointer"
           >
             {INSTITUTION_TYPES.map((type) => (
               <option key={type.id} value={type.id} className="bg-slate-900 text-white">
@@ -189,8 +189,8 @@ export function InstitutionRegistrationForm() {
 
         <div className="text-[10px] text-slate-400 text-left pt-1 leading-relaxed">
           By submitting, you agree to 3G MeLife&apos;s{" "}
-          <span className="text-[#14B8A6] font-medium">Institutional Terms</span> and{" "}
-          <span className="text-[#14B8A6] font-medium">Privacy Policy</span>.
+          <span className="text-[#00BFA5] font-medium">Institutional Terms</span> and{" "}
+          <span className="text-[#00BFA5] font-medium">Privacy Policy</span>.
         </div>
 
         <div className="pt-2">

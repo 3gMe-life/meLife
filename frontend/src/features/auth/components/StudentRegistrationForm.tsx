@@ -152,8 +152,8 @@ export function StudentRegistrationForm() {
 
         <div className="text-[10px] text-slate-400 text-left pt-1 leading-relaxed">
           By registering, you agree to 3G MeLife&apos;s{" "}
-          <span className="text-[#14B8A6] font-medium">Terms of Service</span> and{" "}
-          <span className="text-[#14B8A6] font-medium">Privacy Policy</span>.
+          <span className="text-[#00BFA5] font-medium">Terms of Service</span> and{" "}
+          <span className="text-[#00BFA5] font-medium">Privacy Policy</span>.
         </div>
 
         <div className="pt-2">

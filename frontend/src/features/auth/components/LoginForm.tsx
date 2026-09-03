@@ -165,7 +165,7 @@ export function LoginForm() {
           rightElement={
             <Link
               href="/forgot-password"
-              className="text-[11px] font-semibold text-[#14B8A6] hover:text-[#2DD4BF] hover:underline"
+              className="text-[11px] font-semibold text-[#00BFA5] hover:text-[#00C896] hover:underline"
             >
               Forgot password?
             </Link>
@@ -180,7 +180,7 @@ export function LoginForm() {
               name="rememberMe"
               checked={formData.rememberMe}
               onChange={handleChange}
-              className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-[#2563EB] focus:ring-[#14B8A6]/40 accent-[#2563EB]"
+              className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-[#00BFA5] focus:ring-[#00BFA5]/40 accent-[#00BFA5]"
             />
             <span className="text-xs text-slate-300 hover:text-white">
               Remember me
@@ -205,7 +205,7 @@ export function LoginForm() {
           <span>Don&apos;t have an account? </span>
           <Link
             href="/register"
-            className="font-bold text-[#14B8A6] hover:text-[#2DD4BF] hover:underline"
+            className="font-bold text-[#00BFA5] hover:text-[#00C896] hover:underline"
           >
             Create an account
           </Link>
@@ -216,7 +216,7 @@ export function LoginForm() {
             href="/voucher"
             className="inline-flex items-center gap-1.5 font-medium text-slate-400 hover:text-white transition-colors"
           >
-            <KeyRound className="w-3.5 h-3.5 text-[#14B8A6]" />
+            <KeyRound className="w-3.5 h-3.5 text-[#00BFA5]" />
             <span>Have an assessment access code?</span>
           </Link>
         </div>

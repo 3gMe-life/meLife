@@ -76,8 +76,8 @@ export function ParentRegistrationForm() {
   return (
     <div className="w-full">
       {/* Notice Pill */}
-      <div className="mb-3.5 p-2.5 rounded-xl bg-blue-950/40 border border-blue-500/30 flex items-start gap-2 text-xs text-blue-200">
-        <Users className="w-3.5 h-3.5 text-[#14B8A6] shrink-0 mt-0.5" />
+      <div className="mb-3.5 p-2.5 rounded-xl bg-teal-950/40 border border-[#00BFA5]/30 flex items-start gap-2 text-xs text-teal-200">
+        <Users className="w-3.5 h-3.5 text-[#00BFA5] shrink-0 mt-0.5" />
         <p className="leading-relaxed text-[11px]">
           You can link and view your children&apos;s psychometric assessment reports from your family dashboard after signup.
         </p>
@@ -165,8 +165,8 @@ export function ParentRegistrationForm() {
 
         <div className="text-[10px] text-slate-400 text-left pt-1 leading-relaxed">
           By registering, you agree to 3G MeLife&apos;s{" "}
-          <span className="text-[#14B8A6] font-medium">Terms of Service</span> and{" "}
-          <span className="text-[#14B8A6] font-medium">Privacy Policy</span>.
+          <span className="text-[#00BFA5] font-medium">Terms of Service</span> and{" "}
+          <span className="text-[#00BFA5] font-medium">Privacy Policy</span>.
         </div>
 
         <div className="pt-2">

@@ -39,6 +39,8 @@ interface GoogleAuthButtonProps {
   text?: string;
 }
 
+let isGlobalGoogleInitialized = false;
+
 export function GoogleAuthButton({
   onCredentialReceived,
   isLoading = false,
@@ -47,7 +49,6 @@ export function GoogleAuthButton({
 }: GoogleAuthButtonProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const callbackRef = useRef(onCredentialReceived);
-  const isInitializedRef = useRef(false);
 
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
@@ -59,8 +60,8 @@ export function GoogleAuthButton({
   const renderGoogleButton = useCallback(() => {
     if (!window.google?.accounts?.id || !clientId || !containerRef.current) return;
 
-    // 1. Initialize Google Identity Services once for this component instance
-    if (!isInitializedRef.current) {
+    // 1. Initialize Google Identity Services once globally per window
+    if (!isGlobalGoogleInitialized) {
       try {
         window.google.accounts.id.initialize({
           client_id: clientId,
@@ -72,7 +73,7 @@ export function GoogleAuthButton({
           auto_select: false,
           cancel_on_tap_outside: true,
         });
-        isInitializedRef.current = true;
+        isGlobalGoogleInitialized = true;
       } catch (err) {
         console.warn("Google Identity Services initialization warning:", err);
       }
@@ -123,12 +124,12 @@ export function GoogleAuthButton({
       {/* 1. Visually Styled 3G MeLife Branded Custom Button */}
       <div
         className={cn(
-          "w-full py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold text-[#0F172A] bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50/90 active:bg-slate-100",
+          "w-full py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold text-[#172B2A] bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50/90 active:bg-slate-100",
           "transition-all duration-150 flex items-center justify-center gap-2.5 shadow-2xs select-none pointer-events-none"
         )}
       >
         {isLoading ? (
-          <Loader2 className="w-4 h-4 animate-spin text-[#2563EB]" />
+          <Loader2 className="w-4 h-4 animate-spin text-[#00BFA5]" />
         ) : (
           <svg
             className="w-4 h-4 shrink-0"

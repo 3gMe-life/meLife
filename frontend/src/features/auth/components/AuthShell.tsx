@@ -17,9 +17,9 @@ export function AuthShell({ children }: AuthShellProps) {
       <header className="relative z-10 w-full max-w-7xl mx-auto p-4 sm:p-6 flex items-center justify-between">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold text-white bg-slate-950/60 hover:bg-slate-900/80 border border-white/20 backdrop-blur-md transition-all duration-200 hover:scale-105 shadow-lg focus:outline-none focus:ring-2 focus:ring-[#14B8A6]/50"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold text-white bg-slate-950/60 hover:bg-slate-900/80 border border-white/20 backdrop-blur-md transition-all duration-200 hover:scale-105 shadow-lg focus:outline-none focus:ring-2 focus:ring-[#00BFA5]/50"
         >
-          <ArrowLeft className="w-3.5 h-3.5 text-[#14B8A6]" />
+          <ArrowLeft className="w-3.5 h-3.5 text-[#00BFA5]" />
           <span>Back to Home</span>
         </Link>
       </header>

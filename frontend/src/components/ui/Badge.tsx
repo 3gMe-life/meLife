@@ -9,7 +9,7 @@ interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 }
 
 export function Badge({
-  variant = "blue",
+  variant = "teal",
   size = "md",
   icon,
   className,
@@ -20,12 +20,12 @@ export function Badge({
     "inline-flex items-center font-medium rounded-full transition-colors select-none";
 
   const variants = {
-    blue: "bg-[#2563EB]/10 text-[#2563EB] border border-[#2563EB]/25",
-    teal: "bg-[#14B8A6]/10 text-[#0F766E] border border-[#14B8A6]/25",
-    emerald: "bg-[#22C55E]/10 text-[#15803D] border border-[#22C55E]/30",
-    dark: "bg-[#0F172A] text-white border border-[#0F172A]",
-    outline: "bg-white/90 text-[#64748B] border border-slate-200",
-    subtle: "bg-[#F1F5F9] text-[#2563EB] border border-slate-200",
+    blue: "bg-[#00B8D4]/15 text-[#008F83] border border-[#00B8D4]/30",
+    teal: "bg-[#00BFA5]/15 text-[#008F83] border border-[#00BFA5]/30",
+    emerald: "bg-[#00C896]/15 text-[#008F83] border border-[#00C896]/30",
+    dark: "bg-[#172B2A] text-white border border-[#172B2A]",
+    outline: "bg-white/90 text-[#526866] border border-[#E3ECEA]",
+    subtle: "bg-[#EBF2F0] text-[#008F83] border border-[#E3ECEA]",
   };
 
   const sizes = {

@@ -147,24 +147,37 @@ export class UserRepository {
   }
 
   /**
-   * Retrieves student profile onboarding info if available.
+   * Retrieves student/participant profile onboarding info if available.
    */
   async getStudentProfile(
     userId: string,
     client?: PoolClient
-  ): Promise<{ isOnboarded: boolean; educationStage?: string | null } | null> {
+  ): Promise<{
+    isOnboarded: boolean;
+    educationStage?: string | null;
+    gradeLevel?: string | null;
+    dateOfBirth?: string | null;
+  } | null> {
     const db = client || pool;
     const query = `
-      SELECT is_onboarded, education_stage
-      FROM student_profiles
-      WHERE user_id = $1
+      SELECT
+        COALESCE(p.is_onboarded, s.is_onboarded, false) as is_onboarded,
+        COALESCE(p.education_stage, s.education_stage) as education_stage,
+        COALESCE(p.grade_level, s.grade_level) as grade_level,
+        TO_CHAR(COALESCE(p.date_of_birth, s.date_of_birth), 'YYYY-MM-DD') as date_of_birth
+      FROM users u
+      LEFT JOIN participant_profiles p ON u.id = p.user_id
+      LEFT JOIN student_profiles s ON u.id = s.user_id
+      WHERE u.id = $1
       LIMIT 1
     `;
     const res = await db.query(query, [userId]);
     if (!res.rows[0]) return null;
     return {
       isOnboarded: Boolean(res.rows[0].is_onboarded),
-      educationStage: res.rows[0].education_stage,
+      educationStage: res.rows[0].education_stage || null,
+      gradeLevel: res.rows[0].grade_level || null,
+      dateOfBirth: res.rows[0].date_of_birth || null,
     };
   }
 }

@@ -40,7 +40,7 @@ export function SectionHeading({
       )}
       <h2
         className={cn(
-          "text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-[#0F172A] leading-tight",
+          "text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-[#172B2A] leading-tight",
           titleClassName
         )}
       >
@@ -49,7 +49,7 @@ export function SectionHeading({
       {subtitle && (
         <p
           className={cn(
-            "text-base sm:text-lg text-[#64748B] leading-relaxed",
+            "text-base sm:text-lg text-[#526866] leading-relaxed",
             subtitleClassName
           )}
         >

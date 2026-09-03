@@ -620,6 +620,8 @@ export class AuthService {
       onboarding: {
         completed: Boolean(studentProfile?.isOnboarded),
         educationStage: studentProfile?.educationStage || null,
+        gradeLevel: studentProfile?.gradeLevel || null,
+        dateOfBirth: studentProfile?.dateOfBirth || null,
       },
     };
   }

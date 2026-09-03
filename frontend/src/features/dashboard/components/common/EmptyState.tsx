@@ -20,19 +20,19 @@ export function EmptyState({
   icon,
 }: EmptyStateProps) {
   return (
-    <div className="rounded-3xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-white/10 p-8 sm:p-12 text-center flex flex-col items-center justify-center max-w-lg mx-auto shadow-xs dark:shadow-none">
-      <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-500 dark:text-slate-400 mb-4 shadow-inner">
-        {icon || <FolderOpen className="w-6 h-6 text-[#14B8A6]" />}
+    <div className="rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-[rgba(227,236,234,0.12)] p-8 sm:p-12 text-center flex flex-col items-center justify-center max-w-lg mx-auto shadow-xs dark:shadow-none">
+      <div className="w-14 h-14 rounded-2xl bg-[#EBF2F0] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 flex items-center justify-center text-[#008F83] dark:text-[#00BFA5] mb-4 shadow-inner">
+        {icon || <FolderOpen className="w-6 h-6 text-[#00BFA5]" />}
       </div>
-      <h3 className="text-base font-bold text-slate-900 dark:text-white mb-1.5">{title}</h3>
-      <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-6 max-w-sm">
+      <h3 className="text-base font-bold text-[#172B2A] dark:text-[#F7FAF9] mb-1.5">{title}</h3>
+      <p className="text-xs text-[#526866] dark:text-[#9FB3B0] leading-relaxed mb-6 max-w-sm">
         {description}
       </p>
 
       {actionText && actionHref && (
         <Link
           href={actionHref}
-          className="px-5 py-2.5 rounded-xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-bold transition-colors shadow-md shadow-[#2563EB]/25"
+          className="px-5 py-2.5 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white text-xs font-bold transition-all shadow-md shadow-[#00BFA5]/25"
         >
           {actionText}
         </Link>
@@ -42,7 +42,7 @@ export function EmptyState({
         <button
           type="button"
           onClick={onActionClick}
-          className="px-5 py-2.5 rounded-xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-bold transition-colors shadow-md shadow-[#2563EB]/25 cursor-pointer"
+          className="px-5 py-2.5 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white text-xs font-bold transition-all shadow-md shadow-[#00BFA5]/25 cursor-pointer"
         >
           {actionText}
         </button>

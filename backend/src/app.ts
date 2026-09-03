@@ -59,6 +59,7 @@ export const createApp = (): Express => {
     max: APP_CONFIG.rateLimit.max,
     standardHeaders: true,
     legacyHeaders: false,
+    skip: () => env.NODE_ENV === "development" || env.NODE_ENV === "test",
     message: {
       success: false,
       error: {

@@ -4,139 +4,203 @@
 
 @layer base {
   :root {
-    --brand-primary: #2563EB;
-    --brand-primary-hover: #1D4ED8;
-    --brand-accent: #14B8A6;
-    --brand-accent-emerald: #22C55E;
-    --brand-dark: #0F172A;
-    --brand-muted: #64748B;
-    --brand-bg: #F8FAFC;
-    --brand-surface: #F1F5F9;
-    --brand-border: rgba(37, 99, 235, 0.12);
-    --brand-glass: rgba(255, 255, 255, 0.82);
+    /* 3G ME LIFE OFFICIAL BRAND PALETTE */
+    --brand-primary: #00BFA5;
+    --brand-primary-hover: #008F83;
+    --brand-secondary: #00B8D4;
+    --brand-deep: #008F83;
+    --brand-gradient-end: #00C896;
 
-    /* Semantic Dashboard Design Tokens - Light Mode */
-    --dash-bg: #F8FAFC;
-    --dash-sidebar-bg: rgba(255, 255, 255, 0.95);
-    --dash-sidebar-border: rgba(226, 232, 240, 0.9);
-    --dash-header-bg: rgba(255, 255, 255, 0.85);
-    --dash-header-border: rgba(226, 232, 240, 0.8);
-    --dash-card-bg: rgba(255, 255, 255, 0.92);
-    --dash-card-border: rgba(226, 232, 240, 0.85);
-    --dash-text-primary: #0F172A;
-    --dash-text-secondary: #334155;
-    --dash-text-muted: #64748B;
+    /* TYPOGRAPHY */
+    --brand-dark: #172B2A;
+    --brand-body: #526866;
+    --foreground: #172B2A;
+    --body-foreground: #526866;
+    --muted-foreground: #526866;
+
+    /* SURFACES & BACKGROUND */
+    --brand-bg: #F7FAF9;
+    --brand-surface: #FFFFFF;
+    --background: #F7FAF9;
+    --surface: #FFFFFF;
+    --surface-muted: #EBF2F0;
+
+    /* STRUCTURE & BORDER */
+    --brand-border: #E3ECEA;
+    --border: #E3ECEA;
+    --input: #FFFFFF;
+    --input-border: #E3ECEA;
+    --ring: #00BFA5;
+    --brand-glass: rgba(255, 255, 255, 0.85);
+
+    /* SEMANTIC DASHBOARD DESIGN TOKENS - LIGHT */
+    --dash-bg: #F7FAF9;
+    --dash-sidebar-bg: #FFFFFF;
+    --dash-sidebar-border: #E3ECEA;
+    --dash-header-bg: rgba(255, 255, 255, 0.9);
+    --dash-header-border: #E3ECEA;
+    --dash-card-bg: #FFFFFF;
+    --dash-card-border: #E3ECEA;
+    --dash-text-primary: #172B2A;
+    --dash-text-secondary: #526866;
+    --dash-text-muted: #728B88;
   }
 
   .dark {
-    --brand-dark: #F8FAFC;
-    --brand-muted: #94A3B8;
-    --brand-bg: #070D1E;
-    --brand-surface: #0F172A;
-    --brand-border: rgba(255, 255, 255, 0.1);
-    --brand-glass: rgba(15, 23, 42, 0.85);
+    /* 3G ME LIFE BRAND ACCENTS */
+    --brand-primary: #00BFA5;
+    --brand-primary-hover: #00C896;
+    --brand-secondary: #00B8D4;
+    --brand-deep: #008F83;
+    --brand-gradient-end: #00C896;
 
-    /* Semantic Dashboard Design Tokens - Dark Mode */
-    --dash-bg: #070D1E;
-    --dash-sidebar-bg: rgba(2, 6, 23, 0.85);
-    --dash-sidebar-border: rgba(255, 255, 255, 0.1);
-    --dash-header-bg: rgba(2, 6, 23, 0.7);
-    --dash-header-border: rgba(255, 255, 255, 0.1);
-    --dash-card-bg: rgba(15, 23, 42, 0.7);
-    --dash-card-border: rgba(255, 255, 255, 0.1);
-    --dash-text-primary: #F8FAFC;
-    --dash-text-secondary: #CBD5E1;
-    --dash-text-muted: #94A3B8;
+    /* TYPOGRAPHY */
+    --brand-dark: #F7FAF9;
+    --brand-body: #9FB3B0;
+    --foreground: #F7FAF9;
+    --body-foreground: #9FB3B0;
+    --muted-foreground: #7D9491;
+
+    /* SURFACES & BACKGROUND */
+    --brand-bg: #0D1C1B;
+    --brand-surface: #172B2A;
+    --background: #0D1C1B;
+    --surface: #172B2A;
+    --surface-muted: #1E3735;
+
+    /* STRUCTURE & BORDER */
+    --brand-border: rgba(227, 236, 234, 0.12);
+    --border: rgba(227, 236, 234, 0.12);
+    --input: #172B2A;
+    --input-border: rgba(227, 236, 234, 0.15);
+    --ring: #00BFA5;
+    --brand-glass: rgba(23, 43, 42, 0.85);
+
+    /* SEMANTIC DASHBOARD DESIGN TOKENS - DARK */
+    --dash-bg: #0D1C1B;
+    --dash-sidebar-bg: rgba(13, 28, 27, 0.95);
+    --dash-sidebar-border: rgba(227, 236, 234, 0.1);
+    --dash-header-bg: rgba(13, 28, 27, 0.85);
+    --dash-header-border: rgba(227, 236, 234, 0.1);
+    --dash-card-bg: #172B2A;
+    --dash-card-border: rgba(227, 236, 234, 0.12);
+    --dash-text-primary: #F7FAF9;
+    --dash-text-secondary: #9FB3B0;
+    --dash-text-muted: #7D9491;
   }
 
   html {
     scroll-behavior: smooth;
-    color: var(--brand-dark);
-    background-color: var(--brand-bg);
+    color: var(--foreground);
+    background-color: var(--background);
   }
 
   body {
     font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    color: var(--brand-dark);
-    background-color: var(--brand-bg);
+    color: var(--foreground);
+    background-color: var(--background);
     overflow-x: hidden;
   }
 }
 
 @theme {
-  --color-brand-primary: #2563EB;
-  --color-brand-accent: #14B8A6;
-  --color-brand-emerald: #22C55E;
-  --color-brand-dark: #0F172A;
-  --color-brand-muted: #64748B;
-  --color-brand-bg: #F8FAFC;
-  --color-brand-surface: #F1F5F9;
-  --color-brand-border: rgba(37, 99, 235, 0.12);
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-secondary: var(--brand-secondary);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-gradient-end: var(--brand-gradient-end);
+  --color-brand-dark: #172B2A;
+  --color-brand-body: #526866;
+  --color-brand-bg: #F7FAF9;
+  --color-brand-surface: #FFFFFF;
+  --color-brand-border: #E3ECEA;
+
+  /* Semantic Design Utilities */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-body-foreground: var(--body-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-primary: var(--brand-primary);
+  --color-secondary: var(--brand-secondary);
+  --color-deep: var(--brand-deep);
 }
 
-/* Phone Liquid Glass UI System */
+/* Official 3G MeLife Brand Gradient Classes */
+.brand-gradient {
+  background: linear-gradient(135deg, #00B8D4 0%, #00BFA5 50%, #00C896 100%);
+}
+
+.brand-gradient-text {
+  background: linear-gradient(135deg, #00B8D4 0%, #00BFA5 50%, #00C896 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Liquid Glass UI System */
 .liquid-glass-dock {
-  background: rgba(255, 255, 255, 0.76);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid #E3ECEA;
   box-shadow: 
-    0 16px 36px -10px rgba(15, 23, 42, 0.08),
-    0 4px 12px -2px rgba(37, 99, 235, 0.04),
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.95),
-    inset 0 -1px 2px 0 rgba(37, 99, 235, 0.08);
+    0 16px 36px -10px rgba(23, 43, 42, 0.08),
+    0 4px 12px -2px rgba(0, 191, 165, 0.04),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 .liquid-glass-dock-scrolled {
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(28px) saturate(190%);
   -webkit-backdrop-filter: blur(28px) saturate(190%);
-  border: 1px solid rgba(255, 255, 255, 0.95);
+  border: 1px solid #E3ECEA;
   box-shadow: 
-    0 20px 45px -12px rgba(15, 23, 42, 0.12),
-    0 6px 16px -2px rgba(37, 99, 235, 0.06),
-    inset 0 1px 1.5px 0 rgba(255, 255, 255, 1),
-    inset 0 -1px 2px 0 rgba(37, 99, 235, 0.12);
+    0 20px 45px -12px rgba(23, 43, 42, 0.12),
+    0 6px 16px -2px rgba(0, 191, 165, 0.06),
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 1);
 }
 
 .liquid-glass-sheet {
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(32px) saturate(190%);
   -webkit-backdrop-filter: blur(32px) saturate(190%);
-  border: 1px solid rgba(255, 255, 255, 0.95);
+  border: 1px solid #E3ECEA;
   box-shadow: 
-    0 24px 60px -15px rgba(15, 23, 42, 0.15),
-    0 8px 24px -4px rgba(37, 99, 235, 0.06),
+    0 24px 60px -15px rgba(23, 43, 42, 0.15),
+    0 8px 24px -4px rgba(0, 191, 165, 0.06),
     inset 0 1px 2px 0 rgba(255, 255, 255, 1);
 }
 
 .liquid-pill-btn {
-  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+  background: linear-gradient(135deg, #00B8D4 0%, #00BFA5 50%, #00C896 100%);
+  color: #172B2A;
   box-shadow: 
-    0 4px 14px 0 rgba(37, 99, 235, 0.35),
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.35),
-    inset 0 -1px 1px 0 rgba(0, 0, 0, 0.15);
+    0 4px 14px 0 rgba(0, 191, 165, 0.35),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 .liquid-pill-btn:hover {
-  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+  background: linear-gradient(135deg, #00C896 0%, #00BFA5 50%, #008F83 100%);
+  color: #FFFFFF;
   box-shadow: 
-    0 6px 20px 0 rgba(37, 99, 235, 0.45),
+    0 6px 20px 0 rgba(0, 143, 131, 0.45),
     inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.45);
 }
 
 .liquid-pill-accent {
-  background: linear-gradient(135deg, #14B8A6 0%, #0D9488 100%);
+  background: linear-gradient(135deg, #00BFA5 0%, #008F83 100%);
+  color: #FFFFFF;
   box-shadow: 
-    0 4px 14px 0 rgba(20, 184, 166, 0.35),
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.35),
-    inset 0 -1px 1px 0 rgba(0, 0, 0, 0.15);
+    0 4px 14px 0 rgba(0, 191, 165, 0.35),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.35);
 }
 
 .liquid-pill-accent:hover {
-  background: linear-gradient(135deg, #2DD4BF 0%, #14B8A6 100%);
+  background: linear-gradient(135deg, #008F83 0%, #007A70 100%);
+  color: #FFFFFF;
   box-shadow: 
-    0 6px 20px 0 rgba(20, 184, 166, 0.45),
+    0 6px 20px 0 rgba(0, 143, 131, 0.45),
     inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.45);
 }
 
@@ -272,8 +336,8 @@
 
 .interactive-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 16px 36px -8px rgba(15, 23, 42, 0.1), 0 4px 12px -2px rgba(37, 99, 235, 0.04);
-  border-color: rgba(37, 99, 235, 0.3);
+  box-shadow: 0 16px 36px -8px rgba(23, 43, 42, 0.1), 0 4px 12px -2px rgba(0, 191, 165, 0.04);
+  border-color: rgba(0, 191, 165, 0.3);
 }
 
 @media (prefers-reduced-motion: reduce) {

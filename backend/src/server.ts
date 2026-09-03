@@ -4,6 +4,9 @@ import { APP_CONFIG } from "./config/app.config";
 import { logger } from "./common/utils/logger";
 import { connectDatabase, closeDatabasePool } from "./config/database";
 import { authRepository } from "./modules/auth/auth.repository";
+import { participantRepository } from "./modules/participants/participant.repository";
+import { assessmentRepository } from "./modules/assessments/assessment.repository";
+import { assessmentContentRepository } from "./modules/assessments/assessment-content.repository";
 import http from "http";
 
 const bootstrap = async () => {
@@ -14,11 +17,22 @@ const bootstrap = async () => {
     // 2. Ensure initial role permissions are seeded
     await authRepository.seedRolePermissions();
 
-    // 3. Initialize Express application
+    // 3. Initialize participant schema & migrations
+    await participantRepository.initSchema();
+
+    // 4. Initialize assessment catalog schema & seed official catalog
+    await assessmentRepository.initSchema();
+    await assessmentRepository.seedCatalog();
+
+    // 5. Initialize assessment runner schema & seed Skill Finder question bank
+    await assessmentContentRepository.initSchema();
+    await assessmentContentRepository.seedSkillFinderContent();
+
+    // 6. Initialize Express application
     const app = createApp();
     const server = http.createServer(app);
 
-    // 4. Start HTTP server
+    // 7. Start HTTP server
     server.listen(env.PORT, () => {
       logger.info(
         `🚀 ${APP_CONFIG.serviceName} started in [${env.NODE_ENV}] mode on port ${env.PORT}`

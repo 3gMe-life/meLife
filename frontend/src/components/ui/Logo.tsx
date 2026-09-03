@@ -26,7 +26,7 @@ export function Logo({
 
   const content = (
     <div className={cn("inline-flex items-center gap-3 select-none group", className)}>
-      <div className="relative overflow-hidden rounded-xl shadow-[0_2px_10px_rgba(0,176,160,0.2)] border border-[#00B0A0]/20 bg-white transition-transform duration-300 group-hover:scale-105">
+      <div className="relative overflow-hidden rounded-xl shadow-[0_2px_10px_rgba(0,191,165,0.2)] border border-[#00BFA5]/30 bg-white transition-transform duration-300 group-hover:scale-105">
         <Image
           src="/melifelogo.png"
           alt="3G ME LIFE - Psychometric Assessment & Career Guidance"
@@ -38,10 +38,10 @@ export function Logo({
       </div>
       {showText && (
         <div className="flex flex-col text-left">
-          <span className={cn("font-bold tracking-tight text-[#0B2538] leading-none", currentSize.textSize)}>
+          <span className={cn("font-bold tracking-tight text-[#172B2A] leading-none", currentSize.textSize)}>
             3G ME LIFE
           </span>
-          <span className={cn("font-medium text-[#087F7A] tracking-wider uppercase mt-0.5", currentSize.subSize)}>
+          <span className={cn("font-medium text-[#008F83] tracking-wider uppercase mt-0.5", currentSize.subSize)}>
             Psychometric Guidance
           </span>
         </div>
@@ -51,7 +51,7 @@ export function Logo({
 
   if (href) {
     return (
-      <Link href={href} className="inline-block focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00B0A0] rounded-xl">
+      <Link href={href} className="inline-block focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00BFA5] rounded-xl">
         {content}
       </Link>
     );

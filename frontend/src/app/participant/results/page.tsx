@@ -17,39 +17,39 @@ export default function ParticipantResultsPage() {
           actionElement={
             <button
               type="button"
-              className="px-4 py-2.5 rounded-xl bg-white dark:bg-white/10 hover:bg-slate-100 dark:hover:bg-white/20 border border-slate-200 dark:border-white/20 text-xs font-bold text-slate-800 dark:text-white transition-colors flex items-center gap-2 cursor-pointer shadow-xs"
+              className="px-4 py-2.5 rounded-xl bg-white dark:bg-white/10 hover:bg-[#EBF2F0] dark:hover:bg-white/20 border border-[#E3ECEA] dark:border-white/20 text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9] transition-colors flex items-center gap-2 cursor-pointer shadow-xs"
             >
-              <Download className="w-4 h-4 text-[#14B8A6]" />
+              <Download className="w-4 h-4 text-[#00B8D4]" />
               <span>Export Full PDF Report</span>
             </button>
           }
         />
 
         {/* Primary Archetype Spotlight Card */}
-        <div className="rounded-3xl bg-gradient-to-r from-white via-slate-50 to-teal-50/50 dark:from-slate-900 dark:via-slate-900/95 dark:to-slate-950 border border-slate-200 dark:border-white/10 p-6 sm:p-8 relative overflow-hidden shadow-xs dark:shadow-none transition-colors duration-200">
-          <div className="absolute top-0 right-0 w-80 h-80 rounded-full bg-gradient-to-br from-[#14B8A6]/10 dark:from-[#14B8A6]/20 via-[#2563EB]/10 dark:via-[#2563EB]/15 to-transparent blur-3xl pointer-events-none" />
+        <div className="rounded-3xl bg-gradient-to-r from-white via-[#F7FAF9] to-[#EBF2F0] dark:from-[#172B2A] dark:via-[#172B2A]/95 dark:to-[#0D1C1B] border border-[#E3ECEA] dark:border-[rgba(227,236,234,0.12)] p-6 sm:p-8 relative overflow-hidden shadow-xs dark:shadow-none transition-colors duration-200">
+          <div className="absolute top-0 right-0 w-80 h-80 rounded-full bg-gradient-to-br from-[#00BFA5]/10 dark:from-[#00BFA5]/20 via-[#00B8D4]/10 dark:via-[#00B8D4]/15 to-transparent blur-3xl pointer-events-none" />
 
           <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-2 max-w-xl">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#0D9488] dark:text-[#2DD4BF]">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5]">
                 Primary Psychometric Archetype
               </span>
-              <h2 className="text-2xl font-black text-slate-900 dark:text-white">
+              <h2 className="text-2xl font-black text-[#172B2A] dark:text-[#F7FAF9]">
                 The Analytical Strategist
               </h2>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              <p className="text-xs text-[#526866] dark:text-[#9FB3B0] leading-relaxed">
                 Individuals with this profile exhibit high analytical precision, structured problem formulation, and exceptional logical reasoning. You thrive in computational, scientific, and quantitative decision-making environments.
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-center shrink-0 min-w-[160px] shadow-xs">
-              <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#2563EB] to-[#14B8A6]">
+            <div className="p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 text-center shrink-0 min-w-[160px] shadow-xs">
+              <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#00B8D4] to-[#00BFA5]">
                 92nd
               </span>
-              <span className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
+              <span className="block text-[11px] font-bold text-[#172B2A] dark:text-[#F7FAF9]">
                 Cognitive Percentile
               </span>
-              <span className="block text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
+              <span className="block text-[10px] text-[#008F83] dark:text-[#00C896] font-semibold mt-0.5">
                 Top Tier Logic & Math
               </span>
             </div>
@@ -58,9 +58,9 @@ export default function ParticipantResultsPage() {
 
         {/* Dimension Breakdown Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="rounded-3xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 p-6 space-y-4 shadow-xs dark:shadow-none transition-colors duration-200">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <BrainCircuit className="w-5 h-5 text-[#2563EB]" />
+          <div className="rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-[rgba(227,236,234,0.12)] p-6 space-y-4 shadow-xs dark:shadow-none transition-colors duration-200">
+            <h3 className="text-base font-bold text-[#172B2A] dark:text-[#F7FAF9] flex items-center gap-2">
+              <BrainCircuit className="w-5 h-5 text-[#00B8D4]" />
               <span>Cognitive Dimension Scores</span>
             </h3>
 
@@ -74,12 +74,12 @@ export default function ParticipantResultsPage() {
               ].map((item) => (
                 <div key={item.label} className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-700 dark:text-slate-200">{item.label}</span>
-                    <span className="font-mono font-bold text-[#0D9488] dark:text-[#14B8A6]">{item.score}%</span>
+                    <span className="font-semibold text-[#172B2A] dark:text-[#F7FAF9]">{item.label}</span>
+                    <span className="font-mono font-bold text-[#008F83] dark:text-[#00BFA5]">{item.score}%</span>
                   </div>
-                  <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                  <div className="w-full h-2 rounded-full bg-[#EBF2F0] dark:bg-black/30 overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#14B8A6]"
+                      className="h-full rounded-full bg-gradient-to-r from-[#00B8D4] via-[#00BFA5] to-[#00C896]"
                       style={{ width: `${item.score}%` }}
                     />
                   </div>
@@ -88,9 +88,9 @@ export default function ParticipantResultsPage() {
             </div>
           </div>
 
-          <div className="rounded-3xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 p-6 space-y-4 shadow-xs dark:shadow-none transition-colors duration-200">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#14B8A6]" />
+          <div className="rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-[rgba(227,236,234,0.12)] p-6 space-y-4 shadow-xs dark:shadow-none transition-colors duration-200">
+            <h3 className="text-base font-bold text-[#172B2A] dark:text-[#F7FAF9] flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-[#00BFA5]" />
               <span>Behavioral & Work Style Traits</span>
             </h3>
 
@@ -104,12 +104,12 @@ export default function ParticipantResultsPage() {
               ].map((item) => (
                 <div key={item.label} className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-700 dark:text-slate-200">{item.label}</span>
-                    <span className="font-mono font-bold text-[#2563EB]">{item.score}%</span>
+                    <span className="font-semibold text-[#172B2A] dark:text-[#F7FAF9]">{item.label}</span>
+                    <span className="font-mono font-bold text-[#008F83] dark:text-[#00BFA5]">{item.score}%</span>
                   </div>
-                  <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                  <div className="w-full h-2 rounded-full bg-[#EBF2F0] dark:bg-black/30 overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-[#14B8A6] to-[#2563EB]"
+                      className="h-full rounded-full bg-gradient-to-r from-[#00BFA5] to-[#008F83]"
                       style={{ width: `${item.score}%` }}
                     />
                   </div>

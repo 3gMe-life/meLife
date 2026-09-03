@@ -26,7 +26,7 @@ export function DashboardShell({
 
   return (
     <ProtectedRouteGuard allowedRoles={allowedRoles}>
-      <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#070D1E] text-slate-900 dark:text-slate-100 flex flex-col lg:flex-row antialiased transition-colors duration-200">
+      <div className="min-h-screen bg-[#F7FAF9] dark:bg-[#0D1C1B] text-[#172B2A] dark:text-[#F7FAF9] flex flex-col lg:flex-row antialiased transition-colors duration-200">
         {/* Desktop Sidebar */}
         {user && (
           <DashboardSidebar

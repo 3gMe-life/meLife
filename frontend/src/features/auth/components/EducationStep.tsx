@@ -31,24 +31,20 @@ export function EducationStep() {
     }
 
     setEducationStage(selectedStage);
-
-    // Conditional routing:
-    // If Grade 5 through 10, proceed to Guardian step.
-    // If Grade 11+, College, or Professional, guardian step is optional/skimmable, but proceed to step 2 for full profile or finish.
     setOnboardingStep(2);
   };
 
   return (
     <form onSubmit={handleContinue} className="w-full text-left">
       <div className="mb-5">
-        <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#2563EB] mb-1">
-          <Sparkles className="w-3.5 h-3.5" />
+        <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#008F83] mb-1">
+          <Sparkles className="w-3.5 h-3.5 text-[#00BFA5]" />
           <span>Step 1 of 2 • Educational Stage</span>
         </div>
-        <h2 className="text-xl sm:text-2xl font-extrabold text-[#0F172A] tracking-tight mb-1.5">
+        <h2 className="text-xl sm:text-2xl font-extrabold text-[#172B2A] tracking-tight mb-1.5">
           What class or stage are you currently in?
         </h2>
-        <p className="text-xs sm:text-sm text-[#64748B]">
+        <p className="text-xs sm:text-sm text-[#526866]">
           This allows 3G MeLife to calibrate psychometric assessments specifically to your developmental age.
         </p>
       </div>
@@ -71,11 +67,11 @@ export function EducationStep() {
               className={cn(
                 "p-3 rounded-xl border text-left transition-all duration-150 cursor-pointer flex flex-col justify-between select-none",
                 isSelected
-                  ? "bg-blue-50/60 border-[#2563EB] shadow-xs text-[#2563EB]"
-                  : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-[#0F172A]"
+                  ? "bg-[#EBF2F0] border-[#00BFA5] shadow-xs text-[#008F83]"
+                  : "bg-white border-[#E3ECEA] hover:border-[#00BFA5]/40 hover:bg-[#F7FAF9] text-[#172B2A]"
               )}
             >
-              <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block mb-1">
+              <span className="text-[10px] font-bold text-[#728B88] uppercase tracking-wider block mb-1">
                 {stage.category}
               </span>
               <span className="text-xs sm:text-sm font-bold leading-tight">
