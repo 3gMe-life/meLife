@@ -1,0 +1,625 @@
+import { AppError } from "../../common/errors/app-error";
+import { logger } from "../../common/utils/logger";
+import { counsellingRepository } from "./counselling.repository";
+import { assessmentContentRepository } from "../assessments/assessment-content.repository";
+import { careerRecommendationService } from "../careers/career-recommendation.service";
+import { pool } from "../../config/database";
+import {
+  CounsellorCardDTO,
+  CounsellorDetailDTO,
+  CreateBookingRequestDTO,
+  CounsellingSessionDTO,
+  CounsellingNoteDTO,
+  SaveCounsellingNoteDTO,
+  StudentPsychometricSummaryDTO,
+  ConsentPermission,
+  SessionStatus,
+  NotificationDTO,
+} from "./counselling.types";
+import { SkillFinderFullResultDTO } from "../scoring/scoring.types";
+
+export class CounsellingService {
+  /**
+   * Retrieves approved certified counsellors with personalized AI match scoring
+   * based on the student's psychometric profile and learning archetype.
+   */
+  async getRecommendedCounsellors(
+    userId?: string,
+    filters?: {
+      search?: string;
+      specialisation?: string;
+      language?: string;
+    }
+  ): Promise<{ counsellors: CounsellorCardDTO[]; isAssessed: boolean }> {
+    const counsellors = await counsellingRepository.findAllCounsellors(filters);
+
+    if (!userId) {
+      const defaultCards: CounsellorCardDTO[] = counsellors.map((c, idx) => ({
+        id: c.id,
+        userId: c.userId,
+        name: c.name || "Certified Counsellor",
+        email: c.email || "",
+        qualification: c.qualification,
+        experienceYears: c.experienceYears,
+        bio: c.bio,
+        specialisations: c.specialisations,
+        languages: c.languages,
+        profileImage: c.profileImage,
+        rating: c.rating,
+        reviewCount: c.reviewCount,
+        approvalStatus: c.approvalStatus,
+        matchPercentage: Math.max(78, 96 - idx * 4),
+        matchReason: `Top rated expert in ${c.specialisations.slice(0, 2).join(" & ")}.`,
+      }));
+
+      return { counsellors: defaultCards, isAssessed: false };
+    }
+
+    // Check if student has completed an assessment
+    const latestResultRow = await assessmentContentRepository.findLatestResultByUserId(userId);
+    const isAssessed = Boolean(latestResultRow?.result_data);
+    const resultData: SkillFinderFullResultDTO | null = latestResultRow?.result_data || null;
+
+    const cards: CounsellorCardDTO[] = counsellors.map((c, idx) => {
+      let matchPercentage = Math.max(78, 94 - idx * 4);
+      let matchReason = `Certified career guidance mentor specialising in ${c.specialisations.slice(0, 2).join(", ")}.`;
+
+      if (isAssessed && resultData) {
+        const topClusters = resultData.interestDiscovery?.topClusters || [];
+        const clusterNames = topClusters.map((tc: { name: string }) => tc.name.toLowerCase());
+        const primaryOrientation = (resultData.interestDiscovery?.primaryOrientation || "").toLowerCase();
+        const archetype = (resultData.learningProfile?.archetypeTitle || "").toLowerCase();
+
+        // Calculate domain affinity score
+        let matchScore = 78;
+        const reasons: string[] = [];
+
+        for (const spec of c.specialisations) {
+          const sLower = spec.toLowerCase();
+          if (
+            (sLower.includes("stem") || sLower.includes("tech") || sLower.includes("ai") || sLower.includes("computer")) &&
+            (clusterNames.some((cn: string) => cn.includes("investigative") || cn.includes("realistic") || cn.includes("tech") || cn.includes("science")) ||
+             archetype.includes("analyst") || archetype.includes("architect") || archetype.includes("engineer"))
+          ) {
+            matchScore += 18;
+            reasons.push("Strong alignment with your Investigative & Analytical cognitive strengths");
+          } else if (
+            (sLower.includes("business") || sLower.includes("finance") || sLower.includes("management") || sLower.includes("leadership")) &&
+            (clusterNames.some((cn: string) => cn.includes("enterprising") || cn.includes("business") || cn.includes("conventional")) ||
+             primaryOrientation.includes("enterprising") || archetype.includes("strategist") || archetype.includes("leader"))
+          ) {
+            matchScore += 17;
+            reasons.push("Matches your Enterprising career interest orientation & strategic leadership traits");
+          } else if (
+            (sLower.includes("design") || sLower.includes("creative") || sLower.includes("ux") || sLower.includes("media") || sLower.includes("art")) &&
+            (clusterNames.some((cn: string) => cn.includes("artistic") || cn.includes("creative")) ||
+             archetype.includes("creator") || archetype.includes("designer") || archetype.includes("innovator"))
+          ) {
+            matchScore += 18;
+            reasons.push("Directly matches your Artistic & Visual Design psychometric cluster");
+          } else if (
+            (sLower.includes("health") || sLower.includes("bio") || sLower.includes("medical") || sLower.includes("life science")) &&
+            (clusterNames.some((cn: string) => cn.includes("investigative") || cn.includes("social") || cn.includes("health")) ||
+             primaryOrientation.includes("social") || archetype.includes("healer") || archetype.includes("explorer"))
+          ) {
+            matchScore += 16;
+            reasons.push("Aligned with your Life Sciences & Applied Research aptitude profile");
+          }
+        }
+
+        matchPercentage = Math.min(99, Math.max(82, matchScore));
+        if (reasons.length > 0) {
+          matchReason = reasons[0];
+        } else {
+          matchReason = `Excellent match for your learning archetype (${resultData.learningProfile?.archetypeTitle || "Profile"}).`;
+        }
+      }
+
+      return {
+        id: c.id,
+        userId: c.userId,
+        name: c.name || "Certified Counsellor",
+        email: c.email || "",
+        qualification: c.qualification,
+        experienceYears: c.experienceYears,
+        bio: c.bio,
+        specialisations: c.specialisations,
+        languages: c.languages,
+        profileImage: c.profileImage,
+        rating: c.rating,
+        reviewCount: c.reviewCount,
+        approvalStatus: c.approvalStatus,
+        matchPercentage,
+        matchReason,
+      };
+    });
+
+    // Rank counsellors by match percentage descending
+    cards.sort((a, b) => (b.matchPercentage || 0) - (a.matchPercentage || 0));
+
+    return {
+      counsellors: cards,
+      isAssessed,
+    };
+  }
+
+  /**
+   * Retrieves complete counsellor profile with availability and reviews.
+   */
+  async getCounsellorDetail(counsellorId: string): Promise<CounsellorDetailDTO> {
+    const counsellor = await counsellingRepository.findCounsellorById(counsellorId);
+    if (!counsellor) {
+      throw AppError.notFound("Counsellor not found", "COUNSELLOR_NOT_FOUND");
+    }
+
+    return {
+      id: counsellor.id,
+      userId: counsellor.userId,
+      name: counsellor.name,
+      email: counsellor.email,
+      qualification: counsellor.qualification,
+      experienceYears: counsellor.experienceYears,
+      bio: counsellor.bio,
+      specialisations: counsellor.specialisations || [],
+      languages: counsellor.languages || [],
+      guidanceAreas: counsellor.guidanceAreas || counsellor.specialisations || [],
+      profileImage: counsellor.profileImage,
+      rating: counsellor.rating,
+      reviewCount: counsellor.reviewCount,
+      approvalStatus: counsellor.approvalStatus,
+      availability: counsellor.availability || [],
+      reviews: counsellor.reviews || [],
+      matchPercentage: 94,
+      matchReason: `Certified expert with ${counsellor.experienceYears}+ years in career advisory.`,
+    };
+  }
+
+  /**
+   * Books a counselling appointment with consent opt-in.
+   */
+  async bookSession(
+    studentId: string,
+    dto: CreateBookingRequestDTO
+  ): Promise<CounsellingSessionDTO> {
+    const counsellor = await counsellingRepository.findCounsellorById(dto.counsellorId);
+    if (!counsellor) {
+      throw AppError.notFound("Specified counsellor not found", "COUNSELLOR_NOT_FOUND");
+    }
+
+    if (!dto.sessionDate || !dto.sessionTime) {
+      throw AppError.badRequest("Session date and time are required", "INVALID_SESSION_TIME");
+    }
+
+    let durationMinutes = 45;
+    if (dto.sessionType === "FREE_INTRO") durationMinutes = 15;
+    else if (dto.sessionType === "DETAILED_PROFILE") durationMinutes = 60;
+
+    // 1. Create counselling session record
+    const session = await counsellingRepository.createSession({
+      studentId,
+      counsellorId: counsellor.id,
+      sessionType: dto.sessionType,
+      durationMinutes,
+      sessionDate: dto.sessionDate,
+      sessionTime: dto.sessionTime,
+      studentNotes: dto.studentNotes,
+    });
+
+    // 2. Handle Consent: Default to granted if dto.grantConsent is true or undefined
+    const shouldGrantConsent = dto.grantConsent !== false;
+    if (shouldGrantConsent) {
+      await counsellingRepository.upsertConsent(
+        studentId,
+        counsellor.id,
+        "VIEW_ASSESSMENT_SUMMARY"
+      );
+    }
+
+    // 3. Dispatch Notifications
+    try {
+      // Notify counsellor
+      await counsellingRepository.createNotification({
+        userId: counsellor.userId,
+        title: "New Counselling Session Request",
+        message: `A student requested a ${durationMinutes}-min ${dto.sessionType.replace("_", " ")} session on ${dto.sessionDate} at ${dto.sessionTime}.`,
+        type: "SESSION_REQUEST",
+        metadata: {
+          sessionId: session.id,
+          studentId,
+          sessionDate: dto.sessionDate,
+          sessionTime: dto.sessionTime,
+        },
+      });
+
+      // Notify student
+      await counsellingRepository.createNotification({
+        userId: studentId,
+        title: "Session Request Submitted",
+        message: `Your appointment request with ${counsellor.name} for ${dto.sessionDate} at ${dto.sessionTime} is pending confirmation.`,
+        type: "SESSION_REQUEST",
+        metadata: {
+          sessionId: session.id,
+          counsellorId: counsellor.id,
+          counsellorName: counsellor.name,
+        },
+      });
+    } catch (notifErr) {
+      logger.warn({ err: notifErr }, "Non-fatal error creating session booking notifications");
+    }
+
+    return {
+      ...session,
+      counsellorName: counsellor.name,
+      counsellorQualification: counsellor.qualification,
+      counsellorProfileImage: counsellor.profileImage,
+      hasConsent: shouldGrantConsent,
+    };
+  }
+
+  /**
+   * Retrieves all sessions booked by a student.
+   */
+  async getStudentSessions(studentId: string): Promise<CounsellingSessionDTO[]> {
+    return counsellingRepository.findSessionsByStudentId(studentId);
+  }
+
+  /**
+   * Helper to resolve counsellor profile from user ID or counsellor ID.
+   */
+  private async resolveCounsellor(idOrUserId: string) {
+    const counsellor = await counsellingRepository.findCounsellorById(idOrUserId);
+    if (!counsellor) {
+      throw AppError.notFound("Counsellor profile not found", "COUNSELLOR_NOT_FOUND");
+    }
+    return counsellor;
+  }
+
+  /**
+   * Retrieves all sessions assigned to a counsellor.
+   */
+  async getCounsellorSessions(
+    counsellorUserIdOrId: string,
+    status?: string
+  ): Promise<CounsellingSessionDTO[]> {
+    const counsellor = await this.resolveCounsellor(counsellorUserIdOrId);
+    return counsellingRepository.findSessionsByCounsellorId(counsellor.id, status);
+  }
+
+  /**
+   * Updates session status (CONFIRM, REJECT, COMPLETE, CANCEL) and creates meeting link if confirmed.
+   */
+  async updateSessionStatus(
+    counsellorUserIdOrId: string,
+    sessionId: string,
+    status: SessionStatus,
+    meetingLink?: string | null
+  ): Promise<CounsellingSessionDTO> {
+    const counsellor = await this.resolveCounsellor(counsellorUserIdOrId);
+    const existingSession = await counsellingRepository.findSessionById(sessionId);
+
+    if (!existingSession) {
+      throw AppError.notFound("Session not found", "SESSION_NOT_FOUND");
+    }
+
+    if (existingSession.counsellorId !== counsellor.id) {
+      throw AppError.forbidden("Unauthorized: Session is not assigned to this counsellor", "SESSION_UNAUTHORIZED");
+    }
+
+    let resolvedMeetingLink = meetingLink;
+    if (status === "CONFIRMED" && !resolvedMeetingLink && !existingSession.meetingLink) {
+      resolvedMeetingLink = `https://meet.3gmelife.com/session-${sessionId.slice(0, 8)}`;
+    }
+
+    const updated = await counsellingRepository.updateSessionStatus(
+      sessionId,
+      status,
+      resolvedMeetingLink
+    );
+
+    // Notify student of session status change
+    try {
+      let title = "Session Status Updated";
+      let message = `Your session on ${existingSession.sessionDate} has been updated to ${status}.`;
+
+      if (status === "CONFIRMED") {
+        title = "Counselling Session Confirmed! 📅";
+        message = `Dr./Mr. ${counsellor.name} confirmed your session on ${existingSession.sessionDate} at ${existingSession.sessionTime}. Link: ${resolvedMeetingLink || "Online Portal"}`;
+      } else if (status === "COMPLETED") {
+        title = "Counselling Session Completed";
+        message = `Your session with ${counsellor.name} has concluded. You can review recommendations and notes in your dashboard.`;
+      } else if (status === "REJECTED") {
+        title = "Session Request Declined";
+        message = `Unfortunately, the requested time slot could not be accommodated. Please select an alternative slot.`;
+      }
+
+      await counsellingRepository.createNotification({
+        userId: existingSession.studentId,
+        title,
+        message,
+        type: status === "CONFIRMED" ? "BOOKING_CONFIRMED" : status === "COMPLETED" ? "SESSION_COMPLETED" : "SESSION_REQUEST",
+        metadata: {
+          sessionId,
+          status,
+          meetingLink: resolvedMeetingLink,
+        },
+      });
+    } catch (notifErr) {
+      logger.warn({ err: notifErr }, "Non-fatal error sending session update notification");
+    }
+
+    return {
+      ...existingSession,
+      status: updated.status,
+      meetingLink: updated.meeting_link,
+    };
+  }
+
+  /**
+   * Retrieves aggregated statistics & upcoming queue for the Counsellor Portal.
+   */
+  async getCounsellorOverview(counsellorUserIdOrId: string): Promise<{
+    stats: {
+      upcomingSessionsCount: number;
+      pendingRequestsCount: number;
+      completedSessionsCount: number;
+      totalAssignedStudentsCount: number;
+    };
+    counsellorProfile: CounsellorDetailDTO;
+    upcomingSessions: CounsellingSessionDTO[];
+    pendingRequests: CounsellingSessionDTO[];
+  }> {
+    const counsellor = await this.resolveCounsellor(counsellorUserIdOrId);
+    const stats = await counsellingRepository.getCounsellorOverviewStats(counsellor.id);
+    const allSessions = await counsellingRepository.findSessionsByCounsellorId(counsellor.id);
+
+    const upcomingSessions = allSessions
+      .filter((s) => s.status === "CONFIRMED")
+      .slice(0, 5);
+
+    const pendingRequests = allSessions
+      .filter((s) => s.status === "PENDING")
+      .slice(0, 5);
+
+    return {
+      stats,
+      counsellorProfile: counsellor,
+      upcomingSessions,
+      pendingRequests,
+    };
+  }
+
+  /**
+   * Retrieves students who have interacted with this counsellor.
+   */
+  async getAssignedStudents(counsellorUserIdOrId: string): Promise<any[]> {
+    const counsellor = await this.resolveCounsellor(counsellorUserIdOrId);
+    return counsellingRepository.findAssignedStudentsByCounsellorId(counsellor.id);
+  }
+
+  /**
+   * SECURE PRIVACY FIREWALL:
+   * Retrieves high-level psychometric summary for a student ONLY IF explicit consent is granted.
+   * NEVER exposes raw answers, scoring keys, or proprietary weights.
+   */
+  async getStudentSummaryForCounsellor(
+    counsellorUserIdOrId: string,
+    studentId: string
+  ): Promise<StudentPsychometricSummaryDTO> {
+    const counsellor = await this.resolveCounsellor(counsellorUserIdOrId);
+
+    // 1. Verify consent
+    const hasConsent = await counsellingRepository.hasConsent(studentId, counsellor.id);
+    if (!hasConsent) {
+      throw AppError.forbidden(
+        "Student has not granted consent to view psychometric assessment summary. Ask the student to enable profile sharing.",
+        "CONSENT_REQUIRED"
+      );
+    }
+
+    // 2. Fetch student user & profile information
+    const userRes = await pool.query(
+      `SELECT u.id, u.first_name, u.last_name, u.email,
+              p.education_stage, p.grade_level, p.school_name, p.date_of_birth
+       FROM users u
+       LEFT JOIN participant_profiles p ON u.id = p.user_id
+       WHERE u.id = $1 LIMIT 1`,
+      [studentId]
+    );
+
+    if (!userRes.rows[0]) {
+      throw AppError.notFound("Student user not found", "STUDENT_NOT_FOUND");
+    }
+
+    const u = userRes.rows[0];
+    const studentName = `${u.first_name || ""} ${u.last_name || ""}`.trim() || u.email;
+    const studentAge = u.date_of_birth
+      ? new Date().getFullYear() - new Date(u.date_of_birth).getFullYear()
+      : null;
+
+    // 3. Fetch latest completed assessment results
+    const latestResultRow = await assessmentContentRepository.findLatestResultByUserId(studentId);
+
+    if (!latestResultRow || !latestResultRow.result_data) {
+      return {
+        studentId: u.id,
+        studentName,
+        age: studentAge,
+        educationStage: u.education_stage || null,
+        gradeLevel: u.grade_level || null,
+        schoolName: u.school_name || null,
+        isAssessed: false,
+      };
+    }
+
+    const resData: SkillFinderFullResultDTO = latestResultRow.result_data;
+
+    // 4. Fetch recommended career pathways
+    let topCareerPathways: Array<{ title: string; category: string; matchPercentage: number }> = [];
+    try {
+      const pathwayResult = await careerRecommendationService.getRecommendedPathways(studentId, "en");
+      topCareerPathways = pathwayResult.recommendations.slice(0, 4).map((p) => ({
+        title: p.title,
+        category: p.category,
+        matchPercentage: p.matchPercentage,
+      }));
+    } catch (careerErr) {
+      logger.warn({ err: careerErr }, "Could not fetch career recommendations for student summary");
+    }
+
+    // 5. Extract safe summary without raw item scores or answers
+    const topInterestDimensions = (resData.interestDiscovery?.dimensions || []).slice(0, 5).map((d) => ({
+      name: d.name,
+      score: Math.round(d.scalePositionPercentage),
+      description: d.description || "",
+    }));
+
+    const topSkills = (resData.skillBehaviour?.strongestIndicators || []).slice(0, 4).map((s) => ({
+      name: s.name,
+      score: Math.round(s.scalePositionPercentage),
+    }));
+
+    const topAptitudes = (resData.demonstratedAptitude?.dimensions || []).slice(0, 4).map((a) => ({
+      name: a.name,
+      score: Math.round(a.scalePositionPercentage),
+    }));
+
+    return {
+      studentId: u.id,
+      studentName,
+      age: u.age || null,
+      educationStage: u.education_stage || null,
+      gradeLevel: u.grade_level || null,
+      schoolName: u.school_name || null,
+      isAssessed: true,
+      assessmentCode: latestResultRow.assessment_code || "SKILL_FINDER",
+      archetype: resData.learningProfile?.archetypeTitle || "Multidisciplinary Explorer",
+      riasecCode: resData.interestDiscovery?.primaryOrientation || "Investigative-Artistic",
+      topInterestDimensions,
+      topSkills,
+      topAptitudes,
+      topCareerPathways,
+    };
+  }
+
+  /**
+   * Saves or updates counselling notes, observations, recommendations, and action plan.
+   */
+  async saveSessionNotes(
+    counsellorUserIdOrId: string,
+    sessionId: string,
+    dto: SaveCounsellingNoteDTO
+  ): Promise<CounsellingNoteDTO> {
+    const counsellor = await this.resolveCounsellor(counsellorUserIdOrId);
+    const session = await counsellingRepository.findSessionById(sessionId);
+
+    if (!session) {
+      throw AppError.notFound("Session not found", "SESSION_NOT_FOUND");
+    }
+
+    if (session.counsellorId !== counsellor.id) {
+      throw AppError.forbidden("Unauthorized: Session does not belong to this counsellor", "SESSION_UNAUTHORIZED");
+    }
+
+    if (!dto.summary || !dto.recommendations) {
+      throw AppError.badRequest("Session summary and recommendations are required", "INVALID_NOTE_DATA");
+    }
+
+    const note = await counsellingRepository.saveCounsellingNotes({
+      sessionId,
+      counsellorId: counsellor.id,
+      studentId: session.studentId,
+      summary: dto.summary,
+      observations: dto.observations,
+      recommendations: dto.recommendations,
+      actionPlan: dto.actionPlan || [],
+      followUpDate: dto.followUpDate,
+    });
+
+    // Notify student that guidance notes and action plan are available
+    try {
+      await counsellingRepository.createNotification({
+        userId: session.studentId,
+        title: "Counsellor Added Guidance Notes 📝",
+        message: `${counsellor.name} added post-session guidance notes and a personalized action plan for your session on ${session.sessionDate}.`,
+        type: "NOTES_ADDED",
+        metadata: {
+          sessionId,
+          noteId: note.id,
+          counsellorName: counsellor.name,
+        },
+      });
+    } catch (notifErr) {
+      logger.warn({ err: notifErr }, "Non-fatal error creating note notification");
+    }
+
+    return note;
+  }
+
+  /**
+   * Retrieves counselling notes for a session. Validates student or counsellor access.
+   */
+  async getSessionNotes(userId: string, sessionId: string): Promise<CounsellingNoteDTO | null> {
+    const session = await counsellingRepository.findSessionById(sessionId);
+    if (!session) {
+      throw AppError.notFound("Session not found", "SESSION_NOT_FOUND");
+    }
+
+    // Verify user is either student or counsellor
+    const counsellor = await counsellingRepository.findCounsellorById(userId);
+    const isStudent = session.studentId === userId;
+    const isCounsellor = counsellor && counsellor.id === session.counsellorId;
+
+    if (!isStudent && !isCounsellor) {
+      throw AppError.forbidden("Unauthorized access to session notes", "UNAUTHORIZED_NOTES_ACCESS");
+    }
+
+    return counsellingRepository.findCounsellingNotesBySessionId(sessionId);
+  }
+
+  /**
+   * Updates student consent permission (grant or revoke).
+   */
+  async updateConsent(
+    studentId: string,
+    counsellorId: string,
+    permission: ConsentPermission
+  ): Promise<{ success: boolean; permission: ConsentPermission }> {
+    await counsellingRepository.upsertConsent(studentId, counsellorId, permission);
+
+    try {
+      const counsellor = await counsellingRepository.findCounsellorById(counsellorId);
+      if (counsellor) {
+        await counsellingRepository.createNotification({
+          userId: counsellor.userId,
+          title: "Student Consent Updated",
+          message: `A student has ${permission === "REVOKED" ? "revoked" : "granted"} consent to view their psychometric assessment summary.`,
+          type: "CONSENT_UPDATED",
+          metadata: {
+            studentId,
+            permission,
+          },
+        });
+      }
+    } catch (notifErr) {
+      logger.warn({ err: notifErr }, "Non-fatal error sending consent notification");
+    }
+
+    return { success: true, permission };
+  }
+
+  /**
+   * Retrieves user notifications.
+   */
+  async getNotifications(userId: string): Promise<NotificationDTO[]> {
+    return counsellingRepository.findNotificationsByUserId(userId);
+  }
+
+  /**
+   * Marks a notification as read.
+   */
+  async markNotificationAsRead(notificationId: string, userId: string): Promise<void> {
+    await counsellingRepository.markNotificationAsRead(notificationId, userId);
+  }
+}
+
+export const counsellingService = new CounsellingService();

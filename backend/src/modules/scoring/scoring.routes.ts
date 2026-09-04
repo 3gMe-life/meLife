@@ -5,33 +5,39 @@ import { scoringController } from "./scoring.controller";
 
 export const scoringRouter = Router();
 
-// All scoring & result endpoints require valid PARTICIPANT authentication
-scoringRouter.use(authenticate);
-scoringRouter.use(requireRole("PARTICIPANT"));
-
 // Score attempt endpoint: POST /api/v1/attempts/:attemptId/score
 scoringRouter.post(
   "/attempts/:attemptId/score",
+  authenticate,
+  requireRole("PARTICIPANT"),
   (req, res, next) => scoringController.scoreAttempt(req, res, next)
 );
 
 // Result retrieval endpoints
 scoringRouter.get(
   "/results/latest",
+  authenticate,
+  requireRole("PARTICIPANT"),
   (req, res, next) => scoringController.getLatestResult(req, res, next)
 );
 
 scoringRouter.get(
   "/results/:resultId",
+  authenticate,
+  requireRole("PARTICIPANT"),
   (req, res, next) => scoringController.getResultById(req, res, next)
 );
 
 scoringRouter.get(
   "/assessments/results/latest",
+  authenticate,
+  requireRole("PARTICIPANT"),
   (req, res, next) => scoringController.getLatestResult(req, res, next)
 );
 
 scoringRouter.get(
   "/assessments/results/:attemptId",
+  authenticate,
+  requireRole("PARTICIPANT"),
   (req, res, next) => scoringController.getResultByAttemptId(req, res, next)
 );
