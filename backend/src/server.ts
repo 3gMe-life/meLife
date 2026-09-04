@@ -7,6 +7,9 @@ import { authRepository } from "./modules/auth/auth.repository";
 import { participantRepository } from "./modules/participants/participant.repository";
 import { assessmentRepository } from "./modules/assessments/assessment.repository";
 import { assessmentContentRepository } from "./modules/assessments/assessment-content.repository";
+import { skillFinderQuestionSelectionService } from "./modules/assessments/services/skill-finder-question-selection.service";
+import { skillFinderTranslationsService } from "./modules/assessments/services/skill-finder-translations.service";
+import { reportRepository } from "./modules/reports/report.repository";
 import http from "http";
 
 const bootstrap = async () => {
@@ -24,11 +27,16 @@ const bootstrap = async () => {
     await assessmentRepository.initSchema();
     await assessmentRepository.seedCatalog();
 
-    // 5. Initialize assessment runner schema & seed Skill Finder question bank
+    // 5. Initialize assessment runner schema & seed Skill Finder question bank & versions
     await assessmentContentRepository.initSchema();
     await assessmentContentRepository.seedSkillFinderContent();
+    await skillFinderQuestionSelectionService.seedSkillFinderVersions();
+    await skillFinderTranslationsService.seedSkillFinderTranslations();
 
-    // 6. Initialize Express application
+    // 6. Initialize psychometric reports schema
+    await reportRepository.initSchema();
+
+    // 7. Initialize Express application
     const app = createApp();
     const server = http.createServer(app);
 

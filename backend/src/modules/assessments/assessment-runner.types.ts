@@ -39,10 +39,23 @@ export interface AssessmentSectionSummaryDTO {
   answeredQuestions: number;
 }
 
+export interface SupportedLanguageDTO {
+  code: string;
+  name: string;
+  nativeName: string;
+  dir: "ltr" | "rtl";
+}
+
 export interface AssessmentAttemptQuestionsResponseDTO {
   attemptId: string;
   assessmentCode: AssessmentCode;
   assessmentName: string;
+  versionId?: string | null;
+  versionCode?: string | null;
+  versionName?: string | null;
+  durationMinutes?: number;
+  currentLanguage?: string;
+  supportedLanguages?: SupportedLanguageDTO[];
   status: "IN_PROGRESS" | "COMPLETED" | "ABANDONED";
   totalQuestions: number;
   answeredCount: number;
@@ -81,6 +94,8 @@ export interface SkillFinderResultDTO {
   participantId: string;
   assessmentCode: AssessmentCode;
   assessmentName: string;
+  versionCode?: string | null;
+  versionName?: string | null;
   completedAt: string;
   responseQuality: {
     consistencySignal: "High Consistency" | "Adequate Consistency" | "Review Suggested";
@@ -106,7 +121,7 @@ export interface SkillFinderResultDTO {
     dimensions: DimensionScoreItem[];
   };
   developmentalStrengths: {
-    topHabits: DimensionScoreItem[];
+    topStrengths: DimensionScoreItem[];
     dimensions: DimensionScoreItem[];
   };
   explorationDirections: ExplorationDirectionItem[];

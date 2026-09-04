@@ -7,6 +7,9 @@ export class UserRepository {
    * Finds a user by their unique UUID.
    */
   async findById(id: string, client?: PoolClient): Promise<User | null> {
+    if (!id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      return null;
+    }
     const db = client || pool;
     const query = `
       SELECT id, email, password_hash, first_name, last_name, status,
@@ -100,6 +103,9 @@ export class UserRepository {
     userId: string,
     client?: PoolClient
   ): Promise<{ roles: UserRole[]; permissions: string[] }> {
+    if (!userId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+      return { roles: [], permissions: [] };
+    }
     const db = client || pool;
 
     // 1. Fetch assigned roles
@@ -158,6 +164,9 @@ export class UserRepository {
     gradeLevel?: string | null;
     dateOfBirth?: string | null;
   } | null> {
+    if (!userId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+      return null;
+    }
     const db = client || pool;
     const query = `
       SELECT

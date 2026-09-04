@@ -79,10 +79,23 @@ export interface AssessmentSectionSummary {
   answeredQuestions: number;
 }
 
+export interface SupportedLanguage {
+  code: string;
+  name: string;
+  nativeName: string;
+  dir: "ltr" | "rtl";
+}
+
 export interface AssessmentAttemptQuestionsResponse {
   attemptId: string;
   assessmentCode: AssessmentProductCode;
   assessmentName: string;
+  versionId?: string | null;
+  versionCode?: string | null;
+  versionName?: string | null;
+  durationMinutes?: number;
+  currentLanguage?: string;
+  supportedLanguages?: SupportedLanguage[];
   status: "IN_PROGRESS" | "COMPLETED" | "ABANDONED";
   totalQuestions: number;
   answeredCount: number;
@@ -107,12 +120,20 @@ export interface DimensionScoreItem {
   description?: string;
 }
 
-export interface ExplorationDirectionItem {
+export interface ExplorationDirection {
   domain: string;
   clusterTitle: string;
   description: string;
   sampleExplorationAreas: string[];
   suggestedActivities: string[];
+}
+
+export interface LearningProfile {
+  archetypeTitle: string;
+  tagline: string;
+  strengthSummary: string;
+  explorationFraming: string;
+  primaryTraits: string[];
 }
 
 export interface SkillFinderResult {
@@ -121,7 +142,11 @@ export interface SkillFinderResult {
   participantId: string;
   assessmentCode: AssessmentProductCode;
   assessmentName: string;
+  versionCode?: string | null;
+  versionName?: string | null;
+  language?: string;
   completedAt: string;
+  learningProfile?: LearningProfile;
   responseQuality: {
     consistencySignal: "High Consistency" | "Adequate Consistency" | "Review Suggested";
     attentionCheckPassed: boolean;
@@ -146,9 +171,9 @@ export interface SkillFinderResult {
     dimensions: DimensionScoreItem[];
   };
   developmentalStrengths: {
-    topHabits: DimensionScoreItem[];
+    topStrengths: DimensionScoreItem[];
     dimensions: DimensionScoreItem[];
   };
-  explorationDirections: ExplorationDirectionItem[];
+  explorationDirections: ExplorationDirection[];
   growthSuggestions: string[];
 }

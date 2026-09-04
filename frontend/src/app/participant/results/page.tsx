@@ -1,124 +1,101 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { DashboardShell } from "@/features/dashboard/components/shell/DashboardShell";
-import { PageHeader } from "@/features/dashboard/components/common/PageHeader";
-import { BrainCircuit, Sparkles, Download } from "lucide-react";
+import { ProtectedRouteGuard } from "@/features/dashboard/guards/ProtectedRouteGuard";
+import { useLatestAssessmentResultQuery } from "@/features/assessments/hooks/useAssessmentResultQuery";
+import { SkillFinderResultView } from "@/features/assessments/components/results/SkillFinderResultView";
+import { Sparkles, ArrowRight, BrainCircuit, RefreshCw } from "lucide-react";
 
 export default function ParticipantResultsPage() {
+  const [language, setLanguage] = React.useState<string>("en");
+  const {
+    data: latestResult,
+    isLoading,
+    isError,
+    refetch,
+  } = useLatestAssessmentResultQuery(language);
+
   return (
-    <DashboardShell allowedRoles={["PARTICIPANT"]}>
-      <div className="space-y-6">
-        <PageHeader
-          title="Psychometric Results & Analytics"
-          subtitle="In-depth analysis of your cognitive aptitude, Big Five behavioral dimensions, and vocational interests."
-          badge="Calibrated"
-          badgeColor="emerald"
-          actionElement={
-            <button
-              type="button"
-              className="px-4 py-2.5 rounded-xl bg-white dark:bg-white/10 hover:bg-[#EBF2F0] dark:hover:bg-white/20 border border-[#E3ECEA] dark:border-white/20 text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9] transition-colors flex items-center gap-2 cursor-pointer shadow-xs"
-            >
-              <Download className="w-4 h-4 text-[#00B8D4]" />
-              <span>Export Full PDF Report</span>
-            </button>
-          }
-        />
-
-        {/* Primary Archetype Spotlight Card */}
-        <div className="rounded-3xl bg-gradient-to-r from-white via-[#F7FAF9] to-[#EBF2F0] dark:from-[#172B2A] dark:via-[#172B2A]/95 dark:to-[#0D1C1B] border border-[#E3ECEA] dark:border-[rgba(227,236,234,0.12)] p-6 sm:p-8 relative overflow-hidden shadow-xs dark:shadow-none transition-colors duration-200">
-          <div className="absolute top-0 right-0 w-80 h-80 rounded-full bg-gradient-to-br from-[#00BFA5]/10 dark:from-[#00BFA5]/20 via-[#00B8D4]/10 dark:via-[#00B8D4]/15 to-transparent blur-3xl pointer-events-none" />
-
-          <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-2 max-w-xl">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5]">
-                Primary Psychometric Archetype
-              </span>
-              <h2 className="text-2xl font-black text-[#172B2A] dark:text-[#F7FAF9]">
-                The Analytical Strategist
-              </h2>
-              <p className="text-xs text-[#526866] dark:text-[#9FB3B0] leading-relaxed">
-                Individuals with this profile exhibit high analytical precision, structured problem formulation, and exceptional logical reasoning. You thrive in computational, scientific, and quantitative decision-making environments.
+    <ProtectedRouteGuard allowedRoles={["PARTICIPANT"]}>
+      <DashboardShell allowedRoles={["PARTICIPANT"]}>
+        <div className="space-y-6">
+          {isLoading ? (
+            <div className="bg-surface-elevated rounded-3xl border border-border-default p-12 text-center flex flex-col items-center justify-center space-y-4">
+              <div className="w-12 h-12 border-3 border-[#00BFA5] border-t-transparent rounded-full animate-spin" />
+              <h3 className="text-base font-bold text-[#172B2A] dark:text-[#F7FAF9]">
+                Loading Psychometric Report...
+              </h3>
+              <p className="text-xs text-[#526866] dark:text-[#9FB3B0]">
+                Retrieving your validated career interests and cognitive dimension analytics.
               </p>
             </div>
-
-            <div className="p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 text-center shrink-0 min-w-[160px] shadow-xs">
-              <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#00B8D4] to-[#00BFA5]">
-                92nd
-              </span>
-              <span className="block text-[11px] font-bold text-[#172B2A] dark:text-[#F7FAF9]">
-                Cognitive Percentile
-              </span>
-              <span className="block text-[10px] text-[#008F83] dark:text-[#00C896] font-semibold mt-0.5">
-                Top Tier Logic & Math
-              </span>
+          ) : isError ? (
+            <div className="bg-surface-elevated rounded-3xl border border-border-default p-10 text-center max-w-lg mx-auto space-y-4">
+              <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-950/30 text-amber-600 flex items-center justify-center mx-auto">
+                <BrainCircuit className="w-7 h-7" />
+              </div>
+              <h3 className="text-lg font-bold text-[#172B2A] dark:text-[#F7FAF9]">
+                Unable to Load Psychometric Insights
+              </h3>
+              <p className="text-xs text-[#526866] dark:text-[#9FB3B0] leading-relaxed">
+                We encountered an issue retrieving your assessment results. Please check your connection or try again.
+              </p>
+              <button
+                onClick={() => refetch()}
+                className="px-6 py-2.5 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white font-bold text-xs transition-colors cursor-pointer inline-flex items-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>Retry</span>
+              </button>
             </div>
-          </div>
+          ) : !latestResult ? (
+            /* Empty State: No completed assessments yet */
+            <div className="rounded-3xl bg-gradient-to-r from-white via-[#F7FAF9] to-[#EBF2F0] dark:from-[#172B2A] dark:via-[#172B2A]/95 dark:to-[#0D1C1B] border border-[#E3ECEA] dark:border-white/10 p-8 sm:p-12 text-center max-w-2xl mx-auto space-y-6 shadow-sm">
+              <div className="w-16 h-16 rounded-3xl bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5] flex items-center justify-center mx-auto border border-[#00BFA5]/30">
+                <BrainCircuit className="w-8 h-8" />
+              </div>
+
+              <div className="space-y-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5] border border-[#00BFA5]/30">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Psychometric Evaluation Pending</span>
+                </span>
+                <h2 className="text-2xl font-black text-[#172B2A] dark:text-[#F7FAF9]">
+                  No Assessment Completed Yet
+                </h2>
+                <p className="text-xs sm:text-sm text-[#526866] dark:text-[#9FB3B0] max-w-md mx-auto leading-relaxed">
+                  Complete your calibrated Skill Finder assessment to unlock your official psychometric archetype, RIASEC interest clusters, and verified career pathways.
+                </p>
+              </div>
+
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <Link
+                  href="/participant/assessments"
+                  className="w-full sm:w-auto px-7 py-3 rounded-2xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white font-black text-xs transition-all shadow-lg shadow-[#00BFA5]/25 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>Take Assessment Now</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                <Link
+                  href="/participant/dashboard"
+                  className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-[#EBF2F0] hover:bg-[#E3ECEA] dark:bg-white/5 dark:hover:bg-white/10 text-[#172B2A] dark:text-[#F7FAF9] font-bold text-xs transition-colors flex items-center justify-center"
+                >
+                  Back to Dashboard
+                </Link>
+              </div>
+            </div>
+          ) : (
+            /* Render Live Validated Psychometric Evaluation */
+            <SkillFinderResultView
+              result={latestResult}
+              currentLanguage={language}
+              onLanguageChange={setLanguage}
+            />
+          )}
         </div>
-
-        {/* Dimension Breakdown Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-[rgba(227,236,234,0.12)] p-6 space-y-4 shadow-xs dark:shadow-none transition-colors duration-200">
-            <h3 className="text-base font-bold text-[#172B2A] dark:text-[#F7FAF9] flex items-center gap-2">
-              <BrainCircuit className="w-5 h-5 text-[#00B8D4]" />
-              <span>Cognitive Dimension Scores</span>
-            </h3>
-
-            <div className="space-y-4 pt-1">
-              {[
-                { label: "Quantitative Reasoning", score: 94, category: "Exceptional" },
-                { label: "Abstract Logic & Patterns", score: 91, category: "Exceptional" },
-                { label: "Spatial Visualization", score: 85, category: "Strong" },
-                { label: "Verbal Precision & Fluency", score: 82, category: "Proficient" },
-                { label: "Processing Speed & Focus", score: 88, category: "Strong" },
-              ].map((item) => (
-                <div key={item.label} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-[#172B2A] dark:text-[#F7FAF9]">{item.label}</span>
-                    <span className="font-mono font-bold text-[#008F83] dark:text-[#00BFA5]">{item.score}%</span>
-                  </div>
-                  <div className="w-full h-2 rounded-full bg-[#EBF2F0] dark:bg-black/30 overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-[#00B8D4] via-[#00BFA5] to-[#00C896]"
-                      style={{ width: `${item.score}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-[rgba(227,236,234,0.12)] p-6 space-y-4 shadow-xs dark:shadow-none transition-colors duration-200">
-            <h3 className="text-base font-bold text-[#172B2A] dark:text-[#F7FAF9] flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#00BFA5]" />
-              <span>Behavioral & Work Style Traits</span>
-            </h3>
-
-            <div className="space-y-4 pt-1">
-              {[
-                { label: "Conscientiousness & Discipline", score: 89, category: "High" },
-                { label: "Openness to Novel Ideas", score: 87, category: "High" },
-                { label: "Emotional Resilience & Calm", score: 84, category: "Strong" },
-                { label: "Collaborative Team Synergy", score: 78, category: "Proficient" },
-                { label: "Autonomy & Independent Drive", score: 92, category: "Exceptional" },
-              ].map((item) => (
-                <div key={item.label} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-[#172B2A] dark:text-[#F7FAF9]">{item.label}</span>
-                    <span className="font-mono font-bold text-[#008F83] dark:text-[#00BFA5]">{item.score}%</span>
-                  </div>
-                  <div className="w-full h-2 rounded-full bg-[#EBF2F0] dark:bg-black/30 overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-[#00BFA5] to-[#008F83]"
-                      style={{ width: `${item.score}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </DashboardShell>
+      </DashboardShell>
+    </ProtectedRouteGuard>
   );
 }

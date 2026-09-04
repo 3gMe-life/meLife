@@ -1,3 +1,4 @@
+import { pool } from "../../config/database";
 import { assessmentRepository } from "./assessment.repository";
 import { participantRepository } from "../participants/participant.repository";
 import { userRepository } from "../users/user.repository";
@@ -44,6 +45,21 @@ export class AssessmentEligibilityService {
     const derivedAge = calculateExactAge(profile.dateOfBirth);
     const activeCatalog = await assessmentRepository.findActiveAssessments();
 
+    // Query participant's latest attempt per assessment to reflect real progress & completion
+    const attemptsRes = await pool.query(
+      `SELECT DISTINCT ON (assessment_id)
+              id, assessment_id, status, total_questions, answered_count
+       FROM assessment_attempts
+       WHERE participant_id = $1
+       ORDER BY assessment_id, updated_at DESC`,
+      [userId]
+    );
+
+    const attemptMap: Record<string, any> = {};
+    for (const row of attemptsRes.rows) {
+      attemptMap[row.assessment_id] = row;
+    }
+
     const eligibleAssessmentItems: ParticipantAssessmentItemDTO[] = [];
 
     for (const assessment of activeCatalog) {
@@ -55,6 +71,27 @@ export class AssessmentEligibilityService {
       });
 
       if (eligibility.isEligible) {
+        const userAttempt = attemptMap[assessment.id];
+        let status: "AVAILABLE" | "IN_PROGRESS" | "COMPLETED" | "LOCKED" = "AVAILABLE";
+        let progressPercentage = 0;
+        let activeAttemptId: string | null = null;
+
+        if (userAttempt) {
+          activeAttemptId = userAttempt.id;
+          if (userAttempt.status === "COMPLETED") {
+            status = "COMPLETED";
+            progressPercentage = 100;
+          } else if (userAttempt.status === "IN_PROGRESS") {
+            status = "IN_PROGRESS";
+            const total =
+              parseInt(userAttempt.total_questions, 10) ||
+              assessment.questionCount ||
+              1;
+            const answered = parseInt(userAttempt.answered_count, 10) || 0;
+            progressPercentage = Math.min(99, Math.round((answered / total) * 100));
+          }
+        }
+
         eligibleAssessmentItems.push({
           id: assessment.id,
           code: assessment.code,
@@ -63,10 +100,11 @@ export class AssessmentEligibilityService {
           description: assessment.description,
           estimatedMinutes: assessment.estimatedMinutes,
           questionCount: assessment.questionCount,
-          status: "AVAILABLE",
-          progressPercentage: 0,
+          status,
+          progressPercentage,
           isEligible: true,
           eligibilityReason: eligibility.reason,
+          activeAttemptId,
         });
       }
     }

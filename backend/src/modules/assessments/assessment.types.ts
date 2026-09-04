@@ -47,6 +47,7 @@ export interface ParticipantAssessmentItemDTO {
   progressPercentage: number;
   isEligible: boolean;
   eligibilityReason: string;
+  activeAttemptId?: string | null;
   completedAt?: string | null;
   dominantTrait?: string | null;
 }

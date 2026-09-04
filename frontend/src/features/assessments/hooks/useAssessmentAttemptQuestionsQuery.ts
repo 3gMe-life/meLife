@@ -1,12 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { assessmentApi } from "../api/assessment.api";
 
-export function useAssessmentAttemptQuestionsQuery(attemptId: string) {
+export function useAssessmentAttemptQuestionsQuery(
+  attemptId: string,
+  language = "en"
+) {
   return useQuery({
-    queryKey: ["attemptQuestions", attemptId],
-    queryFn: () => assessmentApi.getAttemptQuestions(attemptId),
+    queryKey: ["attemptQuestions", attemptId, language],
+    queryFn: () => assessmentApi.getAttemptQuestions(attemptId, language),
     enabled: Boolean(attemptId),
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 15, // 15 minutes
     refetchOnWindowFocus: false,
     retry: false,
   });

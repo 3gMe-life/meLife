@@ -10,6 +10,7 @@ import {
   AssessmentSectionSummaryDTO,
   AssessmentAttemptQuestionsResponseDTO,
 } from "./assessment-runner.types";
+import { SUPPORTED_ASSESSMENT_LANGUAGES } from "./services/skill-finder-translations.service";
 
 export class AssessmentContentRepository {
   /**
@@ -77,11 +78,42 @@ export class AssessmentContentRepository {
         UNIQUE(question_id, option_key)
       );
 
-      -- 5. Assessment Attempts
+      -- 5. Assessment Versions
+      CREATE TABLE IF NOT EXISTS assessment_versions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        assessment_id UUID NOT NULL REFERENCES assessments(id) ON DELETE CASCADE,
+        version_code VARCHAR(100) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        version_number VARCHAR(50) NOT NULL DEFAULT 'v1.0',
+        target_age VARCHAR(50) NOT NULL DEFAULT '10-13',
+        duration_minutes INTEGER NOT NULL DEFAULT 30,
+        question_count INTEGER NOT NULL DEFAULT 68,
+        mode VARCHAR(50) NOT NULL DEFAULT 'FIXED',
+        is_default BOOLEAN NOT NULL DEFAULT false,
+        status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+        description TEXT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(assessment_id, version_code)
+      );
+
+      -- 6. Assessment Version Questions (Question Bank linkage)
+      CREATE TABLE IF NOT EXISTS assessment_version_questions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        version_id UUID NOT NULL REFERENCES assessment_versions(id) ON DELETE CASCADE,
+        question_id UUID NOT NULL REFERENCES assessment_questions(id) ON DELETE CASCADE,
+        display_order INTEGER NOT NULL,
+        is_required BOOLEAN NOT NULL DEFAULT true,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(version_id, question_id)
+      );
+
+      -- 7. Assessment Attempts
       CREATE TABLE IF NOT EXISTS assessment_attempts (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         participant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         assessment_id UUID NOT NULL REFERENCES assessments(id) ON DELETE CASCADE,
+        version_id UUID NULL REFERENCES assessment_versions(id) ON DELETE SET NULL,
         status VARCHAR(50) NOT NULL DEFAULT 'IN_PROGRESS',
         current_question_index INTEGER NOT NULL DEFAULT 0,
         total_questions INTEGER NOT NULL DEFAULT 104,
@@ -92,7 +124,10 @@ export class AssessmentContentRepository {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
 
-      -- 6. Assessment Responses
+      ALTER TABLE assessment_attempts
+      ADD COLUMN IF NOT EXISTS version_id UUID NULL REFERENCES assessment_versions(id) ON DELETE SET NULL;
+
+      -- 8. Assessment Responses
       CREATE TABLE IF NOT EXISTS assessment_responses (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         attempt_id UUID NOT NULL REFERENCES assessment_attempts(id) ON DELETE CASCADE,
@@ -105,24 +140,68 @@ export class AssessmentContentRepository {
         UNIQUE(attempt_id, question_id)
       );
 
-      -- 7. Assessment Results
+      -- 9. Assessment Results
       CREATE TABLE IF NOT EXISTS assessment_results (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         attempt_id UUID NOT NULL REFERENCES assessment_attempts(id) ON DELETE CASCADE UNIQUE,
         participant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         assessment_code VARCHAR(100) NOT NULL,
+        profile_type VARCHAR(100) NULL,
+        summary TEXT NULL,
+        dimension_scores JSONB NULL,
         result_data JSONB NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
 
-      -- Indexes for fast query retrieval
+      ALTER TABLE assessment_results ADD COLUMN IF NOT EXISTS profile_type VARCHAR(100) NULL;
+      ALTER TABLE assessment_results ADD COLUMN IF NOT EXISTS summary TEXT NULL;
+      ALTER TABLE assessment_results ADD COLUMN IF NOT EXISTS dimension_scores JSONB NULL;
+
+      -- 10. Question Translations (Multilingual Engine)
+      CREATE TABLE IF NOT EXISTS question_translations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        question_id UUID NOT NULL REFERENCES assessment_questions(id) ON DELETE CASCADE,
+        language_code VARCHAR(10) NOT NULL,
+        question_text TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(question_id, language_code)
+      );
+
+      -- 11. Option Translations (Multilingual Engine)
+      CREATE TABLE IF NOT EXISTS option_translations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        option_id UUID NOT NULL REFERENCES question_options(id) ON DELETE CASCADE,
+        language_code VARCHAR(10) NOT NULL,
+        option_text TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(option_id, language_code)
+      );
+
+      -- 12. Section Translations (Multilingual Engine)
+      CREATE TABLE IF NOT EXISTS section_translations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        section_id UUID NOT NULL REFERENCES assessment_sections(id) ON DELETE CASCADE,
+        language_code VARCHAR(10) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        description TEXT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(section_id, language_code)
+      );
+
+      -- Indexes for fast query retrieval & translations
       CREATE INDEX IF NOT EXISTS idx_questions_assessment_id ON assessment_questions(assessment_id);
       CREATE INDEX IF NOT EXISTS idx_questions_section_id ON assessment_questions(section_id);
       CREATE INDEX IF NOT EXISTS idx_question_options_qid ON question_options(question_id);
       CREATE INDEX IF NOT EXISTS idx_attempts_participant_status ON assessment_attempts(participant_id, status);
       CREATE INDEX IF NOT EXISTS idx_responses_attempt_id ON assessment_responses(attempt_id);
       CREATE INDEX IF NOT EXISTS idx_results_participant_code ON assessment_results(participant_id, assessment_code);
+      CREATE INDEX IF NOT EXISTS idx_q_trans_lookup ON question_translations(question_id, language_code);
+      CREATE INDEX IF NOT EXISTS idx_opt_trans_lookup ON option_translations(option_id, language_code);
+      CREATE INDEX IF NOT EXISTS idx_sec_trans_lookup ON section_translations(section_id, language_code);
     `;
     await db.query(query);
     logger.info("📦 Assessment runner database schema initialized and verified.");
@@ -266,16 +345,42 @@ export class AssessmentContentRepository {
   }
 
   /**
+   * Finds the most recent active in-progress attempt for a participant across all assessments.
+   */
+  async findLatestActiveAttemptForUser(userId: string, client?: PoolClient): Promise<any> {
+    const db = client || pool;
+    const res = await db.query(
+      `SELECT a.id, a.participant_id, a.assessment_id, a.version_id, a.status, a.current_question_index,
+              a.total_questions, a.answered_count, a.started_at, a.completed_at,
+              ass.code as assessment_code, ass.name as assessment_name,
+              v.version_code, v.name as version_name, v.duration_minutes
+       FROM assessment_attempts a
+       JOIN assessments ass ON a.assessment_id = ass.id
+       LEFT JOIN assessment_versions v ON a.version_id = v.id
+       WHERE a.participant_id = $1 AND a.status = 'IN_PROGRESS'
+       ORDER BY a.started_at DESC
+       LIMIT 1`,
+      [userId]
+    );
+    return res.rows[0] || null;
+  }
+
+  /**
    * Finds attempt by ID.
    */
   async findAttemptById(attemptId: string, client?: PoolClient | import("pg").Pool): Promise<any> {
+    if (!attemptId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(attemptId)) {
+      return null;
+    }
     const db = client || pool;
     const res = await db.query(
-      `SELECT a.id, a.participant_id, a.assessment_id, a.status, a.current_question_index,
+      `SELECT a.id, a.participant_id, a.assessment_id, a.version_id, a.status, a.current_question_index,
               a.total_questions, a.answered_count, a.started_at, a.completed_at,
-              ass.code as assessment_code, ass.name as assessment_name
+              ass.code as assessment_code, ass.name as assessment_name,
+              v.version_code, v.name as version_name, v.duration_minutes
        FROM assessment_attempts a
        JOIN assessments ass ON a.assessment_id = ass.id
+       LEFT JOIN assessment_versions v ON a.version_id = v.id
        WHERE a.id = $1
        LIMIT 1`,
       [attemptId]
@@ -289,24 +394,27 @@ export class AssessmentContentRepository {
   async createAttempt(
     userId: string,
     assessmentId: string,
-    totalQuestions = 104,
+    versionId: string | null = null,
+    totalQuestions = 68,
     client?: PoolClient
   ): Promise<any> {
     const db = client || pool;
     const res = await db.query(
-      `INSERT INTO assessment_attempts (participant_id, assessment_id, status, total_questions, answered_count, started_at)
-       VALUES ($1, $2, 'IN_PROGRESS', $3, 0, NOW())
-       RETURNING id, participant_id, assessment_id, status, current_question_index, total_questions, answered_count, started_at`,
-      [userId, assessmentId, totalQuestions]
+      `INSERT INTO assessment_attempts (participant_id, assessment_id, version_id, status, total_questions, answered_count, started_at)
+       VALUES ($1, $2, $3, 'IN_PROGRESS', $4, 0, NOW())
+       RETURNING id, participant_id, assessment_id, version_id, status, current_question_index, total_questions, answered_count, started_at`,
+      [userId, assessmentId, versionId, totalQuestions]
     );
     return res.rows[0];
   }
 
   /**
-   * Retrieves sanitized questions with participant's saved responses (without leaking correct keys/scoring).
+   * Retrieves sanitized questions with participant's saved responses in requested language
+   * (gracefully falling back to English, strictly omitting correct keys/scoring).
    */
   async getAttemptQuestionsWithResponses(
     attemptId: string,
+    languageCode = "en",
     client?: PoolClient
   ): Promise<AssessmentAttemptQuestionsResponseDTO | null> {
     const db = client || pool;
@@ -314,19 +422,42 @@ export class AssessmentContentRepository {
     const attempt = await this.findAttemptById(attemptId, db);
     if (!attempt) return null;
 
-    // Load Sections
-    const secRes = await db.query(
-      `SELECT s.code, s.name, s.description,
-              COUNT(q.id) as total_questions,
-              COUNT(r.id) as answered_questions
-       FROM assessment_sections s
-       JOIN assessment_questions q ON s.id = q.section_id
-       LEFT JOIN assessment_responses r ON q.id = r.question_id AND r.attempt_id = $1
-       WHERE s.assessment_id = $2
-       GROUP BY s.id, s.code, s.name, s.description, s.display_order
-       ORDER BY s.display_order ASC`,
-      [attemptId, attempt.assessment_id]
-    );
+    const lang = (languageCode || "en").toLowerCase().trim();
+    const hasVersion = Boolean(attempt.version_id);
+
+    // Load Sections with Language Translation Fallback
+    const secQuery = hasVersion
+      ? `SELECT s.code,
+                COALESCE(st.name, s.name) as name,
+                COALESCE(st.description, s.description) as description,
+                COUNT(vq.id) as total_questions,
+                COUNT(r.id) as answered_questions
+         FROM assessment_sections s
+         LEFT JOIN section_translations st ON s.id = st.section_id AND st.language_code = $4
+         JOIN assessment_questions q ON s.id = q.section_id
+         JOIN assessment_version_questions vq ON q.id = vq.question_id AND vq.version_id = $1
+         LEFT JOIN assessment_responses r ON q.id = r.question_id AND r.attempt_id = $2
+         WHERE s.assessment_id = $3
+         GROUP BY s.id, s.code, s.name, s.description, st.name, st.description, s.display_order
+         ORDER BY s.display_order ASC`
+      : `SELECT s.code,
+                COALESCE(st.name, s.name) as name,
+                COALESCE(st.description, s.description) as description,
+                COUNT(q.id) as total_questions,
+                COUNT(r.id) as answered_questions
+         FROM assessment_sections s
+         LEFT JOIN section_translations st ON s.id = st.section_id AND st.language_code = $3
+         JOIN assessment_questions q ON s.id = q.section_id
+         LEFT JOIN assessment_responses r ON q.id = r.question_id AND r.attempt_id = $1
+         WHERE s.assessment_id = $2
+         GROUP BY s.id, s.code, s.name, s.description, st.name, st.description, s.display_order
+         ORDER BY s.display_order ASC`;
+
+    const secParams = hasVersion
+      ? [attempt.version_id, attemptId, attempt.assessment_id, lang]
+      : [attemptId, attempt.assessment_id, lang];
+
+    const secRes = await db.query(secQuery, secParams);
 
     const sections: AssessmentSectionSummaryDTO[] = secRes.rows.map((row) => ({
       code: row.code,
@@ -336,36 +467,80 @@ export class AssessmentContentRepository {
       answeredQuestions: parseInt(row.answered_questions, 10) || 0,
     }));
 
-    // Load Questions with Options and Responses (STRICTLY omitting correct_key and score_value)
-    const qRes = await db.query(
-      `SELECT
-         q.id, q.question_number, q.question_text, q.question_type, q.image_url, q.is_required,
-         s.code as section_code, s.name as section_name,
-         d.code as dimension_code, d.name as dimension_name,
-         r.selected_option_id as current_selected_option_id,
-         r.response_value as current_response_value,
-         COALESCE(
-           json_agg(
-             json_build_object(
-               'id', o.id,
-               'optionKey', o.option_key,
-               'optionText', o.option_text,
-               'displayOrder', o.display_order
-             ) ORDER BY o.display_order ASC
-           ) FILTER (WHERE o.id IS NOT NULL),
-           '[]'
-         ) as options
-       FROM assessment_questions q
-       JOIN assessment_sections s ON q.section_id = s.id
-       LEFT JOIN assessment_dimensions d ON q.dimension_id = d.id
-       LEFT JOIN question_options o ON q.id = o.question_id
-       LEFT JOIN assessment_responses r ON q.id = r.question_id AND r.attempt_id = $1
-       WHERE q.assessment_id = $2
-       GROUP BY q.id, q.question_number, q.question_text, q.question_type, q.image_url, q.is_required,
-                s.code, s.name, d.code, d.name, r.selected_option_id, r.response_value
-       ORDER BY q.display_order ASC`,
-      [attemptId, attempt.assessment_id]
-    );
+    // Load Questions with Options & Responses (STRICTLY omitting correct_key and score_value)
+    const qQuery = hasVersion
+      ? `SELECT
+           q.id,
+           vq.display_order as question_number,
+           COALESCE(qt.question_text, q.question_text) as question_text,
+           q.question_type, q.image_url, vq.is_required,
+           s.code as section_code,
+           COALESCE(st.name, s.name) as section_name,
+           d.code as dimension_code, d.name as dimension_name,
+           r.selected_option_id as current_selected_option_id,
+           r.response_value as current_response_value,
+           COALESCE(
+             json_agg(
+               json_build_object(
+                 'id', o.id,
+                 'optionKey', o.option_key,
+                 'optionText', COALESCE(ot.option_text, o.option_text),
+                 'displayOrder', o.display_order
+               ) ORDER BY o.display_order ASC
+             ) FILTER (WHERE o.id IS NOT NULL),
+             '[]'
+           ) as options
+         FROM assessment_version_questions vq
+         JOIN assessment_questions q ON vq.question_id = q.id
+         LEFT JOIN question_translations qt ON q.id = qt.question_id AND qt.language_code = $3
+         JOIN assessment_sections s ON q.section_id = s.id
+         LEFT JOIN section_translations st ON s.id = st.section_id AND st.language_code = $3
+         LEFT JOIN assessment_dimensions d ON q.dimension_id = d.id
+         LEFT JOIN question_options o ON q.id = o.question_id
+         LEFT JOIN option_translations ot ON o.id = ot.option_id AND ot.language_code = $3
+         LEFT JOIN assessment_responses r ON q.id = r.question_id AND r.attempt_id = $1
+         WHERE vq.version_id = $2
+         GROUP BY q.id, vq.display_order, q.question_text, qt.question_text, q.question_type, q.image_url, vq.is_required,
+                  s.code, s.name, st.name, d.code, d.name, r.selected_option_id, r.response_value
+         ORDER BY vq.display_order ASC`
+      : `SELECT
+           q.id, q.question_number,
+           COALESCE(qt.question_text, q.question_text) as question_text,
+           q.question_type, q.image_url, q.is_required,
+           s.code as section_code,
+           COALESCE(st.name, s.name) as section_name,
+           d.code as dimension_code, d.name as dimension_name,
+           r.selected_option_id as current_selected_option_id,
+           r.response_value as current_response_value,
+           COALESCE(
+             json_agg(
+               json_build_object(
+                 'id', o.id,
+                 'optionKey', o.option_key,
+                 'optionText', COALESCE(ot.option_text, o.option_text),
+                 'displayOrder', o.display_order
+               ) ORDER BY o.display_order ASC
+             ) FILTER (WHERE o.id IS NOT NULL),
+             '[]'
+           ) as options
+         FROM assessment_questions q
+         LEFT JOIN question_translations qt ON q.id = qt.question_id AND qt.language_code = $3
+         JOIN assessment_sections s ON q.section_id = s.id
+         LEFT JOIN section_translations st ON s.id = st.section_id AND st.language_code = $3
+         LEFT JOIN assessment_dimensions d ON q.dimension_id = d.id
+         LEFT JOIN question_options o ON q.id = o.question_id
+         LEFT JOIN option_translations ot ON o.id = ot.option_id AND ot.language_code = $3
+         LEFT JOIN assessment_responses r ON q.id = r.question_id AND r.attempt_id = $1
+         WHERE q.assessment_id = $2
+         GROUP BY q.id, q.question_number, q.question_text, qt.question_text, q.question_type, q.image_url, q.is_required,
+                  s.code, s.name, st.name, d.code, d.name, r.selected_option_id, r.response_value
+         ORDER BY q.display_order ASC`;
+
+    const qParams = hasVersion
+      ? [attemptId, attempt.version_id, lang]
+      : [attemptId, attempt.assessment_id, lang];
+
+    const qRes = await db.query(qQuery, qParams);
 
     const questions: SanitizedQuestionDTO[] = qRes.rows.map((row) => ({
       id: row.id,
@@ -391,6 +566,12 @@ export class AssessmentContentRepository {
       attemptId: attempt.id,
       assessmentCode: attempt.assessment_code,
       assessmentName: attempt.assessment_name,
+      versionId: attempt.version_id || null,
+      versionCode: attempt.version_code || null,
+      versionName: attempt.version_name || null,
+      durationMinutes: attempt.duration_minutes || 30,
+      currentLanguage: lang,
+      supportedLanguages: SUPPORTED_ASSESSMENT_LANGUAGES,
       status: attempt.status,
       totalQuestions: parseInt(attempt.total_questions, 10) || questions.length,
       answeredCount: parseInt(attempt.answered_count, 10) || 0,
@@ -450,33 +631,65 @@ export class AssessmentContentRepository {
   }
 
   /**
-   * Loads all raw responses, keys, and questions for scoring.
+   * Loads raw responses, keys, and questions for scoring scoped to the active version.
    */
   async loadAttemptResponsesForScoring(attemptId: string, client?: PoolClient): Promise<any[]> {
     const db = client || pool;
-    const res = await db.query(
-      `SELECT
-         q.id as question_id,
-         q.question_number,
-         q.question_type,
-         q.correct_key,
-         q.max_points,
-         s.code as section_code,
-         s.name as section_name,
-         d.code as dimension_code,
-         d.name as dimension_name,
-         r.selected_option_id,
-         r.response_value,
-         o.option_key,
-         o.score_value
-       FROM assessment_questions q
-       JOIN assessment_sections s ON q.section_id = s.id
-       LEFT JOIN assessment_dimensions d ON q.dimension_id = d.id
-       LEFT JOIN assessment_responses r ON q.id = r.question_id AND r.attempt_id = $1
-       LEFT JOIN question_options o ON r.selected_option_id = o.id
-       ORDER BY q.display_order ASC`,
-      [attemptId]
-    );
+    const attempt = await this.findAttemptById(attemptId, db);
+    const hasVersion = Boolean(attempt?.version_id);
+
+    const query = hasVersion
+      ? `SELECT
+           q.id as question_id,
+           q.question_number,
+           vq.display_order as version_display_order,
+           q.question_type,
+           q.correct_key,
+           q.max_points,
+           s.code as section_code,
+           s.name as section_name,
+           d.code as dimension_code,
+           d.name as dimension_name,
+           r.selected_option_id,
+           r.response_value,
+           o.option_key,
+           o.score_value
+         FROM assessment_version_questions vq
+         JOIN assessment_questions q ON vq.question_id = q.id
+         JOIN assessment_sections s ON q.section_id = s.id
+         LEFT JOIN assessment_dimensions d ON q.dimension_id = d.id
+         LEFT JOIN assessment_responses r ON q.id = r.question_id AND r.attempt_id = $1
+         LEFT JOIN question_options o ON r.selected_option_id = o.id
+         WHERE vq.version_id = $2
+         ORDER BY vq.display_order ASC`
+      : `SELECT
+           q.id as question_id,
+           q.question_number,
+           q.display_order as version_display_order,
+           q.question_type,
+           q.correct_key,
+           q.max_points,
+           s.code as section_code,
+           s.name as section_name,
+           d.code as dimension_code,
+           d.name as dimension_name,
+           r.selected_option_id,
+           r.response_value,
+           o.option_key,
+           o.score_value
+         FROM assessment_questions q
+         JOIN assessment_sections s ON q.section_id = s.id
+         LEFT JOIN assessment_dimensions d ON q.dimension_id = d.id
+         LEFT JOIN assessment_responses r ON q.id = r.question_id AND r.attempt_id = $1
+         LEFT JOIN question_options o ON r.selected_option_id = o.id
+         WHERE q.assessment_id = $2
+         ORDER BY q.display_order ASC`;
+
+    const params = hasVersion
+      ? [attemptId, attempt.version_id]
+      : [attemptId, attempt?.assessment_id];
+
+    const res = await db.query(query, params);
     return res.rows;
   }
 
@@ -499,17 +712,57 @@ export class AssessmentContentRepository {
       [attemptId]
     );
 
+    const profileType = resultData?.learningProfile?.archetypeTitle || null;
+    const summary = resultData?.learningProfile?.strengthSummary || null;
+    const dimensionScores = {
+      interest: resultData?.interestDiscovery?.dimensions || [],
+      skills: resultData?.skillBehaviour?.dimensions || [],
+      aptitude: resultData?.demonstratedAptitude?.dimensions || [],
+      strengths: resultData?.developmentalStrengths?.dimensions || [],
+    };
+
     const res = await db.query(
-      `INSERT INTO assessment_results (attempt_id, participant_id, assessment_code, result_data, updated_at)
-       VALUES ($1, $2, $3, $4, NOW())
+      `INSERT INTO assessment_results (attempt_id, participant_id, assessment_code, profile_type, summary, dimension_scores, result_data, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
        ON CONFLICT (attempt_id) DO UPDATE SET
+         profile_type = EXCLUDED.profile_type,
+         summary = EXCLUDED.summary,
+         dimension_scores = EXCLUDED.dimension_scores,
          result_data = EXCLUDED.result_data,
          updated_at = NOW()
        RETURNING id`,
-      [attemptId, participantId, assessmentCode, JSON.stringify(resultData)]
+      [
+        attemptId,
+        participantId,
+        assessmentCode,
+        profileType,
+        summary,
+        JSON.stringify(dimensionScores),
+        JSON.stringify(resultData),
+      ]
     );
 
     return res.rows[0].id;
+  }
+
+  /**
+   * Retrieves saved result by result ID.
+   */
+  async findResultById(resultId: string, client?: PoolClient): Promise<any | null> {
+    const db = client || pool;
+    const res = await db.query(
+      `SELECT r.id, r.attempt_id, r.participant_id, r.assessment_code, r.profile_type, r.summary,
+              r.dimension_scores, r.result_data, r.created_at,
+              a.started_at, a.completed_at,
+              u.first_name, u.last_name, u.email
+       FROM assessment_results r
+       JOIN assessment_attempts a ON r.attempt_id = a.id
+       JOIN users u ON r.participant_id = u.id
+       WHERE r.id = $1
+       LIMIT 1`,
+      [resultId]
+    );
+    return res.rows[0] || null;
   }
 
   /**
@@ -518,7 +771,8 @@ export class AssessmentContentRepository {
   async findResultByAttemptId(attemptId: string, client?: PoolClient): Promise<any | null> {
     const db = client || pool;
     const res = await db.query(
-      `SELECT r.id, r.attempt_id, r.participant_id, r.assessment_code, r.result_data, r.created_at,
+      `SELECT r.id, r.attempt_id, r.participant_id, r.assessment_code, r.profile_type, r.summary,
+              r.dimension_scores, r.result_data, r.created_at,
               a.started_at, a.completed_at,
               u.first_name, u.last_name, u.email
        FROM assessment_results r
@@ -529,6 +783,43 @@ export class AssessmentContentRepository {
       [attemptId]
     );
     return res.rows[0] || null;
+  }
+
+  /**
+   * Retrieves the latest completed assessment result for a participant.
+   */
+  async findLatestResultByUserId(participantId: string, client?: PoolClient): Promise<any | null> {
+    const db = client || pool;
+    const res = await db.query(
+      `SELECT r.id, r.attempt_id, r.participant_id, r.assessment_code, r.result_data, r.created_at,
+              a.started_at, a.completed_at,
+              u.first_name, u.last_name, u.email
+       FROM assessment_results r
+       JOIN assessment_attempts a ON r.attempt_id = a.id
+       JOIN users u ON r.participant_id = u.id
+       WHERE r.participant_id = $1
+       ORDER BY r.created_at DESC
+       LIMIT 1`,
+      [participantId]
+    );
+    return res.rows[0] || null;
+  }
+
+  /**
+   * Retrieves all completed assessment results for a participant.
+   */
+  async findAllResultsByUserId(participantId: string, client?: PoolClient): Promise<any[]> {
+    const db = client || pool;
+    const res = await db.query(
+      `SELECT r.id, r.attempt_id, r.participant_id, r.assessment_code, r.result_data, r.created_at,
+              a.started_at, a.completed_at
+       FROM assessment_results r
+       JOIN assessment_attempts a ON r.attempt_id = a.id
+       WHERE r.participant_id = $1
+       ORDER BY r.created_at DESC`,
+      [participantId]
+    );
+    return res.rows;
   }
 }
 

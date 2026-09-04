@@ -5,6 +5,8 @@ import { studentRouter } from "../modules/students/student.routes";
 import { participantRouter } from "../modules/participants/participant.routes";
 import { assessmentRouter } from "../modules/assessments/assessment.routes";
 import { assessmentController } from "../modules/assessments/assessment.controller";
+import { scoringRouter } from "../modules/scoring/scoring.routes";
+import { reportRouter } from "../modules/reports/report.routes";
 import { authenticate } from "../middleware/authenticate.middleware";
 import { requireRole } from "../middleware/authorization.middleware";
 
@@ -22,6 +24,12 @@ apiRouter.use("/participants", participantRouter);
 
 // Mount assessment module routes (/api/v1/assessments)
 apiRouter.use("/assessments", assessmentRouter);
+
+// Mount scoring & result routes
+apiRouter.use(scoringRouter);
+
+// Mount reports module routes (/api/v1/reports)
+apiRouter.use("/reports", reportRouter);
 
 // Mount attempt routes (/api/v1/attempts)
 const attemptRouter = Router();

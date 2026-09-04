@@ -14,7 +14,11 @@ export default function AssessmentResultDetailPage() {
     ? params.attemptId[0]
     : (params?.attemptId as string);
 
-  const { data: result, isLoading, isError } = useAssessmentResultQuery(attemptId || "");
+  const [language, setLanguage] = React.useState<string>("en");
+  const { data: result, isLoading, isError } = useAssessmentResultQuery(
+    attemptId || "",
+    language
+  );
 
   return (
     <ProtectedRouteGuard allowedRoles={["PARTICIPANT"]}>
@@ -64,7 +68,11 @@ export default function AssessmentResultDetailPage() {
               </button>
             </div>
           ) : (
-            <SkillFinderResultView result={result} />
+            <SkillFinderResultView
+              result={result}
+              currentLanguage={language}
+              onLanguageChange={setLanguage}
+            />
           )}
         </div>
       </DashboardShell>

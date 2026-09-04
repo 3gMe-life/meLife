@@ -1,33 +1,93 @@
 import { assessmentContentRepository } from "./assessment-content.repository";
 import { assessmentRepository } from "./assessment.repository";
 import { userRepository } from "../users/user.repository";
-import { skillFinderScoringService } from "./scoring/skill-finder-scoring.service";
+import { scoringService } from "../scoring/scoring.service";
+import { skillFinderQuestionSelectionService } from "./services/skill-finder-question-selection.service";
 import { AppError } from "../../common/errors/app-error";
 import { logger } from "../../common/utils/logger";
 import {
   AssessmentAttemptQuestionsResponseDTO,
   SaveResponseDTO,
-  SkillFinderResultDTO,
 } from "./assessment-runner.types";
 
 export class AssessmentRunnerService {
   /**
    * Starts a new assessment attempt or resumes an existing in-progress attempt.
+   * Automatically resolves the appropriate version (e.g. Student Edition vs Advanced Edition).
    */
   async startOrCreateAttempt(
     userId: string,
-    assessmentCode: string
-  ): Promise<{ attemptId: string; status: string; isNew: boolean }> {
+    assessmentCode: string,
+    versionCode?: string
+  ): Promise<{
+    attemptId: string;
+    status: string;
+    isNew: boolean;
+    versionCode?: string | null;
+    versionName?: string | null;
+  }> {
     const user = await userRepository.findById(userId);
     if (!user) {
       throw AppError.notFound("Participant user not found.", "AUTH_USER_NOT_FOUND");
     }
 
-    const assessment = await assessmentRepository.findByIdOrCode(assessmentCode);
+    // 1. If assessmentCode is an existing attemptId belonging to this participant, resume it immediately
+    const existingAttempt = await assessmentContentRepository.findAttemptById(assessmentCode);
+    if (existingAttempt && existingAttempt.participant_id === userId) {
+      logger.info(
+        { userId, attemptId: existingAttempt.id, code: existingAttempt.assessment_code },
+        "Resumed assessment attempt directly by attempt ID"
+      );
+      return {
+        attemptId: existingAttempt.id,
+        status: existingAttempt.status,
+        isNew: false,
+        versionCode: existingAttempt.version_code || null,
+        versionName: existingAttempt.version_name || null,
+      };
+    }
+
+    // 2. Resolve assessment catalog entity by code or ID
+    let assessment = await assessmentRepository.findByIdOrCode(assessmentCode);
+
+    // 3. Fallback recovery: if not found by code/id, check if user has an active attempt to resume
+    if (!assessment) {
+      const activeAttempt = await assessmentContentRepository.findLatestActiveAttemptForUser(userId);
+      if (activeAttempt) {
+        logger.info(
+          { userId, attemptedCode: assessmentCode, resumedAttemptId: activeAttempt.id },
+          "Recovered and resumed participant's active assessment attempt"
+        );
+        return {
+          attemptId: activeAttempt.id,
+          status: activeAttempt.status,
+          isNew: false,
+          versionCode: activeAttempt.version_code || null,
+          versionName: activeAttempt.version_name || null,
+        };
+      }
+
+      // Fallback to default SKILL_FINDER if requested assessmentCode is unknown or was generic
+      assessment = await assessmentRepository.findByCode("SKILL_FINDER");
+    }
+
     if (!assessment) {
       throw AppError.notFound(
         `Assessment '${assessmentCode}' not found.`,
         "ASSESSMENT_NOT_FOUND"
+      );
+    }
+
+    // Resolve target version
+    let targetVersion = versionCode
+      ? await skillFinderQuestionSelectionService.getVersionByCode(assessment.id, versionCode)
+      : await skillFinderQuestionSelectionService.getDefaultVersion(assessment.id);
+
+    // Fallback to default student edition if no specific version requested
+    if (!targetVersion && !versionCode) {
+      targetVersion = await skillFinderQuestionSelectionService.getVersionByCode(
+        assessment.id,
+        "STUDENT_STANDARD"
       );
     }
 
@@ -46,18 +106,28 @@ export class AssessmentRunnerService {
         attemptId: activeAttempt.id,
         status: activeAttempt.status,
         isNew: false,
+        versionCode: targetVersion?.version_code || null,
+        versionName: targetVersion?.name || null,
       };
     }
 
     // Create new attempt
+    const totalQuestions =
+      targetVersion?.question_count || assessment.questionCount || 68;
     const newAttempt = await assessmentContentRepository.createAttempt(
       userId,
       assessment.id,
-      assessment.questionCount || 104
+      targetVersion?.id || null,
+      totalQuestions
     );
 
     logger.info(
-      { userId, assessmentCode, attemptId: newAttempt.id },
+      {
+        userId,
+        assessmentCode,
+        version: targetVersion?.version_code || "DEFAULT",
+        attemptId: newAttempt.id,
+      },
       "Created new assessment attempt"
     );
 
@@ -65,15 +135,18 @@ export class AssessmentRunnerService {
       attemptId: newAttempt.id,
       status: newAttempt.status,
       isNew: true,
+      versionCode: targetVersion?.version_code || null,
+      versionName: targetVersion?.name || null,
     };
   }
 
   /**
-   * Retrieves sanitized questions with existing responses for the participant.
+   * Retrieves sanitized questions with existing responses for the participant in requested language.
    */
   async getAttemptQuestions(
     userId: string,
-    attemptId: string
+    attemptId: string,
+    languageCode = "en"
   ): Promise<AssessmentAttemptQuestionsResponseDTO> {
     const attempt = await assessmentContentRepository.findAttemptById(attemptId);
     if (!attempt) {
@@ -84,7 +157,10 @@ export class AssessmentRunnerService {
       throw AppError.forbidden("Access denied to this assessment attempt.", "AUTH_FORBIDDEN");
     }
 
-    const data = await assessmentContentRepository.getAttemptQuestionsWithResponses(attemptId);
+    const data = await assessmentContentRepository.getAttemptQuestionsWithResponses(
+      attemptId,
+      languageCode
+    );
     if (!data) {
       throw AppError.notFound("Assessment questions not found.", "QUESTIONS_NOT_FOUND");
     }
@@ -128,61 +204,14 @@ export class AssessmentRunnerService {
   }
 
   /**
-   * Submits the assessment attempt, calculates scores, and stores the final result snapshot.
+   * Submits the assessment attempt, calculates scores dynamically, and stores the final result snapshot.
    */
   async submitAttempt(
     userId: string,
-    attemptId: string
-  ): Promise<{ success: boolean; resultId: string; result: SkillFinderResultDTO }> {
-    const attempt = await assessmentContentRepository.findAttemptById(attemptId);
-    if (!attempt) {
-      throw AppError.notFound("Assessment attempt not found.", "ATTEMPT_NOT_FOUND");
-    }
-
-    if (attempt.participant_id !== userId) {
-      throw AppError.forbidden("Access denied to this assessment attempt.", "AUTH_FORBIDDEN");
-    }
-
-    if (attempt.status === "COMPLETED") {
-      // If already completed, return existing result snapshot
-      const existing = await assessmentContentRepository.findResultByAttemptId(attemptId);
-      if (existing) {
-        return {
-          success: true,
-          resultId: existing.id,
-          result: existing.result_data,
-        };
-      }
-    }
-
-    // Load all participant responses
-    const rawResponses = await assessmentContentRepository.loadAttemptResponsesForScoring(attemptId);
-
-    // Score Skill Finder
-    const result = skillFinderScoringService.calculateResult(
-      attemptId,
-      userId,
-      rawResponses
-    );
-
-    // Finalize attempt and persist snapshot
-    const resultId = await assessmentContentRepository.finalizeAttemptAndSaveResult(
-      attemptId,
-      userId,
-      attempt.assessment_code,
-      result
-    );
-
-    logger.info(
-      { userId, attemptId, resultId, code: attempt.assessment_code },
-      "Assessment attempt finalized and result persisted successfully"
-    );
-
-    return {
-      success: true,
-      resultId,
-      result,
-    };
+    attemptId: string,
+    languageCode = "en"
+  ): Promise<{ success: boolean; resultId: string; result: any }> {
+    return scoringService.scoreAndFinalizeAttempt(userId, attemptId, languageCode);
   }
 
   /**
@@ -190,23 +219,31 @@ export class AssessmentRunnerService {
    */
   async getAttemptResult(
     userId: string,
-    attemptId: string
-  ): Promise<SkillFinderResultDTO> {
-    const attempt = await assessmentContentRepository.findAttemptById(attemptId);
-    if (!attempt) {
-      throw AppError.notFound("Assessment attempt not found.", "ATTEMPT_NOT_FOUND");
-    }
+    attemptId: string,
+    languageCode = "en"
+  ): Promise<any> {
+    return scoringService.getResultByAttemptId(userId, attemptId, languageCode);
+  }
 
-    if (attempt.participant_id !== userId) {
-      throw AppError.forbidden("Access denied to this assessment result.", "AUTH_FORBIDDEN");
-    }
+  /**
+   * Retrieves the participant's most recently completed assessment result.
+   */
+  async getLatestUserResult(userId: string, languageCode = "en"): Promise<any | null> {
+    return scoringService.getLatestResultForUser(userId, languageCode);
+  }
 
-    const savedResult = await assessmentContentRepository.findResultByAttemptId(attemptId);
-    if (!savedResult) {
-      throw AppError.notFound("Assessment result not found.", "RESULT_NOT_FOUND");
-    }
-
-    return savedResult.result_data;
+  /**
+   * Retrieves all completed assessment results for the participant.
+   */
+  async getAllUserResults(userId: string): Promise<any[]> {
+    const results = await assessmentContentRepository.findAllResultsByUserId(userId);
+    return results.map((r) => ({
+      resultId: r.id,
+      attemptId: r.attempt_id,
+      assessmentCode: r.assessment_code,
+      completedAt: r.completed_at || r.created_at,
+      result: r.result_data,
+    }));
   }
 }
 

@@ -180,7 +180,7 @@ export function ParticipantDashboardView({
 
             {firstPendingAssessment ? (
               <Link
-                href={`/participant/assessments/${firstPendingAssessment.id}`}
+                href={`/participant/assessments/${firstPendingAssessment.code || firstPendingAssessment.id}`}
                 className="px-5 py-3 rounded-2xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white text-xs font-bold transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-[#00BFA5]/25"
               >
                 <Play className="w-4 h-4 fill-current" />

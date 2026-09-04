@@ -32,7 +32,6 @@ export function Logo({
           alt="3G ME LIFE - Psychometric Assessment & Career Guidance"
           width={currentSize.imgSize}
           height={currentSize.imgSize}
-          priority
           className="object-cover"
         />
       </div>

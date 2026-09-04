@@ -22,6 +22,8 @@ assessmentRouter.post("/:code/start", assessmentController.startAssessment);
 assessmentRouter.get("/attempts/:attemptId/questions", assessmentController.getAttemptQuestions);
 assessmentRouter.post("/attempts/:attemptId/responses", assessmentController.saveResponse);
 assessmentRouter.post("/attempts/:attemptId/submit", assessmentController.submitAttempt);
+assessmentRouter.get("/results", assessmentController.getAllUserResults);
+assessmentRouter.get("/results/latest", assessmentController.getAttemptResult);
 assessmentRouter.get("/results/:attemptId", assessmentController.getAttemptResult);
 
 export { assessmentRouter };

@@ -30,7 +30,6 @@ export default function Loading() {
                 alt="3G ME LIFE"
                 width={52}
                 height={52}
-                priority
                 className="object-contain w-full h-full"
               />
             </div>

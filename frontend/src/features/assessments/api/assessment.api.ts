@@ -38,14 +38,15 @@ export const assessmentApi = {
   },
 
   /**
-   * Fetches sanitized question bank and existing participant responses for an attempt.
+   * Fetches sanitized question bank and existing participant responses for an attempt in specified language.
    */
   async getAttemptQuestions(
-    attemptId: string
+    attemptId: string,
+    language = "en"
   ): Promise<AssessmentAttemptQuestionsResponse> {
     const res = await fetchApi<
       ApiResponse<AssessmentAttemptQuestionsResponse>
-    >(`/attempts/${attemptId}/questions`);
+    >(`/attempts/${attemptId}/questions?language=${encodeURIComponent(language)}`);
     return res.data;
   },
 
@@ -70,23 +71,60 @@ export const assessmentApi = {
    * Submits the assessment attempt for psychometric scoring and final result snapshot.
    */
   async submitAttempt(
-    attemptId: string
+    attemptId: string,
+    language = "en"
   ): Promise<{ success: boolean; resultId: string; result: SkillFinderResult }> {
     const res = await fetchApi<
       ApiResponse<{ success: boolean; resultId: string; result: SkillFinderResult }>
-    >(`/attempts/${attemptId}/submit`, {
+    >(`/attempts/${attemptId}/submit?language=${encodeURIComponent(language)}`, {
       method: "POST",
     });
     return res.data;
   },
 
   /**
-   * Fetches the finalized result report snapshot.
+   * Triggers scoring for an attempt explicitly.
    */
-  async getAttemptResult(attemptId: string): Promise<SkillFinderResult> {
-    const res = await fetchApi<ApiResponse<SkillFinderResult>>(
-      `/results/${attemptId}`
+  async scoreAttempt(
+    attemptId: string,
+    language = "en"
+  ): Promise<{ success: boolean; resultId: string; result: SkillFinderResult }> {
+    const res = await fetchApi<
+      ApiResponse<{ success: boolean; resultId: string; result: SkillFinderResult }>
+    >(`/attempts/${attemptId}/score?language=${encodeURIComponent(language)}`, {
+      method: "POST",
+    });
+    return res.data;
+  },
+
+  /**
+   * Fetches the finalized result report snapshot for an attempt or 'latest'.
+   */
+  async getAttemptResult(
+    attemptId: string,
+    language = "en"
+  ): Promise<SkillFinderResult | null> {
+    const res = await fetchApi<ApiResponse<SkillFinderResult | null>>(
+      `/results/${attemptId}?language=${encodeURIComponent(language)}`
     );
+    return res.data;
+  },
+
+  /**
+   * Fetches the participant's most recently completed assessment result.
+   */
+  async getLatestResult(language = "en"): Promise<SkillFinderResult | null> {
+    const res = await fetchApi<ApiResponse<SkillFinderResult | null>>(
+      `/assessments/results/latest?language=${encodeURIComponent(language)}`
+    );
+    return res.data;
+  },
+
+  /**
+   * Fetches all completed assessment results for the participant.
+   */
+  async getAllResults(): Promise<unknown[]> {
+    const res = await fetchApi<ApiResponse<unknown[]>>("/results");
     return res.data;
   },
 };

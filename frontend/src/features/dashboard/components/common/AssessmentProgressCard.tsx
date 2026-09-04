@@ -123,7 +123,7 @@ export function AssessmentProgressCard({ assessment }: AssessmentProgressCardPro
             </Link>
           ) : isInProgress ? (
             <Link
-              href={`/participant/assessments/${assessment.activeAttemptId || assessment.code || assessment.id}`}
+              href={`/participant/assessments/${assessment.code || assessment.id}`}
               className="w-full py-2.5 px-4 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white text-xs font-bold transition-all shadow-md shadow-[#00BFA5]/25 flex items-center justify-center gap-2"
             >
               <Play className="w-3.5 h-3.5 fill-current" />

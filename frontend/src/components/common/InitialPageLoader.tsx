@@ -100,7 +100,6 @@ export function InitialPageLoader() {
                 alt="3G ME LIFE"
                 width={72}
                 height={72}
-                priority
                 className="object-contain w-full h-full"
               />
             </div>
