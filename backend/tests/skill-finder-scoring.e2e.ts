@@ -266,6 +266,31 @@ async function runSkillFinderScoringE2ETests() {
       "API: Latest result returns most recent attempt ID"
     );
 
+    // Query via GET /api/v1/results/latest directly
+    const directLatestRes = await fetch(`${baseUrl}/results/latest`, {
+      headers: { Authorization: `Bearer ${student1.token}` },
+    });
+    const directLatestJson = await directLatestRes.json();
+    assert(directLatestRes.status === 200, "API: GET /api/v1/results/latest returns 200");
+    assert(
+      directLatestJson.data.attemptId === attemptId,
+      "API: Direct GET /results/latest returns most recent attempt ID"
+    );
+
+    // Query via GET /api/v1/results/latest for fresh user with NO completed results
+    const freshUser = await createParticipant(`fresh.scoring.${timestamp}@example.com`, "Rohan");
+    const freshLatestRes = await fetch(`${baseUrl}/results/latest`, {
+      headers: { Authorization: `Bearer ${freshUser.token}` },
+    });
+    const freshLatestJson = await freshLatestRes.json();
+    assert(freshLatestRes.status === 200 && freshLatestJson.data === null, "API: GET /results/latest for user without results returns 200 with data: null (no 500 error)");
+
+    // Query via GET /api/v1/results/non-uuid-string
+    const invalidIdRes = await fetch(`${baseUrl}/results/invalid-uuid-string`, {
+      headers: { Authorization: `Bearer ${student1.token}` },
+    });
+    assert(invalidIdRes.status === 404, "API: GET /results/invalid-uuid-string safely returns 404 (no 500 Postgres crash)");
+
     // Query via GET /api/v1/assessments/results/:attemptId
     const attemptResultRes = await fetch(`${baseUrl}/assessments/results/${attemptId}`, {
       headers: { Authorization: `Bearer ${student1.token}` },

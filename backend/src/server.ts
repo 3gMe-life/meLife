@@ -10,6 +10,7 @@ import { assessmentContentRepository } from "./modules/assessments/assessment-co
 import { skillFinderQuestionSelectionService } from "./modules/assessments/services/skill-finder-question-selection.service";
 import { skillFinderTranslationsService } from "./modules/assessments/services/skill-finder-translations.service";
 import { reportRepository } from "./modules/reports/report.repository";
+import { careerRepository } from "./modules/careers/career.repository";
 import http from "http";
 
 const bootstrap = async () => {
@@ -36,7 +37,11 @@ const bootstrap = async () => {
     // 6. Initialize psychometric reports schema
     await reportRepository.initSchema();
 
-    // 7. Initialize Express application
+    // 7. Initialize career pathways schema & seed curated career library
+    await careerRepository.initSchema();
+    await careerRepository.seedCareers();
+
+    // 8. Initialize Express application
     const app = createApp();
     const server = http.createServer(app);
 

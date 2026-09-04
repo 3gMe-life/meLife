@@ -746,9 +746,12 @@ export class AssessmentContentRepository {
   }
 
   /**
-   * Retrieves saved result by result ID.
+   * Retrieves saved result by result ID or attempt ID.
    */
   async findResultById(resultId: string, client?: PoolClient): Promise<any | null> {
+    if (!resultId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resultId)) {
+      return null;
+    }
     const db = client || pool;
     const res = await db.query(
       `SELECT r.id, r.attempt_id, r.participant_id, r.assessment_code, r.profile_type, r.summary,
@@ -758,7 +761,7 @@ export class AssessmentContentRepository {
        FROM assessment_results r
        JOIN assessment_attempts a ON r.attempt_id = a.id
        JOIN users u ON r.participant_id = u.id
-       WHERE r.id = $1
+       WHERE (r.id = $1 OR r.attempt_id = $1)
        LIMIT 1`,
       [resultId]
     );
@@ -766,9 +769,12 @@ export class AssessmentContentRepository {
   }
 
   /**
-   * Retrieves saved result by attempt ID.
+   * Retrieves saved result by attempt ID or result ID.
    */
   async findResultByAttemptId(attemptId: string, client?: PoolClient): Promise<any | null> {
+    if (!attemptId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(attemptId)) {
+      return null;
+    }
     const db = client || pool;
     const res = await db.query(
       `SELECT r.id, r.attempt_id, r.participant_id, r.assessment_code, r.profile_type, r.summary,
@@ -778,7 +784,7 @@ export class AssessmentContentRepository {
        FROM assessment_results r
        JOIN assessment_attempts a ON r.attempt_id = a.id
        JOIN users u ON r.participant_id = u.id
-       WHERE r.attempt_id = $1
+       WHERE (r.attempt_id = $1 OR r.id = $1)
        LIMIT 1`,
       [attemptId]
     );
@@ -789,6 +795,9 @@ export class AssessmentContentRepository {
    * Retrieves the latest completed assessment result for a participant.
    */
   async findLatestResultByUserId(participantId: string, client?: PoolClient): Promise<any | null> {
+    if (!participantId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(participantId)) {
+      return null;
+    }
     const db = client || pool;
     const res = await db.query(
       `SELECT r.id, r.attempt_id, r.participant_id, r.assessment_code, r.result_data, r.created_at,
@@ -809,6 +818,9 @@ export class AssessmentContentRepository {
    * Retrieves all completed assessment results for a participant.
    */
   async findAllResultsByUserId(participantId: string, client?: PoolClient): Promise<any[]> {
+    if (!participantId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(participantId)) {
+      return [];
+    }
     const db = client || pool;
     const res = await db.query(
       `SELECT r.id, r.attempt_id, r.participant_id, r.assessment_code, r.result_data, r.created_at,

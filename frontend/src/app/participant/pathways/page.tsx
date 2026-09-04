@@ -1,71 +1,59 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { DashboardShell } from "@/features/dashboard/components/shell/DashboardShell";
-import { PageHeader } from "@/features/dashboard/components/common/PageHeader";
-import { CareerPathwayCard } from "@/features/dashboard/components/common/CareerPathwayCard";
-import type { CareerPathwayPreview } from "@/features/dashboard/types/dashboard.types";
-
-const ALL_PATHWAYS: CareerPathwayPreview[] = [
-  {
-    id: "ai-systems-architect",
-    title: "AI & Machine Learning Architect",
-    category: "Computational Technology",
-    matchScore: 94,
-    stream: "STEM / Advanced Computing",
-    growthOutlook: "Very High",
-    keySkills: ["Neural Architectures", "Discrete Math", "Systems Thinking", "Python/Rust"],
-    description: "Designs, trains, and deploys intelligent models for autonomous systems, generative reasoning, and scientific discovery.",
-  },
-  {
-    id: "biomedical-data-scientist",
-    title: "Biomedical Data Scientist",
-    category: "Bio-Informatics",
-    matchScore: 89,
-    stream: "Applied Biology & Analytics",
-    growthOutlook: "High",
-    keySkills: ["Genomic Data", "Statistical Inference", "Clinical Research", "Bio-Computing"],
-    description: "Applies high-throughput computational analytics to accelerate therapeutic development, oncology genomics, and precision medicine.",
-  },
-  {
-    id: "quantitative-economic-strategist",
-    title: "Quantitative Economic Strategist",
-    category: "Financial Technology",
-    matchScore: 86,
-    stream: "Mathematics & Economics",
-    growthOutlook: "High",
-    keySkills: ["Algorithmic Modeling", "Econometrics", "Risk Analysis", "Game Theory"],
-    description: "Formulates predictive econometric models, algorithmic market structures, and quantitative risk mechanisms.",
-  },
-  {
-    id: "aerospace-systems-engineer",
-    title: "Aerospace Systems & Propulsion Engineer",
-    category: "Physical Sciences",
-    matchScore: 83,
-    stream: "Pure Science & Physics",
-    growthOutlook: "High",
-    keySkills: ["Thermodynamics", "Aerodynamics", "CAD Simulation", "Control Theory"],
-    description: "Architects high-efficiency aerospace propulsion systems, satellite structures, and autonomous flight mechanics.",
-  },
-];
+import { ProtectedRouteGuard } from "@/features/dashboard/guards/ProtectedRouteGuard";
+import { useCareerPathwaysQuery } from "@/features/careers/hooks/useCareerPathwaysQuery";
+import { CareerPathwaysListView } from "@/features/careers/components/CareerPathwaysListView";
+import { Compass, RefreshCw } from "lucide-react";
 
 export default function ParticipantPathwaysPage() {
-  return (
-    <DashboardShell allowedRoles={["PARTICIPANT"]}>
-      <div className="space-y-6">
-        <PageHeader
-          title="Curated Career Pathways"
-          subtitle="Explore careers, academic subject combinations, and industry growth vectors mapped to your psychometric profile."
-          badge="AI Mapped"
-          badgeColor="primary"
-        />
+  const [language, setLanguage] = useState<string>("en");
+  const { data, isLoading, isError, refetch } = useCareerPathwaysQuery(language);
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {ALL_PATHWAYS.map((pathway) => (
-            <CareerPathwayCard key={pathway.id} pathway={pathway} />
-          ))}
+  return (
+    <ProtectedRouteGuard allowedRoles={["PARTICIPANT"]}>
+      <DashboardShell allowedRoles={["PARTICIPANT"]}>
+        <div className="space-y-6">
+          {isLoading ? (
+            <div className="bg-surface-elevated rounded-3xl border border-border-default p-12 text-center flex flex-col items-center justify-center space-y-4">
+              <div className="w-12 h-12 border-3 border-[#00BFA5] border-t-transparent rounded-full animate-spin" />
+              <h3 className="text-base font-bold text-[#172B2A] dark:text-[#F7FAF9]">
+                Mapping Career Pathways...
+              </h3>
+              <p className="text-xs text-[#526866] dark:text-[#9FB3B0]">
+                Synthesizing psychometric alignment across technology, engineering, sciences, design, and business streams.
+              </p>
+            </div>
+          ) : isError ? (
+            <div className="bg-surface-elevated rounded-3xl border border-border-default p-10 text-center max-w-lg mx-auto space-y-4">
+              <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-950/30 text-amber-600 flex items-center justify-center mx-auto">
+                <Compass className="w-7 h-7" />
+              </div>
+              <h3 className="text-lg font-bold text-[#172B2A] dark:text-[#F7FAF9]">
+                Unable to Load Career Pathways
+              </h3>
+              <p className="text-xs text-[#526866] dark:text-[#9FB3B0] leading-relaxed">
+                We encountered an issue retrieving career exploration pathways. Please try again.
+              </p>
+              <button
+                onClick={() => refetch()}
+                className="px-6 py-2.5 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white font-bold text-xs transition-colors cursor-pointer inline-flex items-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>Retry</span>
+              </button>
+            </div>
+          ) : (
+            <CareerPathwaysListView
+              recommendations={data?.recommendations || []}
+              isAssessed={data?.isAssessed ?? false}
+              currentLanguage={language}
+              onLanguageChange={setLanguage}
+            />
+          )}
         </div>
-      </div>
-    </DashboardShell>
+      </DashboardShell>
+    </ProtectedRouteGuard>
   );
 }

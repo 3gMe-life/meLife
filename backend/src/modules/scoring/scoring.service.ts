@@ -174,18 +174,23 @@ export class ScoringService {
     attemptId: string,
     languageCode = "en"
   ): Promise<SkillFinderFullResultDTO> {
-    const attempt = await assessmentContentRepository.findAttemptById(attemptId);
-    if (!attempt) {
-      throw AppError.notFound("Assessment attempt not found.", "ATTEMPT_NOT_FOUND");
-    }
-
-    if (attempt.participant_id !== userId) {
-      throw AppError.forbidden("Access denied to this assessment result.", "AUTH_FORBIDDEN");
-    }
-
-    const savedResult = await assessmentContentRepository.findResultByAttemptId(attemptId);
+    let savedResult = await assessmentContentRepository.findResultByAttemptId(attemptId);
     if (!savedResult) {
+      // Check if attempt exists for this user and auto-score if it has answers
+      const attempt = await assessmentContentRepository.findAttemptById(attemptId);
+      if (attempt && attempt.participant_id === userId) {
+        try {
+          const scored = await this.scoreAndFinalizeAttempt(userId, attemptId, languageCode);
+          return scored.result;
+        } catch (scoreErr) {
+          logger.warn({ scoreErr, userId, attemptId }, "Auto-scoring attempt on fetch failed or no answers submitted");
+        }
+      }
       throw AppError.notFound("Psychometric result report not found for this attempt.", "RESULT_NOT_FOUND");
+    }
+
+    if (savedResult.participant_id !== userId) {
+      throw AppError.forbidden("Access denied to this assessment result.", "AUTH_FORBIDDEN");
     }
 
     const baseResult: SkillFinderFullResultDTO = savedResult.result_data;
@@ -215,8 +220,18 @@ export class ScoringService {
     resultId: string,
     languageCode = "en"
   ): Promise<SkillFinderFullResultDTO> {
-    const savedResult = await assessmentContentRepository.findResultById(resultId);
+    let savedResult = await assessmentContentRepository.findResultById(resultId);
     if (!savedResult) {
+      // Check if resultId was actually an attempt ID for this user
+      const attempt = await assessmentContentRepository.findAttemptById(resultId);
+      if (attempt && attempt.participant_id === userId) {
+        try {
+          const scored = await this.scoreAndFinalizeAttempt(userId, resultId, languageCode);
+          return scored.result;
+        } catch (scoreErr) {
+          logger.warn({ scoreErr, userId, attemptId: resultId }, "Auto-scoring attempt on fetch failed or no answers submitted");
+        }
+      }
       throw AppError.notFound("Psychometric result not found.", "RESULT_NOT_FOUND");
     }
 

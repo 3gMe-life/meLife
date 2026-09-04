@@ -17,6 +17,11 @@ scoringRouter.post(
 
 // Result retrieval endpoints
 scoringRouter.get(
+  "/results/latest",
+  (req, res, next) => scoringController.getLatestResult(req, res, next)
+);
+
+scoringRouter.get(
   "/results/:resultId",
   (req, res, next) => scoringController.getResultById(req, res, next)
 );

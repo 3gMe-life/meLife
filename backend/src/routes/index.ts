@@ -7,6 +7,7 @@ import { assessmentRouter } from "../modules/assessments/assessment.routes";
 import { assessmentController } from "../modules/assessments/assessment.controller";
 import { scoringRouter } from "../modules/scoring/scoring.routes";
 import { reportRouter } from "../modules/reports/report.routes";
+import { careerRouter } from "../modules/careers/career.routes";
 import { authenticate } from "../middleware/authenticate.middleware";
 import { requireRole } from "../middleware/authorization.middleware";
 
@@ -31,6 +32,9 @@ apiRouter.use(scoringRouter);
 // Mount reports module routes (/api/v1/reports)
 apiRouter.use("/reports", reportRouter);
 
+// Mount career pathways module routes (/api/v1/careers)
+apiRouter.use("/careers", careerRouter);
+
 // Mount attempt routes (/api/v1/attempts)
 const attemptRouter = Router();
 attemptRouter.use(authenticate);
@@ -44,6 +48,7 @@ apiRouter.use("/attempts", attemptRouter);
 const resultRouter = Router();
 resultRouter.use(authenticate);
 resultRouter.use(requireRole("PARTICIPANT"));
+resultRouter.get("/latest", assessmentController.getAttemptResult);
 resultRouter.get("/:attemptId", assessmentController.getAttemptResult);
 apiRouter.use("/results", resultRouter);
 

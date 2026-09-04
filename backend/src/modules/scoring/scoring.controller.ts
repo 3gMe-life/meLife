@@ -60,6 +60,10 @@ export class ScoringController {
         throw AppError.badRequest("Result ID is required.", "MISSING_RESULT_ID");
       }
 
+      if (resultId === "latest") {
+        return this.getLatestResult(req, res, next);
+      }
+
       const languageCode =
         (req.query.language as string) ||
         (req.headers["accept-language"] as string) ||
@@ -91,6 +95,10 @@ export class ScoringController {
       const attemptId = Array.isArray(paramAttemptId) ? paramAttemptId[0] : paramAttemptId;
       if (!attemptId) {
         throw AppError.badRequest("Attempt ID is required.", "MISSING_ATTEMPT_ID");
+      }
+
+      if (attemptId === "latest") {
+        return this.getLatestResult(req, res, next);
       }
 
       const languageCode =
