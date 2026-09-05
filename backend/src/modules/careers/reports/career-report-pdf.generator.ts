@@ -132,7 +132,7 @@ export class CareerReportPdfGenerator {
   // --------------------------------------------------------------------------
   // PAGE 1: COVER PAGE
   // --------------------------------------------------------------------------
-  private renderCoverPage(doc: PDFKit.PDFDocument, report: CareerReportDTO, colors: any) {
+  private renderCoverPage(doc: PDFKit.PDFDocument, report: CareerReportDTO, _colors: any) {
     // Elegant Dark/Teal Gradient Background Block
     doc.rect(0, 0, 595.28, 841.89).fill("#0B1B19");
 
@@ -617,7 +617,7 @@ export class CareerReportPdfGenerator {
       const skills = (m.requiredSkills || []).slice(0, 4);
       let sX = 100;
       skills.forEach((skill) => {
-        const tagW = Math.min(100, doc.widthOfString(skill, { size: 6.5 }) + 14);
+        const tagW = Math.min(100, doc.fontSize(6.5).widthOfString(skill) + 14);
         doc.roundedRect(sX, mY + 85, tagW, 14, 3).fillAndStroke(colors.lightBg, "#E2E8F0");
         doc.font("Helvetica").fontSize(6.5).fillColor(colors.charcoal).text(skill, sX + 7, mY + 88);
         sX += tagW + 6;
@@ -1118,7 +1118,7 @@ export class CareerReportPdfGenerator {
     doc.rect(40, 84, 515, 0.5).fill(colors.lightBorder);
   }
 
-  private renderGlobalFootersAndHeaders(doc: PDFKit.PDFDocument, report: CareerReportDTO, colors: any) {
+  private renderGlobalFootersAndHeaders(doc: PDFKit.PDFDocument, _report: CareerReportDTO, colors: any) {
     const range = doc.bufferedPageRange();
     for (let i = 0; i < range.count; i++) {
       doc.switchToPage(i);

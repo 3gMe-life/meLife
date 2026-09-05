@@ -10,6 +10,8 @@ import { skillBehaviourScoringEngine } from "./skill-finder/skill-behaviour.scor
 import { aptitudeScoringEngine } from "./skill-finder/aptitude.scoring";
 import { developmentScoringEngine } from "./skill-finder/development.scoring";
 import { profileGenerator } from "./skill-finder/profile.generator";
+import { profileVectorService } from "./skill-finder/profile-vector.service";
+import { profileConfidenceService } from "./skill-finder/confidence.service";
 
 export class ScoringService {
   /**
@@ -58,7 +60,21 @@ export class ScoringService {
     const developmentalStrengths = developmentScoringEngine.calculateStrengths(responsesByDimension);
     const responseQuality = developmentScoringEngine.calculateQuality(responsesByQNum);
 
-    // 5. Synthesis: Learning Profile Archetype, Exploration Directions, Growth Suggestions
+    // 5. Transform scores into 29-Dimension Student Profile Vector (0-100 scale)
+    const vectorSummary = profileVectorService.generateProfileVector(
+      interestResult,
+      skillResult,
+      aptitudeResult,
+      developmentalStrengths
+    );
+
+    // 6. Multi-Factor Profile Confidence Engine
+    const confidenceMetrics = profileConfidenceService.calculateConfidence(
+      rawResponses,
+      vectorSummary.vector
+    );
+
+    // 7. Synthesis: Learning Profile Archetype, Exploration Directions, Growth Suggestions
     const learningProfile = profileGenerator.generateLearningProfile(
       interestResult,
       skillResult,
@@ -92,6 +108,10 @@ export class ScoringService {
       developmentalStrengths,
       explorationDirections,
       growthSuggestions,
+      profileVector: vectorSummary.vector,
+      profileConfidence: confidenceMetrics.level,
+      confidenceMetrics,
+      layerScores: vectorSummary.layerScores,
     };
   }
 

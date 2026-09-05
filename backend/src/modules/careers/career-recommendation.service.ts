@@ -3,7 +3,6 @@ import { logger } from "../../common/utils/logger";
 import { careerRepository } from "./career.repository";
 import { assessmentContentRepository } from "../assessments/assessment-content.repository";
 import {
-  CareerEntity,
   CareerMatchDTO,
   CareerDetailDTO,
   CareerMatchReasoning,

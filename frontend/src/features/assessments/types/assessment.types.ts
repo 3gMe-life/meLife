@@ -136,6 +136,47 @@ export interface LearningProfile {
   primaryTraits: string[];
 }
 
+export interface StudentProfileVector {
+  builder: number;
+  explorer: number;
+  creator: number;
+  helper: number;
+  leader: number;
+  organiser: number;
+  logical_problem_solving: number;
+  communication: number;
+  creative_thinking: number;
+  visual_spatial: number;
+  practical_technical: number;
+  social_teamwork: number;
+  leadership_initiative: number;
+  self_management: number;
+  pattern_logic: number;
+  numerical_reasoning: number;
+  verbal_reasoning: number;
+  spatial_reasoning: number;
+  practical_troubleshooting: number;
+  creative_performance: number;
+  social_judgment: number;
+  planning_estimation: number;
+  curiosity: number;
+  persistence: number;
+  adaptability: number;
+  initiative: number;
+  collaboration: number;
+  attention_to_detail: number;
+  learning_independence: number;
+}
+
+export interface ProfileConfidenceMetrics {
+  consistencyGap: number;
+  ratingBiasPercentage: number;
+  selfReportVsPerformanceGap: number;
+  totalItemsEvaluated: number;
+  level: "High Confidence" | "Moderate Confidence" | "Needs Further Exploration";
+  interpretation: string;
+}
+
 export interface SkillFinderResult {
   resultId: string;
   attemptId: string;
@@ -176,4 +217,14 @@ export interface SkillFinderResult {
   };
   explorationDirections: ExplorationDirection[];
   growthSuggestions: string[];
+  profileVector?: StudentProfileVector;
+  profileConfidence?: string;
+  confidenceMetrics?: ProfileConfidenceMetrics;
+  layerScores?: {
+    interestScore: number;
+    skillScore: number;
+    aptitudeScore: number;
+    developmentScore: number;
+    overallProfileScore: number;
+  };
 }

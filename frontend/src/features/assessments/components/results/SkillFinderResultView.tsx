@@ -4,7 +4,11 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { SkillFinderResult } from "../../types/assessment.types";
 import { SUPPORTED_LANGUAGES } from "../../config/assessment-i18n.config";
-import { Sparkles, Compass, Lightbulb, Target, Brain, Activity, Globe, Printer, BookOpen, ArrowRight } from "lucide-react";
+import { Sparkles, Compass, Lightbulb, Target, Brain, Activity, Globe, Printer, BookOpen, ArrowRight, ShieldCheck, Zap, Award } from "lucide-react";
+import { ProfileDimensionCard } from "./ProfileDimensionCard";
+import { InterestChart } from "./InterestChart";
+import { StrengthCard } from "./StrengthCard";
+import { DevelopmentCard } from "./DevelopmentCard";
 
 interface SkillFinderResultViewProps {
   result: SkillFinderResult;
@@ -73,8 +77,15 @@ export function SkillFinderResultView({
     interpretation: "",
   };
 
+  const profileConfidence =
+    result.profileConfidence ||
+    result.confidenceMetrics?.level ||
+    responseQuality.consistencySignal;
+
   const topInterestClusters = interestDiscovery.topClusters || [];
   const strongestSkills = skillBehaviour.strongestIndicators || [];
+  const topDevStrengths = developmentalStrengths.topStrengths || [];
+  const devGrowthAreas = skillBehaviour.developmentOpportunities || [];
 
   const growthSuggestions =
     result.growthSuggestions && result.growthSuggestions.length > 0
@@ -118,8 +129,8 @@ export function SkillFinderResultView({
             <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white">
               {result.versionName || "Skill Finder Assessment Report"}
             </h1>
-            <p className="text-slate-300 text-xs sm:text-sm max-w-2xl leading-relaxed">
-              Multidimensional profile evaluating vocational interest orientations (RIASEC), self-reported skill behaviours, demonstrated cognitive aptitude, and developmental strengths.
+            <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+              Standardized 29-dimension psychometric profile evaluating interests (25%), skill behaviours (30%), cognitive aptitude (25%), and developmental habits (20%).
             </p>
           </div>
 
@@ -168,10 +179,10 @@ export function SkillFinderResultView({
         {/* Status Metrics Bar */}
         <div className="mt-8 pt-6 border-t border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10">
-            <span className="text-slate-400 block mb-0.5">Reliability Signal:</span>
+            <span className="text-slate-400 block mb-0.5">Profile Confidence:</span>
             <span className="font-bold text-[#00BFA5] text-sm flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              {responseQuality.consistencySignal}
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              {profileConfidence}
             </span>
           </div>
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10">
@@ -189,7 +200,7 @@ export function SkillFinderResultView({
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10">
             <span className="text-slate-400 block mb-0.5">Guidance Framework:</span>
             <span className="font-semibold text-slate-200 text-sm">
-              Multidimensional Construct Model
+              29-Dimension Construct Model
             </span>
           </div>
         </div>
@@ -267,97 +278,24 @@ export function SkillFinderResultView({
       {/* 4. TAB 1: EXECUTIVE OVERVIEW */}
       {(activeTab === "overview" || typeof window === "undefined") && (
         <div className="space-y-8">
-          {/* Top 3 Interest Clusters */}
-          <div className="bg-surface-elevated border border-border-default rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
-            <div>
-              <h3 className="text-lg font-bold text-text-primary">
-                Top 3 Vocational Interest Orientations
-              </h3>
-              <p className="text-xs text-text-secondary mt-1">
-                Primary vocational affinities identified through self-reported activity preferences across the 6 RIASEC domains.
-              </p>
-            </div>
+          {/* Interest Distribution Visualizer */}
+          <InterestChart
+            dimensions={interestDiscovery.dimensions}
+            profileVector={result.profileVector}
+          />
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {topInterestClusters.map((cluster, idx) => (
-                <div
-                  key={cluster.code}
-                  className="relative rounded-2xl p-5 border-2 border-[#00BFA5]/20 bg-primary-50/40 dark:bg-primary-950/20 flex flex-col justify-between"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="w-8 h-8 rounded-xl bg-[#00BFA5] text-[#172B2A] font-extrabold text-sm flex items-center justify-center">
-                      #{idx + 1}
-                    </span>
-                    <span className="text-lg font-black text-[#008F83] dark:text-[#00BFA5]">
-                      {cluster.scalePositionPercentage}%
-                    </span>
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-text-primary text-base mb-1">
-                      {cluster.name}
-                    </h4>
-                    <p className="text-xs text-text-secondary leading-relaxed line-clamp-3">
-                      {cluster.clusterTitle}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 2-Column Pillars Summary Grid */}
+          {/* 2-Column Pillars Summary Grid: Strengths & Growth Areas */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Skill Strengths */}
-            <div className="bg-surface-elevated border border-border-default rounded-3xl p-6 shadow-sm">
-              <h3 className="text-base font-bold text-text-primary mb-4 flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#00BFA5]" />
-                Strongest Skill Behaviours
-              </h3>
-              <div className="space-y-4">
-                {strongestSkills.map((item) => (
-                  <div key={item.code} className="space-y-1.5">
-                    <div className="flex justify-between text-xs font-semibold text-text-primary">
-                      <span>{item.name}</span>
-                      <span className="text-[#008F83] dark:text-[#00BFA5] font-bold">
-                        {item.scalePositionPercentage}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-surface-muted h-2 rounded-full overflow-hidden">
-                      <div
-                        className="bg-[#00BFA5] h-full rounded-full transition-all"
-                        style={{ width: `${item.scalePositionPercentage}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Demonstrated Aptitude Accuracy */}
-            <div className="bg-surface-elevated border border-border-default rounded-3xl p-6 shadow-sm">
-              <h3 className="text-base font-bold text-text-primary mb-4 flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-teal-500" />
-                Demonstrated Task Aptitude
-              </h3>
-              <div className="space-y-4">
-                {(demonstratedAptitude.dimensions || []).slice(0, 4).map((item) => (
-                  <div key={item.code} className="space-y-1.5">
-                    <div className="flex justify-between text-xs font-semibold text-text-primary">
-                      <span>{item.name}</span>
-                      <span className="text-teal-600 dark:text-teal-400 font-bold">
-                        {item.scalePositionPercentage}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-surface-muted h-2 rounded-full overflow-hidden">
-                      <div
-                        className="bg-teal-500 h-full rounded-full transition-all"
-                        style={{ width: `${item.scalePositionPercentage}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <StrengthCard
+              strengths={strongestSkills}
+              title="Top Skill Strengths"
+              subtitle="Demonstrated high-performing behavioral capabilities"
+            />
+            <DevelopmentCard
+              developmentAreas={devGrowthAreas}
+              title="Emerging Growth Opportunities"
+              subtitle="Target areas for experiential enrichment"
+            />
           </div>
         </div>
       )}

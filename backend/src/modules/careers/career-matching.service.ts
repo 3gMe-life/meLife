@@ -122,7 +122,6 @@ export class CareerMatchingService {
     // ========================================================================
     const targetArchetypes = career.related_dimensions?.archetypes || [];
     const studentArchetype = result.learningProfile?.archetypeTitle || "Practical Explorer";
-    const studentTagline = result.learningProfile?.tagline || "";
 
     let personalityScore = 70;
     const hasDirectArchetypeMatch = targetArchetypes.some(

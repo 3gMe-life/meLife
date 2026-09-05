@@ -81,7 +81,7 @@ export class AssessmentController {
         throw AppError.badRequest("Attempt ID is required", "ATTEMPT_ID_REQUIRED");
       }
 
-      const rawLang = req.query.language || req.headers["accept-language"] || "en";
+      const rawLang = req.query.language || req.query.lang || req.headers["accept-language"] || "en";
       const language = Array.isArray(rawLang) ? String(rawLang[0]) : String(rawLang);
 
       const data = await assessmentRunnerService.getAttemptQuestions(userId, attemptId, language);

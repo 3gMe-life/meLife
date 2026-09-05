@@ -38,6 +38,8 @@ export interface DemonstratedAptitudeResult {
 export interface DevelopmentalStrengthsResult {
   topStrengths: ScoredDimensionItem[];
   dimensions: ScoredDimensionItem[];
+  developmentOpportunities?: ScoredDimensionItem[];
+  growthAreas?: string[];
 }
 
 export interface ResponseQualityResult {
@@ -62,6 +64,9 @@ export interface LearningProfileResult {
   primaryTraits: string[];
 }
 
+import { StudentProfileVector, ProfileVectorSummary } from "./skill-finder/profile-vector.service";
+import { ProfileConfidenceMetrics } from "./skill-finder/confidence.service";
+
 export interface SkillFinderFullResultDTO {
   resultId: string;
   attemptId: string;
@@ -80,6 +85,10 @@ export interface SkillFinderFullResultDTO {
   developmentalStrengths: DevelopmentalStrengthsResult;
   explorationDirections: ExplorationDirectionItem[];
   growthSuggestions: string[];
+  profileVector?: StudentProfileVector;
+  profileConfidence?: string;
+  confidenceMetrics?: ProfileConfidenceMetrics;
+  layerScores?: ProfileVectorSummary["layerScores"];
 }
 
 export interface RawResponseItem {

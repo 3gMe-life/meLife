@@ -149,6 +149,9 @@ export class AssessmentContentRepository {
         profile_type VARCHAR(100) NULL,
         summary TEXT NULL,
         dimension_scores JSONB NULL,
+        profile_vector JSONB NULL,
+        profile_confidence VARCHAR(50) NULL,
+        confidence_metrics JSONB NULL,
         result_data JSONB NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -157,6 +160,9 @@ export class AssessmentContentRepository {
       ALTER TABLE assessment_results ADD COLUMN IF NOT EXISTS profile_type VARCHAR(100) NULL;
       ALTER TABLE assessment_results ADD COLUMN IF NOT EXISTS summary TEXT NULL;
       ALTER TABLE assessment_results ADD COLUMN IF NOT EXISTS dimension_scores JSONB NULL;
+      ALTER TABLE assessment_results ADD COLUMN IF NOT EXISTS profile_vector JSONB NULL;
+      ALTER TABLE assessment_results ADD COLUMN IF NOT EXISTS profile_confidence VARCHAR(50) NULL;
+      ALTER TABLE assessment_results ADD COLUMN IF NOT EXISTS confidence_metrics JSONB NULL;
 
       -- 10. Question Translations (Multilingual Engine)
       CREATE TABLE IF NOT EXISTS question_translations (
@@ -192,6 +198,18 @@ export class AssessmentContentRepository {
         UNIQUE(section_id, language_code)
       );
 
+      -- 13. Dimension Translations (Multilingual Engine)
+      CREATE TABLE IF NOT EXISTS dimension_translations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        dimension_id UUID NOT NULL REFERENCES assessment_dimensions(id) ON DELETE CASCADE,
+        language_code VARCHAR(10) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        description TEXT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(dimension_id, language_code)
+      );
+
       -- Indexes for fast query retrieval & translations
       CREATE INDEX IF NOT EXISTS idx_questions_assessment_id ON assessment_questions(assessment_id);
       CREATE INDEX IF NOT EXISTS idx_questions_section_id ON assessment_questions(section_id);
@@ -202,6 +220,7 @@ export class AssessmentContentRepository {
       CREATE INDEX IF NOT EXISTS idx_q_trans_lookup ON question_translations(question_id, language_code);
       CREATE INDEX IF NOT EXISTS idx_opt_trans_lookup ON option_translations(option_id, language_code);
       CREATE INDEX IF NOT EXISTS idx_sec_trans_lookup ON section_translations(section_id, language_code);
+      CREATE INDEX IF NOT EXISTS idx_dim_trans_lookup ON dimension_translations(dimension_id, language_code);
     `;
     await db.query(query);
     logger.info("📦 Assessment runner database schema initialized and verified.");
@@ -476,7 +495,8 @@ export class AssessmentContentRepository {
            q.question_type, q.image_url, vq.is_required,
            s.code as section_code,
            COALESCE(st.name, s.name) as section_name,
-           d.code as dimension_code, d.name as dimension_name,
+           d.code as dimension_code,
+           COALESCE(dt.name, d.name) as dimension_name,
            r.selected_option_id as current_selected_option_id,
            r.response_value as current_response_value,
            COALESCE(
@@ -496,12 +516,13 @@ export class AssessmentContentRepository {
          JOIN assessment_sections s ON q.section_id = s.id
          LEFT JOIN section_translations st ON s.id = st.section_id AND st.language_code = $3
          LEFT JOIN assessment_dimensions d ON q.dimension_id = d.id
+         LEFT JOIN dimension_translations dt ON d.id = dt.dimension_id AND dt.language_code = $3
          LEFT JOIN question_options o ON q.id = o.question_id
          LEFT JOIN option_translations ot ON o.id = ot.option_id AND ot.language_code = $3
          LEFT JOIN assessment_responses r ON q.id = r.question_id AND r.attempt_id = $1
          WHERE vq.version_id = $2
          GROUP BY q.id, vq.display_order, q.question_text, qt.question_text, q.question_type, q.image_url, vq.is_required,
-                  s.code, s.name, st.name, d.code, d.name, r.selected_option_id, r.response_value
+                  s.code, s.name, st.name, d.code, d.name, dt.name, r.selected_option_id, r.response_value
          ORDER BY vq.display_order ASC`
       : `SELECT
            q.id, q.question_number,
@@ -509,7 +530,8 @@ export class AssessmentContentRepository {
            q.question_type, q.image_url, q.is_required,
            s.code as section_code,
            COALESCE(st.name, s.name) as section_name,
-           d.code as dimension_code, d.name as dimension_name,
+           d.code as dimension_code,
+           COALESCE(dt.name, d.name) as dimension_name,
            r.selected_option_id as current_selected_option_id,
            r.response_value as current_response_value,
            COALESCE(
@@ -528,12 +550,13 @@ export class AssessmentContentRepository {
          JOIN assessment_sections s ON q.section_id = s.id
          LEFT JOIN section_translations st ON s.id = st.section_id AND st.language_code = $3
          LEFT JOIN assessment_dimensions d ON q.dimension_id = d.id
+         LEFT JOIN dimension_translations dt ON d.id = dt.dimension_id AND dt.language_code = $3
          LEFT JOIN question_options o ON q.id = o.question_id
          LEFT JOIN option_translations ot ON o.id = ot.option_id AND ot.language_code = $3
          LEFT JOIN assessment_responses r ON q.id = r.question_id AND r.attempt_id = $1
          WHERE q.assessment_id = $2
          GROUP BY q.id, q.question_number, q.question_text, qt.question_text, q.question_type, q.image_url, q.is_required,
-                  s.code, s.name, st.name, d.code, d.name, r.selected_option_id, r.response_value
+                  s.code, s.name, st.name, d.code, d.name, dt.name, r.selected_option_id, r.response_value
          ORDER BY q.display_order ASC`;
 
     const qParams = hasVersion
@@ -714,6 +737,10 @@ export class AssessmentContentRepository {
 
     const profileType = resultData?.learningProfile?.archetypeTitle || null;
     const summary = resultData?.learningProfile?.strengthSummary || null;
+    const profileVector = resultData?.profileVector || null;
+    const profileConfidence = resultData?.profileConfidence || resultData?.confidence?.level || resultData?.responseQuality?.consistencySignal || null;
+    const confidenceMetrics = resultData?.confidenceMetrics || resultData?.confidence || resultData?.responseQuality || null;
+
     const dimensionScores = {
       interest: resultData?.interestDiscovery?.dimensions || [],
       skills: resultData?.skillBehaviour?.dimensions || [],
@@ -722,12 +749,15 @@ export class AssessmentContentRepository {
     };
 
     const res = await db.query(
-      `INSERT INTO assessment_results (attempt_id, participant_id, assessment_code, profile_type, summary, dimension_scores, result_data, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+      `INSERT INTO assessment_results (attempt_id, participant_id, assessment_code, profile_type, summary, dimension_scores, profile_vector, profile_confidence, confidence_metrics, result_data, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
        ON CONFLICT (attempt_id) DO UPDATE SET
          profile_type = EXCLUDED.profile_type,
          summary = EXCLUDED.summary,
          dimension_scores = EXCLUDED.dimension_scores,
+         profile_vector = EXCLUDED.profile_vector,
+         profile_confidence = EXCLUDED.profile_confidence,
+         confidence_metrics = EXCLUDED.confidence_metrics,
          result_data = EXCLUDED.result_data,
          updated_at = NOW()
        RETURNING id`,
@@ -738,6 +768,9 @@ export class AssessmentContentRepository {
         profileType,
         summary,
         JSON.stringify(dimensionScores),
+        profileVector ? JSON.stringify(profileVector) : null,
+        profileConfidence,
+        confidenceMetrics ? JSON.stringify(confidenceMetrics) : null,
         JSON.stringify(resultData),
       ]
     );
@@ -755,14 +788,14 @@ export class AssessmentContentRepository {
     const db = client || pool;
     const res = await db.query(
       `SELECT r.id, r.attempt_id, r.participant_id, r.assessment_code, r.profile_type, r.summary,
-              r.dimension_scores, r.result_data, r.created_at,
+              r.dimension_scores, r.profile_vector, r.profile_confidence, r.confidence_metrics,
+              r.result_data, r.created_at,
               a.started_at, a.completed_at,
               u.first_name, u.last_name, u.email
        FROM assessment_results r
        JOIN assessment_attempts a ON r.attempt_id = a.id
        JOIN users u ON r.participant_id = u.id
-       WHERE (r.id = $1 OR r.attempt_id = $1)
-       LIMIT 1`,
+       WHERE r.id = $1 OR r.attempt_id = $1`,
       [resultId]
     );
     return res.rows[0] || null;

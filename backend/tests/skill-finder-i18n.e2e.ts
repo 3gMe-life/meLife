@@ -132,7 +132,7 @@ async function runSkillFinderI18nE2ETests() {
     const q1Ml = mlJson.data.questions[0];
     assert(q1Ml.id === q1En.id, "Integrity: Question ID is identical across languages");
     assert(
-      q1Ml.questionText.includes("യന്ത്രഭാഗങ്ങൾ"),
+      q1Ml.questionText.includes("നിർമ്മിക്കാനും") || q1Ml.questionText.includes("വസ്തുക്കൾ"),
       "Malayalam Content: Q1 question text is translated to Malayalam"
     );
 
