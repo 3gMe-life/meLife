@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { CareerMatchDTO } from "../types/career.types";
 import { CareerCard } from "./CareerCard";
+import { CareerDetailModal } from "./CareerDetailModal";
 
 interface CareerPathwaysListViewProps {
   recommendations: CareerMatchDTO[];
@@ -39,6 +40,7 @@ export function CareerPathwaysListView({
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [sortBy, setSortBy] = useState<"match" | "title">("match");
+  const [previewCareer, setPreviewCareer] = useState<CareerMatchDTO | null>(null);
 
   const activeLangConfig =
     SUPPORTED_LANGUAGES.find((l) => l.code === currentLanguage) || SUPPORTED_LANGUAGES[0];
@@ -85,7 +87,7 @@ export function CareerPathwaysListView({
             <div className="flex items-center gap-2">
               <span className="px-3.5 py-1 rounded-full text-[11px] font-black tracking-wider uppercase bg-[#00BFA5]/20 text-[#00BFA5] border border-[#00BFA5]/30 flex items-center gap-1.5 shadow-sm">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>{isAssessed ? "AI Mapped" : "Career Exploration"}</span>
+                <span>{isAssessed ? "AI Mapped Pathways" : "Career Exploration"}</span>
               </span>
               <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-white/10 text-white/90 border border-white/15">
                 {recommendations.length} Pathways Available
@@ -224,10 +226,21 @@ export function CareerPathwaysListView({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCareers.map((career) => (
-            <CareerCard key={career.id || career.slug} career={career} />
+            <CareerCard
+              key={career.id || career.slug}
+              career={career}
+              onQuickView={(c) => setPreviewCareer(c)}
+            />
           ))}
         </div>
       )}
+
+      {/* Quick View Modal */}
+      <CareerDetailModal
+        career={previewCareer}
+        isOpen={Boolean(previewCareer)}
+        onClose={() => setPreviewCareer(null)}
+      />
     </div>
   );
 }

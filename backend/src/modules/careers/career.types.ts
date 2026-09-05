@@ -45,6 +45,13 @@ export interface CareerMatchReasoning {
   alignmentNote: string;
 }
 
+export interface MatchPillarBreakdown {
+  interestScore: number;
+  skillScore: number;
+  aptitudeScore: number;
+  personalityScore: number;
+}
+
 export interface CareerMatchDTO {
   id: string;
   slug: string;
@@ -56,6 +63,9 @@ export interface CareerMatchDTO {
   matchPercentage: number;
   keySkills: string[];
   reasoning: CareerMatchReasoning;
+  strengthAlignment?: string[];
+  developmentAreas?: string[];
+  matchBreakdown?: MatchPillarBreakdown;
 }
 
 export interface CareerDetailDTO extends CareerMatchDTO {

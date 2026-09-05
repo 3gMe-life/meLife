@@ -63,7 +63,12 @@ export function DashboardSidebar({
               {section.items.map((item) => {
                 const isActive = item.isExact
                   ? pathname === item.href
-                  : pathname === item.href || pathname.startsWith(`${item.href}/`);
+                  : pathname === item.href ||
+                    pathname.startsWith(`${item.href}/`) ||
+                    (item.id === "reports" && (pathname.startsWith("/participant/career-reports") || pathname.startsWith("/participant/reports"))) ||
+                    (item.id === "pathways" && (pathname.startsWith("/participant/career-pathways") || pathname.startsWith("/participant/pathways"))) ||
+                    (item.id === "counsellor" && (pathname.startsWith("/participant/counsellors") || pathname.startsWith("/participant/counsellor"))) ||
+                    (item.id === "students" && pathname.startsWith("/counsellor/students"));
 
                 return (
                   <Link

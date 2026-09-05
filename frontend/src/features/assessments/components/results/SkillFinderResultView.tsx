@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { SkillFinderResult } from "../../types/assessment.types";
 import { SUPPORTED_LANGUAGES } from "../../config/assessment-i18n.config";
-import { Sparkles, Compass, Lightbulb, Target, Brain, Activity, Globe, Printer, BookOpen } from "lucide-react";
+import { Sparkles, Compass, Lightbulb, Target, Brain, Activity, Globe, Printer, BookOpen, ArrowRight } from "lucide-react";
 
 interface SkillFinderResultViewProps {
   result: SkillFinderResult;
@@ -600,6 +600,37 @@ export function SkillFinderResultView({
                 <li key={sIdx}>{sug}</li>
               ))}
             </ul>
+          </div>
+
+          {/* Integrated Career Guidance & Exploration Banner */}
+          <div className="rounded-3xl bg-gradient-to-r from-slate-900 via-[#0B1E1D] to-slate-900 border border-teal-500/30 p-6 sm:p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
+            <div className="space-y-2 max-w-xl">
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-teal-500/20 px-3 py-1 text-xs font-bold text-teal-300 border border-teal-500/40">
+                <span>✦</span> Ready for Next Stage
+              </div>
+              <h3 className="text-lg sm:text-xl font-bold text-white">
+                Unlock Your 10-Section Career Guidance Report & Pathway Matches
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                Your psychometric scores have been mapped into ranked career exploration pathways, educational roadmaps, and certified counsellor consultation summaries.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 w-full md:w-auto">
+              <Link
+                href="/participant/career-reports"
+                className="w-full sm:w-auto px-5 py-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs md:text-sm transition-all shadow-md flex items-center justify-center gap-2"
+              >
+                <span>View Full Career Report</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link
+                href="/participant/pathways"
+                className="w-full sm:w-auto px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs md:text-sm transition-all flex items-center justify-center gap-2"
+              >
+                <span>Explore Careers</span>
+              </Link>
+            </div>
           </div>
         </div>
       )}

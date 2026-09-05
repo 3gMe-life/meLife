@@ -99,7 +99,11 @@ async function runSkillFinderE2ETests() {
 
     const startRes = await fetch(`${baseUrl}/assessments/SKILL_FINDER/start`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${student1.token}` },
+      headers: {
+        Authorization: `Bearer ${student1.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ versionCode: "ADVANCED_COMPREHENSIVE" }),
     });
     const startData = await startRes.json();
     assert(

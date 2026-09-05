@@ -8,6 +8,7 @@ import { assessmentController } from "../modules/assessments/assessment.controll
 import { scoringRouter } from "../modules/scoring/scoring.routes";
 import { reportRouter } from "../modules/reports/report.routes";
 import { careerRouter } from "../modules/careers/career.routes";
+import { careerReportRouter } from "../modules/careers/reports/career-report.routes";
 import { counsellorsRouter, counsellingRouter, notificationRouter } from "../modules/counselling/counselling.routes";
 import { authenticate } from "../middleware/authenticate.middleware";
 import { requireRole } from "../middleware/authorization.middleware";
@@ -35,6 +36,9 @@ apiRouter.use("/reports", reportRouter);
 
 // Mount career pathways module routes (/api/v1/careers)
 apiRouter.use("/careers", careerRouter);
+
+// Mount career exploration reports module routes (/api/v1/career-reports)
+apiRouter.use("/career-reports", careerReportRouter);
 
 // Mount counsellor directory & connect routes (/api/v1/counsellors & /api/v1/counselling)
 apiRouter.use("/counsellors", counsellorsRouter);

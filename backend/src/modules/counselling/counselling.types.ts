@@ -180,5 +180,15 @@ export interface StudentPsychometricSummaryDTO {
     title: string;
     category: string;
     matchPercentage: number;
+    reasoning?: string;
+    strengthAlignment?: string[];
+    developmentAreas?: string[];
   }>;
+  matchingReasons?: string[];
+  strengthAreas?: string[];
+  developmentAreas?: string[];
+  parentGuidanceSummary?: {
+    interests: string[];
+    suggestedExplorations: string[];
+  };
 }

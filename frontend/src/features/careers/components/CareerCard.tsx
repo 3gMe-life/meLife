@@ -6,17 +6,18 @@ import {
   TrendingUp,
   ArrowRight,
   Sparkles,
-  Zap,
+  Eye,
 } from "lucide-react";
 import { CareerMatchDTO } from "../types/career.types";
+import { MatchScore } from "./MatchScore";
+import { SkillTags } from "./SkillTags";
 
 interface CareerCardProps {
   career: CareerMatchDTO;
+  onQuickView?: (career: CareerMatchDTO) => void;
 }
 
-export function CareerCard({ career }: CareerCardProps) {
-  const isTopMatch = career.matchPercentage >= 88;
-
+export function CareerCard({ career, onQuickView }: CareerCardProps) {
   // Determine Growth styling
   const growthColor =
     career.futureGrowth === "Very High"
@@ -37,16 +38,7 @@ export function CareerCard({ career }: CareerCardProps) {
             {career.category}
           </span>
 
-          <div
-            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black shadow-sm ${
-              isTopMatch
-                ? "bg-gradient-to-r from-[#00B8D4] to-[#00BFA5] text-[#172B2A]"
-                : "bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5] border border-[#00BFA5]/30"
-            }`}
-          >
-            {isTopMatch && <Sparkles className="w-3 h-3 text-[#172B2A]" />}
-            <span>{career.matchPercentage}% Match</span>
-          </div>
+          <MatchScore score={career.matchPercentage} size="sm" />
         </div>
 
         {/* Title & Industry */}
@@ -69,16 +61,7 @@ export function CareerCard({ career }: CareerCardProps) {
           <span className="text-[10px] font-black uppercase tracking-wider text-[#728B88] dark:text-[#7D9491] block">
             Core Skill Affinities:
           </span>
-          <div className="flex flex-wrap gap-1.5">
-            {career.keySkills.slice(0, 4).map((skill, idx) => (
-              <span
-                key={idx}
-                className="px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 text-[#172B2A] dark:text-[#F7FAF9]"
-              >
-                {skill}
-              </span>
-            ))}
-          </div>
+          <SkillTags skills={career.keySkills || []} maxVisible={4} />
         </div>
       </div>
 
@@ -94,14 +77,28 @@ export function CareerCard({ career }: CareerCardProps) {
           </div>
         </div>
 
-        {/* CTA Button */}
-        <Link
-          href={`/participant/career-pathways/${career.slug || career.id}`}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#F4F8F7] dark:bg-white/10 group-hover:bg-[#00BFA5] text-[#172B2A] dark:text-white group-hover:text-[#172B2A] text-xs font-black transition-all cursor-pointer shadow-sm group-hover:shadow-md group-hover:shadow-[#00BFA5]/25"
-        >
-          <span>Explore</span>
-          <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-        </Link>
+        {/* Actions: Quick View + Explore */}
+        <div className="flex items-center gap-2">
+          {onQuickView && (
+            <button
+              type="button"
+              onClick={() => onQuickView(career)}
+              className="p-2 rounded-xl bg-[#F4F8F7] dark:bg-white/5 hover:bg-[#00BFA5]/20 text-[#526866] dark:text-[#9FB3B0] hover:text-[#008F83] dark:hover:text-[#00BFA5] transition-colors cursor-pointer shadow-2xs"
+              title="Quick preview"
+              aria-label="Quick preview career"
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+          )}
+
+          <Link
+            href={`/participant/career-pathways/${career.slug || career.id}`}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#F4F8F7] dark:bg-white/10 group-hover:bg-[#00BFA5] text-[#172B2A] dark:text-white group-hover:text-[#172B2A] text-xs font-black transition-all cursor-pointer shadow-sm group-hover:shadow-md group-hover:shadow-[#00BFA5]/25"
+          >
+            <span>Explore</span>
+            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+          </Link>
+        </div>
       </div>
     </div>
   );

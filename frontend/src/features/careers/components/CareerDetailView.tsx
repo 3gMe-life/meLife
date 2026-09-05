@@ -16,8 +16,14 @@ import {
   Share2,
   Layers,
   ChevronRight,
+  Target,
+  Brain,
+  Award,
+  Zap,
+  ShieldCheck,
 } from "lucide-react";
 import { CareerDetailDTO } from "../types/career.types";
+import { MatchScore } from "./MatchScore";
 
 interface CareerDetailViewProps {
   career: CareerDetailDTO;
@@ -102,16 +108,7 @@ export function CareerDetailView({
               {career.industry}
             </span>
 
-            <div
-              className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-black shadow-sm ${
-                isTopMatch
-                  ? "bg-gradient-to-r from-[#00B8D4] to-[#00BFA5] text-[#172B2A]"
-                  : "bg-[#00BFA5]/20 text-[#00BFA5] border border-[#00BFA5]/30"
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>{career.matchPercentage}% Profile Match</span>
-            </div>
+            <MatchScore score={career.matchPercentage} size="md" showLabel={true} />
 
             <div
               className={`px-3 py-1 rounded-full text-[11px] font-bold border flex items-center gap-1.5 ${growthColor}`}
@@ -133,58 +130,183 @@ export function CareerDetailView({
         </div>
       </div>
 
-      {/* 3. Psychometric Match Reasoning Card ("Why This Matches You") */}
-      {career.reasoning && (
-        <div className="relative rounded-3xl bg-gradient-to-br from-white to-[#F4F8F7] dark:from-[#172B2A] dark:to-[#122221] border border-[#00BFA5]/40 p-6 sm:p-8 shadow-md">
-          <div className="flex items-center gap-2.5 mb-4">
-            <div className="w-8 h-8 rounded-xl bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5] flex items-center justify-center">
-              <Sparkles className="w-4 h-4" />
+      {/* 3. Psychometric Match Reasoning Card ("Why This Matches You") & 4-Pillar Score Breakdown */}
+      <div className="space-y-6">
+        {career.reasoning && (
+          <div className="relative rounded-3xl bg-gradient-to-br from-white to-[#F4F8F7] dark:from-[#172B2A] dark:to-[#122221] border border-[#00BFA5]/40 p-6 sm:p-8 shadow-md">
+            <div className="flex items-center gap-2.5 mb-4">
+              <div className="w-8 h-8 rounded-xl bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5] flex items-center justify-center">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-base sm:text-lg font-black text-[#172B2A] dark:text-[#F7FAF9]">
+                  Why This Career Pathway Matches Your Profile
+                </h2>
+                <p className="text-[11px] text-[#728B88] dark:text-[#7D9491]">
+                  Scientifically computed psychometric alignment across Interests, Skills, Aptitudes, and Personality
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-black text-[#172B2A] dark:text-[#F7FAF9]">
-                Why This Career Pathway Matches Your Profile
-              </h2>
-              <p className="text-[11px] text-[#728B88] dark:text-[#7D9491]">
-                Psychometric alignment derived from your Skill Finder assessment results
+
+            <div className="space-y-5">
+              <p className="text-xs sm:text-sm text-[#526866] dark:text-[#C2D6D3] leading-relaxed">
+                {career.reasoning.summary}
               </p>
-            </div>
-          </div>
 
-          <div className="space-y-4">
-            <p className="text-xs sm:text-sm text-[#526866] dark:text-[#C2D6D3] leading-relaxed">
-              {career.reasoning.summary}
-            </p>
-
-            {career.reasoning.topMatchingFactors &&
-              career.reasoning.topMatchingFactors.length > 0 && (
-                <div className="space-y-2 pt-2">
-                  <span className="text-[11px] font-black uppercase tracking-wider text-[#728B88] dark:text-[#7D9491] block">
-                    Assessed Strength Alignments:
-                  </span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {career.reasoning.topMatchingFactors.map((factor, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-start gap-2 p-2.5 rounded-xl bg-white dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10"
-                      >
-                        <CheckCircle2 className="w-4 h-4 text-[#00BFA5] shrink-0 mt-0.5" />
-                        <span className="text-xs font-semibold text-[#172B2A] dark:text-[#F7FAF9]">
-                          {factor}
+              {/* 4-Pillar Breakdown Visualizer */}
+              {career.matchBreakdown && (
+                <div className="pt-2 border-t border-[#E3ECEA] dark:border-white/10">
+                  <div className="text-[11px] font-black uppercase tracking-wider text-[#728B88] dark:text-[#7D9491] mb-3">
+                    Multi-Dimensional Match Breakdown (4-Pillar Model):
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {/* Pillar 1: Interest */}
+                    <div className="p-3.5 rounded-2xl bg-white dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10">
+                      <div className="flex items-center justify-between text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9] mb-1.5">
+                        <span className="flex items-center gap-1.5">
+                          <Compass className="w-3.5 h-3.5 text-[#00BFA5]" />
+                          RIASEC Interest
+                        </span>
+                        <span className="font-mono text-[#008F83] dark:text-[#00BFA5]">
+                          {career.matchBreakdown.interestScore}%
                         </span>
                       </div>
-                    ))}
+                      <div className="w-full bg-[#E3ECEA] dark:bg-white/10 h-2 rounded-full overflow-hidden mb-1">
+                        <div
+                          className="bg-[#00BFA5] h-full rounded-full transition-all duration-500"
+                          style={{ width: `${career.matchBreakdown.interestScore}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] text-[#728B88] dark:text-[#7D9491]">
+                        Weight: 30%
+                      </span>
+                    </div>
+
+                    {/* Pillar 2: Skills */}
+                    <div className="p-3.5 rounded-2xl bg-white dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10">
+                      <div className="flex items-center justify-between text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9] mb-1.5">
+                        <span className="flex items-center gap-1.5">
+                          <Zap className="w-3.5 h-3.5 text-[#00B8D4]" />
+                          Cognitive Skills
+                        </span>
+                        <span className="font-mono text-[#008F83] dark:text-[#00B8D4]">
+                          {career.matchBreakdown.skillScore}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-[#E3ECEA] dark:bg-white/10 h-2 rounded-full overflow-hidden mb-1">
+                        <div
+                          className="bg-[#00B8D4] h-full rounded-full transition-all duration-500"
+                          style={{ width: `${career.matchBreakdown.skillScore}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] text-[#728B88] dark:text-[#7D9491]">
+                        Weight: 30%
+                      </span>
+                    </div>
+
+                    {/* Pillar 3: Aptitude */}
+                    <div className="p-3.5 rounded-2xl bg-white dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10">
+                      <div className="flex items-center justify-between text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9] mb-1.5">
+                        <span className="flex items-center gap-1.5">
+                          <Brain className="w-3.5 h-3.5 text-indigo-500" />
+                          Aptitude Logic
+                        </span>
+                        <span className="font-mono text-indigo-600 dark:text-indigo-400">
+                          {career.matchBreakdown.aptitudeScore}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-[#E3ECEA] dark:bg-white/10 h-2 rounded-full overflow-hidden mb-1">
+                        <div
+                          className="bg-indigo-500 h-full rounded-full transition-all duration-500"
+                          style={{ width: `${career.matchBreakdown.aptitudeScore}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] text-[#728B88] dark:text-[#7D9491]">
+                        Weight: 25%
+                      </span>
+                    </div>
+
+                    {/* Pillar 4: Personality */}
+                    <div className="p-3.5 rounded-2xl bg-white dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10">
+                      <div className="flex items-center justify-between text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9] mb-1.5">
+                        <span className="flex items-center gap-1.5">
+                          <Award className="w-3.5 h-3.5 text-amber-500" />
+                          Personality / Style
+                        </span>
+                        <span className="font-mono text-amber-600 dark:text-amber-400">
+                          {career.matchBreakdown.personalityScore}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-[#E3ECEA] dark:bg-white/10 h-2 rounded-full overflow-hidden mb-1">
+                        <div
+                          className="bg-amber-500 h-full rounded-full transition-all duration-500"
+                          style={{ width: `${career.matchBreakdown.personalityScore}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] text-[#728B88] dark:text-[#7D9491]">
+                        Weight: 15%
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}
 
-            {career.reasoning.alignmentNote && (
-              <div className="p-3.5 rounded-xl bg-[#00BFA5]/10 border border-[#00BFA5]/20 text-[11px] text-[#008F83] dark:text-[#00BFA5] font-medium leading-relaxed">
-                💡 <span className="font-bold">Guidance Note:</span> {career.reasoning.alignmentNote}
+              {/* Strengths & Development Areas Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                {/* Strength Alignments */}
+                {(career.strengthAlignment || career.reasoning?.topMatchingFactors) && (
+                  <div className="p-4 rounded-2xl bg-white dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-2.5">
+                    <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>Key Strength Alignments</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {(career.strengthAlignment || career.reasoning?.topMatchingFactors || []).map(
+                        (factor, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-start gap-2 text-xs text-[#172B2A] dark:text-[#F7FAF9]"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                            <span>{factor}</span>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Development Areas */}
+                {career.developmentAreas && career.developmentAreas.length > 0 && (
+                  <div className="p-4 rounded-2xl bg-white dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-2.5">
+                    <div className="flex items-center gap-2 text-xs font-bold text-amber-700 dark:text-amber-400">
+                      <Target className="w-4 h-4" />
+                      <span>Growth & Development Targets</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {career.developmentAreas.map((area, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-start gap-2 text-xs text-[#172B2A] dark:text-[#F7FAF9]"
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mt-1.5" />
+                          <span>{area}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+
+              {career.reasoning.alignmentNote && (
+                <div className="p-3.5 rounded-xl bg-[#00BFA5]/10 border border-[#00BFA5]/20 text-[11px] text-[#008F83] dark:text-[#00BFA5] font-medium leading-relaxed">
+                  💡 <span className="font-bold">Guidance Note:</span> {career.reasoning.alignmentNote}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* 4. Two-Column Detailed Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

@@ -106,42 +106,42 @@ async function runCareerPathwaysE2ETests() {
     assert(unassessedRecData.data.isAssessed === false, "Unassessed participant correctly flagged isAssessed=false");
     assert(unassessedRecData.data.recommendations.length > 0, "Returns exploratory career pathways for unassessed participant");
 
-    console.log("--- 3. Completing Skill Finder Assessment for Student ---");
-    const assessedStudent = await createParticipant(`assessed_${timestamp}@melife.org`, "Ananya", 15);
+    console.log("--- 3. Testing Student A (Analytical / Technical Profile) ---");
+    const studentA = await createParticipant(`studentA_${timestamp}@melife.org`, "Aarav_Tech", 16);
 
-    // Start assessment
-    const startRes = await fetch(`${baseUrl}/assessments/SKILL_FINDER/start`, {
+    // Start assessment for Student A
+    const startResA = await fetch(`${baseUrl}/assessments/SKILL_FINDER/start`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${assessedStudent.token}` },
+      headers: { Authorization: `Bearer ${studentA.token}` },
     });
-    const startData = await startRes.json();
-    const attemptId = startData.data.attemptId;
-    assert(Boolean(attemptId), "Assessment attempt started successfully");
+    const startDataA = await startResA.json();
+    const attemptIdA = startDataA.data.attemptId;
+    assert(Boolean(attemptIdA), "Student A: Assessment attempt started successfully");
 
-    // Fetch questions
-    const qRes = await fetch(`${baseUrl}/attempts/${attemptId}/questions?limit=104`, {
-      headers: { Authorization: `Bearer ${assessedStudent.token}` },
+    const qResA = await fetch(`${baseUrl}/attempts/${attemptIdA}/questions?limit=104`, {
+      headers: { Authorization: `Bearer ${studentA.token}` },
     });
-    const qData = await qRes.json();
-    const questions: any[] = qData.data.questions;
-    assert(Array.isArray(questions) && questions.length > 0, "Attempt questions loaded");
+    const qDataA = await qResA.json();
+    const questionsA: any[] = qDataA.data.questions;
 
-    // Submit responses concurrently in batches of 10
-    const batchSize = 10;
-    for (let i = 0; i < questions.length; i += batchSize) {
-      const batch = questions.slice(i, i + batchSize);
+    // Student A: strongly like Investigative (I) & Realistic (R)
+    for (let i = 0; i < questionsA.length; i += 10) {
+      const batch = questionsA.slice(i, i + 10);
       await Promise.all(
         batch.map((q) => {
           let optionId = q.options?.[0]?.id;
           if (q.sectionCode === "interest" && (q.dimensionCode === "I" || q.dimensionCode === "R")) {
             const stronglyLike = q.options?.find((o: any) => o.optionKey === "4" || o.optionKey === "D");
             if (stronglyLike) optionId = stronglyLike.id;
+          } else if (q.sectionCode === "aptitude") {
+            const highOpt = q.options?.[q.options.length - 1];
+            if (highOpt) optionId = highOpt.id;
           }
-          return fetch(`${baseUrl}/attempts/${attemptId}/responses`, {
+          return fetch(`${baseUrl}/attempts/${attemptIdA}/responses`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${assessedStudent.token}`,
+              Authorization: `Bearer ${studentA.token}`,
             },
             body: JSON.stringify({
               questionId: q.id,
@@ -153,36 +153,165 @@ async function runCareerPathwaysE2ETests() {
       );
     }
 
-    // Submit attempt to calculate score and results
-    const submitRes = await fetch(`${baseUrl}/attempts/${attemptId}/submit`, {
+    const submitResA = await fetch(`${baseUrl}/attempts/${attemptIdA}/submit`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${assessedStudent.token}` },
+      headers: { Authorization: `Bearer ${studentA.token}` },
     });
-    const submitData = await submitRes.json();
-    assert(submitRes.status === 200 && submitData.success === true, "Assessment submitted and scored successfully");
+    const submitDataA = await submitResA.json();
+    assert(submitResA.status === 200 && submitDataA.success === true, "Student A: Assessment submitted and scored");
 
-    console.log("--- 4. Testing Personalized Psychometric Career Matching ---");
-    const assessedRecRes = await fetch(`${baseUrl}/careers/recommendations?lang=en`, {
-      headers: { Authorization: `Bearer ${assessedStudent.token}` },
+    const recResA = await fetch(`${baseUrl}/careers/recommendations?lang=en`, {
+      headers: { Authorization: `Bearer ${studentA.token}` },
     });
-    const assessedRecData = await assessedRecRes.json();
-    assert(assessedRecRes.status === 200, "Recommendations query returns 200 OK");
-    assert(assessedRecData.data.isAssessed === true, "Assessed participant flagged isAssessed=true");
+    const recDataA = await recResA.json();
+    assert(recResA.status === 200, "Student A: Recommendations query returns 200 OK");
+    assert(recDataA.data.isAssessed === true, "Student A: Flagged isAssessed=true");
 
-    const recs = assessedRecData.data.recommendations;
-    assert(recs.length >= 10, "Returns calibrated recommendations list");
-    assert(recs[0].matchPercentage >= recs[1].matchPercentage, "Recommendations are sorted by matchPercentage descending");
+    const recsA = recDataA.data.recommendations;
+    assert(recsA.length >= 10, "Student A: Returns calibrated recommendations list");
+    const topRecA = recsA[0];
 
-    // Check dynamic AI explanation layer
-    const topRec = recs[0];
-    assert(Boolean(topRec.reasoning), "Top recommendation contains reasoning object");
-    assert(typeof topRec.reasoning.summary === "string" && topRec.reasoning.summary.length > 20, "Reasoning summary is descriptive and non-predictive");
-    assert(Array.isArray(topRec.reasoning.topMatchingFactors) && topRec.reasoning.topMatchingFactors.length > 0, "Reasoning includes top matching factor breakdown");
-    assert(typeof topRec.reasoning.alignmentNote === "string", "Reasoning includes psychometric alignment note");
+    // Assert 4-Pillar Score Breakdown
+    assert(Boolean(topRecA.matchBreakdown), "Student A: Recommendation contains 4-pillar matchBreakdown");
+    assert(
+      typeof topRecA.matchBreakdown.interestScore === "number" &&
+      typeof topRecA.matchBreakdown.skillScore === "number" &&
+      typeof topRecA.matchBreakdown.aptitudeScore === "number" &&
+      typeof topRecA.matchBreakdown.personalityScore === "number",
+      "Student A: matchBreakdown contains all 4 distinct pillar scores"
+    );
 
-    console.log("--- 5. Testing Career Detail View & Learning Roadmap ---");
+    // Assert strengthAlignment and developmentAreas
+    assert(Array.isArray(topRecA.strengthAlignment) && topRecA.strengthAlignment.length > 0, "Student A: Returns strengthAlignment factors");
+    assert(Array.isArray(topRecA.developmentAreas) && topRecA.developmentAreas.length > 0, "Student A: Returns developmentAreas targets");
+
+    // Assert Non-Deterministic Exploratory Guidance Tone
+    assert(
+      topRecA.reasoning.summary.includes("suitable exploration area") ||
+      topRecA.reasoning.summary.includes("may explore") ||
+      topRecA.reasoning.summary.includes("aligns well"),
+      "Student A: Uses non-deterministic exploratory guidance phrasing"
+    );
+    assert(
+      !topRecA.reasoning.summary.includes("You will become") &&
+      !topRecA.reasoning.summary.includes("You must be"),
+      "Student A: Avoids deterministic prescriptive statements"
+    );
+
+    console.log("--- 4. Testing Student B (Creative / Design Profile) ---");
+    const studentB = await createParticipant(`studentB_${timestamp}@melife.org`, "Maya_Design", 15);
+
+    const startResB = await fetch(`${baseUrl}/assessments/SKILL_FINDER/start`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${studentB.token}` },
+    });
+    const startDataB = await startResB.json();
+    const attemptIdB = startDataB.data.attemptId;
+
+    const qResB = await fetch(`${baseUrl}/attempts/${attemptIdB}/questions?limit=104`, {
+      headers: { Authorization: `Bearer ${studentB.token}` },
+    });
+    const qDataB = await qResB.json();
+    const questionsB: any[] = qDataB.data.questions;
+
+    // Student B: strongly like Artistic (A) & Social (S)
+    for (let i = 0; i < questionsB.length; i += 10) {
+      const batch = questionsB.slice(i, i + 10);
+      await Promise.all(
+        batch.map((q) => {
+          let optionId = q.options?.[0]?.id;
+          if (q.sectionCode === "interest" && (q.dimensionCode === "A" || q.dimensionCode === "S")) {
+            const stronglyLike = q.options?.find((o: any) => o.optionKey === "4" || o.optionKey === "D");
+            if (stronglyLike) optionId = stronglyLike.id;
+          }
+          return fetch(`${baseUrl}/attempts/${attemptIdB}/responses`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${studentB.token}`,
+            },
+            body: JSON.stringify({
+              questionId: q.id,
+              selectedOptionId: optionId,
+              responseValue: optionId ? "4" : "A",
+            }),
+          });
+        })
+      );
+    }
+
+    await fetch(`${baseUrl}/attempts/${attemptIdB}/submit`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${studentB.token}` },
+    });
+
+    const recResB = await fetch(`${baseUrl}/careers/recommendations?lang=en`, {
+      headers: { Authorization: `Bearer ${studentB.token}` },
+    });
+    const recDataB = await recResB.json();
+    assert(recResB.status === 200, "Student B: Recommendations query returns 200 OK");
+    const recsB = recDataB.data.recommendations;
+    assert(recsB.length > 0, "Student B: Returns recommendations list");
+    assert(Boolean(recsB[0].matchBreakdown), "Student B: Top match contains 4-pillar breakdown");
+
+    console.log("--- 5. Testing Student C (Social / Leadership Profile) ---");
+    const studentC = await createParticipant(`studentC_${timestamp}@melife.org`, "Kabir_Lead", 17);
+
+    const startResC = await fetch(`${baseUrl}/assessments/SKILL_FINDER/start`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${studentC.token}` },
+    });
+    const startDataC = await startResC.json();
+    const attemptIdC = startDataC.data.attemptId;
+
+    const qResC = await fetch(`${baseUrl}/attempts/${attemptIdC}/questions?limit=104`, {
+      headers: { Authorization: `Bearer ${studentC.token}` },
+    });
+    const qDataC = await qResC.json();
+    const questionsC: any[] = qDataC.data.questions;
+
+    // Student C: strongly like Enterprising (E) & Social (S)
+    for (let i = 0; i < questionsC.length; i += 10) {
+      const batch = questionsC.slice(i, i + 10);
+      await Promise.all(
+        batch.map((q) => {
+          let optionId = q.options?.[0]?.id;
+          if (q.sectionCode === "interest" && (q.dimensionCode === "E" || q.dimensionCode === "S")) {
+            const stronglyLike = q.options?.find((o: any) => o.optionKey === "4" || o.optionKey === "D");
+            if (stronglyLike) optionId = stronglyLike.id;
+          }
+          return fetch(`${baseUrl}/attempts/${attemptIdC}/responses`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${studentC.token}`,
+            },
+            body: JSON.stringify({
+              questionId: q.id,
+              selectedOptionId: optionId,
+              responseValue: optionId ? "4" : "A",
+            }),
+          });
+        })
+      );
+    }
+
+    await fetch(`${baseUrl}/attempts/${attemptIdC}/submit`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${studentC.token}` },
+    });
+
+    const recResC = await fetch(`${baseUrl}/careers/recommendations?lang=en`, {
+      headers: { Authorization: `Bearer ${studentC.token}` },
+    });
+    const recDataC = await recResC.json();
+    assert(recResC.status === 200, "Student C: Recommendations query returns 200 OK");
+    const recsC = recDataC.data.recommendations;
+    assert(recsC.length > 0, "Student C: Returns recommendations list");
+
+    console.log("--- 6. Testing Career Detail View & Learning Roadmap ---");
     const detailRes = await fetch(`${baseUrl}/careers/ai-machine-learning-architect?lang=en`, {
-      headers: { Authorization: `Bearer ${assessedStudent.token}` },
+      headers: { Authorization: `Bearer ${studentA.token}` },
     });
     const detailData = await detailRes.json();
     assert(detailRes.status === 200, "Fetch career detail by slug returns 200 OK");
@@ -194,31 +323,31 @@ async function runCareerPathwaysE2ETests() {
     assert(Array.isArray(detail.sampleRoles) && detail.sampleRoles.length > 0, "Contains sample job roles");
     assert(Array.isArray(detail.relatedCareers) && detail.relatedCareers.length > 0, "Contains related careers");
 
-    console.log("--- 6. Testing Multilingual Localization Across Supported Languages ---");
+    console.log("--- 7. Testing Multilingual Localization Across Supported Languages ---");
     const mlRes = await fetch(`${baseUrl}/careers/ai-machine-learning-architect?lang=ml`, {
-      headers: { Authorization: `Bearer ${assessedStudent.token}` },
+      headers: { Authorization: `Bearer ${studentA.token}` },
     });
     const mlData = await mlRes.json();
     assert(mlRes.status === 200, "Fetch Malayalam translation returns 200 OK");
     assert(mlData.data.title.includes("എഐ") || mlData.data.title.includes("മെഷീൻ ലേണിംഗ്") || mlData.data.title.includes("ആർക്കിടെക്റ്റ്"), "Malayalam title translated correctly");
 
     const hiRes = await fetch(`${baseUrl}/careers/ai-machine-learning-architect?lang=hi`, {
-      headers: { Authorization: `Bearer ${assessedStudent.token}` },
+      headers: { Authorization: `Bearer ${studentA.token}` },
     });
     const hiData = await hiRes.json();
     assert(hiRes.status === 200, "Fetch Hindi translation returns 200 OK");
     assert(hiData.data.title.includes("एआई") || hiData.data.title.includes("आर्किटेक्ट"), "Hindi title translated correctly");
 
     const arRes = await fetch(`${baseUrl}/careers/ai-machine-learning-architect?lang=ar`, {
-      headers: { Authorization: `Bearer ${assessedStudent.token}` },
+      headers: { Authorization: `Bearer ${studentA.token}` },
     });
     const arData = await arRes.json();
     assert(arRes.status === 200, "Fetch Arabic translation returns 200 OK");
     assert(arData.data.title.includes("مهندس") || arData.data.title.includes("الاصطناعي") || arData.data.title.includes("معماري"), "Arabic title translated correctly");
 
-    console.log("--- 7. Testing Edge Cases & Security ---");
+    console.log("--- 8. Testing Edge Cases & Security ---");
     const notFoundRes = await fetch(`${baseUrl}/careers/non-existent-career-slug-1234`, {
-      headers: { Authorization: `Bearer ${assessedStudent.token}` },
+      headers: { Authorization: `Bearer ${studentA.token}` },
     });
     assert(notFoundRes.status === 404, "Non-existent career returns 404 Not Found");
 

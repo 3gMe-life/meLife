@@ -454,14 +454,26 @@ export class CounsellingService {
     const resData: SkillFinderFullResultDTO = latestResultRow.result_data;
 
     // 4. Fetch recommended career pathways
-    let topCareerPathways: Array<{ title: string; category: string; matchPercentage: number }> = [];
+    let topCareerPathways: Array<{
+      title: string;
+      category: string;
+      matchPercentage: number;
+      reasoning?: string;
+      strengthAlignment?: string[];
+      developmentAreas?: string[];
+    }> = [];
+    let matchingReasons: string[] = [];
     try {
       const pathwayResult = await careerRecommendationService.getRecommendedPathways(studentId, "en");
       topCareerPathways = pathwayResult.recommendations.slice(0, 4).map((p) => ({
         title: p.title,
         category: p.category,
         matchPercentage: p.matchPercentage,
+        reasoning: p.reasoning?.summary,
+        strengthAlignment: p.strengthAlignment,
+        developmentAreas: p.developmentAreas,
       }));
+      matchingReasons = pathwayResult.recommendations.slice(0, 3).map((p) => p.reasoning?.summary).filter(Boolean);
     } catch (careerErr) {
       logger.warn({ err: careerErr }, "Could not fetch career recommendations for student summary");
     }
@@ -483,6 +495,18 @@ export class CounsellingService {
       score: Math.round(a.scalePositionPercentage),
     }));
 
+    const strengthAreas = (resData.developmentalStrengths?.topStrengths || []).map((s) => s.name).slice(0, 4);
+    const developmentAreas = (resData.developmentalStrengths?.growthAreas || []).slice(0, 4);
+
+    const parentGuidanceSummary = {
+      interests: (resData.interestDiscovery?.topClusters || []).map((c) => c.name).slice(0, 3),
+      suggestedExplorations: [
+        "Hands-on technical or creative science projects",
+        "Subject stream exploration aligned with analytical reasoning",
+        "Extracurricular clubs, hackathons, or debate workshops",
+      ],
+    };
+
     return {
       studentId: u.id,
       studentName,
@@ -498,6 +522,10 @@ export class CounsellingService {
       topSkills,
       topAptitudes,
       topCareerPathways,
+      matchingReasons,
+      strengthAreas,
+      developmentAreas,
+      parentGuidanceSummary,
     };
   }
 

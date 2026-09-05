@@ -478,11 +478,11 @@ export function ParticipantDashboardView({
 
         <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 w-full md:w-auto">
           <Link
-            href="/participant/results"
+            href="/participant/career-reports"
             className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-white dark:bg-white/10 hover:bg-[#EBF2F0] dark:hover:bg-white/20 border border-[#E3ECEA] dark:border-white/20 text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9] transition-colors flex items-center justify-center gap-2"
           >
             <Download className="w-4 h-4 text-[#008F83] dark:text-[#00BFA5]" />
-            <span>Download PDF Report</span>
+            <span>View & Download Report</span>
           </Link>
 
           <Link

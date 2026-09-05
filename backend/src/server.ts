@@ -11,6 +11,7 @@ import { skillFinderQuestionSelectionService } from "./modules/assessments/servi
 import { skillFinderTranslationsService } from "./modules/assessments/services/skill-finder-translations.service";
 import { reportRepository } from "./modules/reports/report.repository";
 import { careerRepository } from "./modules/careers/career.repository";
+import { careerReportRepository } from "./modules/careers/reports/career-report.repository";
 import { counsellingRepository } from "./modules/counselling/counselling.repository";
 import http from "http";
 
@@ -42,7 +43,10 @@ const bootstrap = async () => {
     await careerRepository.initSchema();
     await careerRepository.seedCareers();
 
-    // 8. Initialize counsellor connect schema & seed certified counsellors
+    // 8. Initialize career guidance reports schema
+    await careerReportRepository.initSchema();
+
+    // 9. Initialize counsellor connect schema & seed certified counsellors
     await counsellingRepository.initSchema();
     await counsellingRepository.seedCounsellors();
 
