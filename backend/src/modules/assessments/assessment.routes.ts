@@ -16,6 +16,14 @@ assessmentRouter.get("/", assessmentController.getParticipantAssessments);
 assessmentRouter.get("/available", assessmentController.getParticipantAssessments);
 
 /**
+ * Retake, History Ledger & Longitudinal Comparison Endpoints
+ */
+assessmentRouter.get("/compare/latest", assessmentController.compareLatestResults);
+assessmentRouter.get("/compare", assessmentController.compareResults);
+assessmentRouter.post("/:assessmentCode/retake", assessmentController.startRetake);
+assessmentRouter.get("/:assessmentCode/history", assessmentController.getAssessmentHistory);
+
+/**
  * Assessment Runner Lifecycle Endpoints
  */
 assessmentRouter.post("/:code/start", assessmentController.startAssessment);

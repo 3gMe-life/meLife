@@ -210,6 +210,32 @@ export class AssessmentContentRepository {
         UNIQUE(dimension_id, language_code)
       );
 
+      -- 14. Assessment History Ledger (Retake & Milestone Tracking)
+      CREATE TABLE IF NOT EXISTS assessment_history (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        student_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        assessment_id UUID NOT NULL REFERENCES assessments(id) ON DELETE CASCADE,
+        attempt_id UUID NOT NULL REFERENCES assessment_attempts(id) ON DELETE CASCADE UNIQUE,
+        result_id UUID NOT NULL REFERENCES assessment_results(id) ON DELETE CASCADE,
+        attempt_number INTEGER NOT NULL DEFAULT 1,
+        profile_type VARCHAR(100) NULL,
+        dimension_summary JSONB NULL,
+        completed_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      -- 15. Assessment Longitudinal Comparisons
+      CREATE TABLE IF NOT EXISTS assessment_comparisons (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        student_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        old_result_id UUID NOT NULL REFERENCES assessment_results(id) ON DELETE CASCADE,
+        new_result_id UUID NOT NULL REFERENCES assessment_results(id) ON DELETE CASCADE,
+        days_between INTEGER NOT NULL DEFAULT 0,
+        comparison_data JSONB NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(student_id, old_result_id, new_result_id)
+      );
+
       -- Indexes for fast query retrieval & translations
       CREATE INDEX IF NOT EXISTS idx_questions_assessment_id ON assessment_questions(assessment_id);
       CREATE INDEX IF NOT EXISTS idx_questions_section_id ON assessment_questions(section_id);
@@ -221,6 +247,9 @@ export class AssessmentContentRepository {
       CREATE INDEX IF NOT EXISTS idx_opt_trans_lookup ON option_translations(option_id, language_code);
       CREATE INDEX IF NOT EXISTS idx_sec_trans_lookup ON section_translations(section_id, language_code);
       CREATE INDEX IF NOT EXISTS idx_dim_trans_lookup ON dimension_translations(dimension_id, language_code);
+      CREATE INDEX IF NOT EXISTS idx_history_student ON assessment_history(student_id, completed_date DESC);
+      CREATE INDEX IF NOT EXISTS idx_history_assessment ON assessment_history(assessment_id);
+      CREATE INDEX IF NOT EXISTS idx_comparisons_student ON assessment_comparisons(student_id);
     `;
     await db.query(query);
     logger.info("📦 Assessment runner database schema initialized and verified.");
@@ -775,7 +804,211 @@ export class AssessmentContentRepository {
       ]
     );
 
+    const resultId = res.rows[0].id;
+
+    // Record into assessment history ledger
+    try {
+      const attemptRow = await db.query(
+        `SELECT assessment_id, completed_at FROM assessment_attempts WHERE id = $1`,
+        [attemptId]
+      );
+      if (attemptRow.rows[0]) {
+        const assessmentId = attemptRow.rows[0].assessment_id;
+        const completedDate = attemptRow.rows[0].completed_at || new Date();
+        await this.recordAssessmentHistory(
+          participantId,
+          assessmentId,
+          attemptId,
+          resultId,
+          profileType,
+          dimensionScores,
+          completedDate,
+          db
+        );
+      }
+    } catch (err) {
+      logger.error({ err, attemptId, participantId }, "Error recording assessment history ledger");
+    }
+
+    return resultId;
+  }
+
+  /**
+   * Records completed attempt into assessment_history ledger idempotently.
+   */
+  async recordAssessmentHistory(
+    studentId: string,
+    assessmentId: string,
+    attemptId: string,
+    resultId: string,
+    profileType: string | null,
+    dimensionSummary: any,
+    completedDate: Date | string = new Date(),
+    client?: PoolClient | import("pg").Pool
+  ): Promise<void> {
+    const db = client || pool;
+
+    // Determine sequential attempt number
+    const countRes = await db.query(
+      `SELECT COUNT(*) as total_attempts FROM assessment_history
+       WHERE student_id = $1 AND assessment_id = $2 AND attempt_id != $3`,
+      [studentId, assessmentId, attemptId]
+    );
+    const attemptNumber = (parseInt(countRes.rows[0]?.total_attempts, 10) || 0) + 1;
+
+    await db.query(
+      `INSERT INTO assessment_history (
+         student_id, assessment_id, attempt_id, result_id, attempt_number,
+         profile_type, dimension_summary, completed_date, created_at
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+       ON CONFLICT (attempt_id) DO UPDATE SET
+         result_id = EXCLUDED.result_id,
+         profile_type = EXCLUDED.profile_type,
+         dimension_summary = EXCLUDED.dimension_summary,
+         completed_date = EXCLUDED.completed_date`,
+      [
+        studentId,
+        assessmentId,
+        attemptId,
+        resultId,
+        attemptNumber,
+        profileType,
+        dimensionSummary ? JSON.stringify(dimensionSummary) : null,
+        completedDate,
+      ]
+    );
+  }
+
+  /**
+   * Retrieves chronological assessment history ledger for a student.
+   */
+  async getAssessmentHistoryByStudent(
+    studentId: string,
+    assessmentCode = "SKILL_FINDER",
+    client?: PoolClient
+  ): Promise<any[]> {
+    const db = client || pool;
+    const res = await db.query(
+      `SELECT h.id, h.student_id, h.assessment_id, h.attempt_id, h.result_id,
+              h.attempt_number, h.profile_type, h.dimension_summary, h.completed_date, h.created_at,
+              a.code as assessment_code, a.name as assessment_name,
+              att.started_at, att.total_questions, att.answered_count,
+              r.summary, r.profile_vector, r.profile_confidence, r.confidence_metrics, r.result_data
+       FROM assessment_history h
+       JOIN assessments a ON h.assessment_id = a.id
+       JOIN assessment_attempts att ON h.attempt_id = att.id
+       JOIN assessment_results r ON h.result_id = r.id
+       WHERE h.student_id = $1 AND (a.code = $2 OR UPPER(REPLACE(a.code, '-', '_')) = UPPER(REPLACE($2, '-', '_')))
+       ORDER BY h.attempt_number DESC, h.created_at DESC`,
+      [studentId, assessmentCode]
+    );
+
+    // If history table has no entries but assessment_results has entries (migration fallback), sync and return
+    if (res.rows.length === 0) {
+      const allResults = await db.query(
+        `SELECT r.id as result_id, r.attempt_id, r.participant_id as student_id, r.assessment_code,
+                r.profile_type, r.dimension_scores as dimension_summary, r.summary, r.profile_vector,
+                r.profile_confidence, r.confidence_metrics, r.result_data, r.created_at,
+                a.id as assessment_id, a.name as assessment_name,
+                att.started_at, att.completed_at, att.total_questions, att.answered_count
+         FROM assessment_results r
+         JOIN assessment_attempts att ON r.attempt_id = att.id
+         JOIN assessments a ON att.assessment_id = a.id
+         WHERE r.participant_id = $1 AND (a.code = $2 OR UPPER(REPLACE(a.code, '-', '_')) = UPPER(REPLACE($2, '-', '_')))
+         ORDER BY att.started_at ASC`,
+        [studentId, assessmentCode]
+      );
+
+      for (let i = 0; i < allResults.rows.length; i++) {
+        const row = allResults.rows[i];
+        await this.recordAssessmentHistory(
+          studentId,
+          row.assessment_id,
+          row.attempt_id,
+          row.result_id,
+          row.profile_type,
+          row.dimension_summary,
+          row.completed_at || row.created_at,
+          db
+        );
+      }
+
+      if (allResults.rows.length > 0) {
+        return this.getAssessmentHistoryByStudent(studentId, assessmentCode, client);
+      }
+    }
+
+    return res.rows;
+  }
+
+  /**
+   * Retrieves top 2 latest completed assessment results for longitudinal comparison.
+   */
+  async findLatestTwoResultsForUser(
+    studentId: string,
+    assessmentCode = "SKILL_FINDER",
+    client?: PoolClient
+  ): Promise<any[]> {
+    const db = client || pool;
+    const res = await db.query(
+      `SELECT r.id, r.attempt_id, r.participant_id, r.assessment_code, r.profile_type, r.summary,
+              r.dimension_scores, r.profile_vector, r.profile_confidence, r.confidence_metrics,
+              r.result_data, r.created_at,
+              a.started_at, a.completed_at
+       FROM assessment_results r
+       JOIN assessment_attempts a ON r.attempt_id = a.id
+       WHERE r.participant_id = $1 AND (r.assessment_code = $2 OR UPPER(REPLACE(r.assessment_code, '-', '_')) = UPPER(REPLACE($2, '-', '_')))
+       ORDER BY a.completed_at DESC NULLS LAST, r.created_at DESC
+       LIMIT 2`,
+      [studentId, assessmentCode]
+    );
+    return res.rows;
+  }
+
+
+  /**
+   * Saves or updates a cached longitudinal growth comparison.
+   */
+  async saveComparison(
+    studentId: string,
+    oldResultId: string,
+    newResultId: string,
+    daysBetween: number,
+    comparisonData: any,
+    client?: PoolClient
+  ): Promise<string> {
+    const db = client || pool;
+    const res = await db.query(
+      `INSERT INTO assessment_comparisons (student_id, old_result_id, new_result_id, days_between, comparison_data, created_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())
+       ON CONFLICT (student_id, old_result_id, new_result_id) DO UPDATE SET
+         days_between = EXCLUDED.days_between,
+         comparison_data = EXCLUDED.comparison_data
+       RETURNING id`,
+      [studentId, oldResultId, newResultId, daysBetween, JSON.stringify(comparisonData)]
+    );
     return res.rows[0].id;
+  }
+
+  /**
+   * Retrieves a cached comparison if present.
+   */
+  async findComparison(
+    studentId: string,
+    oldResultId: string,
+    newResultId: string,
+    client?: PoolClient
+  ): Promise<any | null> {
+    const db = client || pool;
+    const res = await db.query(
+      `SELECT id, student_id, old_result_id, new_result_id, days_between, comparison_data, created_at
+       FROM assessment_comparisons
+       WHERE student_id = $1 AND old_result_id = $2 AND new_result_id = $3
+       LIMIT 1`,
+      [studentId, oldResultId, newResultId]
+    );
+    return res.rows[0] || null;
   }
 
   /**

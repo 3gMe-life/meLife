@@ -228,3 +228,80 @@ export interface SkillFinderResult {
     overallProfileScore: number;
   };
 }
+
+export interface AssessmentHistoryItem {
+  historyId: string;
+  attemptId: string;
+  resultId: string;
+  attemptNumber: number;
+  assessmentCode: string;
+  assessmentName: string;
+  profileType: string | null;
+  dimensionSummary?: any;
+  completedDate: string;
+  startedAt?: string;
+  totalQuestions: number;
+  answeredCount: number;
+  summary?: string | null;
+  profileConfidence?: string | null;
+  confidenceMetrics?: any;
+}
+
+export interface AssessmentHistoryResponse {
+  totalAttempts: number;
+  history: AssessmentHistoryItem[];
+}
+
+export interface DimensionComparisonItem {
+  dimensionCode: string;
+  dimensionName: string;
+  sectionCode: string;
+  oldScore: number;
+  newScore: number;
+  delta: number;
+  oldLevel?: string;
+  newLevel?: string;
+  trend: "IMPROVED" | "STABLE" | "REFOCUSED";
+}
+
+export interface GrowthInsight {
+  category: "INTEREST" | "SKILL" | "APTITUDE" | "STRENGTH";
+  title: string;
+  description: string;
+  dimensionCode?: string;
+  delta?: number;
+}
+
+export interface LongitudinalComparisonResult {
+  comparisonId?: string;
+  studentId: string;
+  oldResultId: string;
+  newResultId: string;
+  oldCompletedDate: string;
+  newCompletedDate: string;
+  daysBetween: number;
+  oldArchetype: {
+    title: string;
+    description: string;
+  };
+  newArchetype: {
+    title: string;
+    description: string;
+  };
+  hasArchetypeShift: boolean;
+  interestComparison: DimensionComparisonItem[];
+  skillsComparison: DimensionComparisonItem[];
+  aptitudeComparison: DimensionComparisonItem[];
+  strengthsComparison: DimensionComparisonItem[];
+  profileVectorDelta: Record<string, { old: number; new: number; delta: number }>;
+  topGains: DimensionComparisonItem[];
+  growthTrajectory: string;
+  growthSummary: string;
+  narrativeInsights: GrowthInsight[];
+}
+
+export interface LatestComparisonResponse {
+  hasComparison: boolean;
+  comparison: LongitudinalComparisonResult | null;
+  message?: string;
+}

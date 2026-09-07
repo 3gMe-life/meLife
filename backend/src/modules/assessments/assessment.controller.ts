@@ -249,6 +249,138 @@ export class AssessmentController {
       next(err);
     }
   }
+
+  /**
+   * POST /api/v1/assessments/:assessmentCode/retake
+   * Starts a fresh retake attempt while guaranteeing zero data loss for past attempts.
+   */
+  async startRetake(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        throw AppError.unauthorized("Authentication required", "AUTH_UNAUTHORIZED");
+      }
+
+      const paramCode = req.params.assessmentCode;
+      const assessmentCode = Array.isArray(paramCode) ? paramCode[0] : paramCode || "SKILL_FINDER";
+      const versionCode = (req.body?.versionCode as string) || undefined;
+
+      const result = await assessmentRunnerService.startRetakeAttempt(
+        userId,
+        assessmentCode,
+        versionCode
+      );
+
+      res.status(HttpStatus.OK).json({
+        success: true,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /api/v1/assessments/:assessmentCode/history
+   * Retrieves full chronological assessment history for the participant.
+   */
+  async getAssessmentHistory(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        throw AppError.unauthorized("Authentication required", "AUTH_UNAUTHORIZED");
+      }
+
+      const paramCode = req.params.assessmentCode;
+      const assessmentCode = Array.isArray(paramCode) ? paramCode[0] : paramCode || "SKILL_FINDER";
+
+      const data = await assessmentRunnerService.getAssessmentHistory(userId, assessmentCode);
+
+      res.status(HttpStatus.OK).json({
+        success: true,
+        data,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /api/v1/assessments/compare
+   * Compares two specific assessment results for longitudinal growth analysis.
+   */
+  async compareResults(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        throw AppError.unauthorized("Authentication required", "AUTH_UNAUTHORIZED");
+      }
+
+      const oldResultId = (req.query.oldResultId as string) || "";
+      const newResultId = (req.query.newResultId as string) || "";
+
+      if (!oldResultId || !newResultId) {
+        throw AppError.badRequest(
+          "Both 'oldResultId' and 'newResultId' query parameters are required.",
+          "INVALID_COMPARISON_PARAMS"
+        );
+      }
+
+      const requestingRole = req.user?.role || "PARTICIPANT";
+      const comparison = await assessmentRunnerService.compareResults(
+        userId,
+        oldResultId,
+        newResultId,
+        requestingRole
+      );
+
+      res.status(HttpStatus.OK).json({
+        success: true,
+        data: comparison,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /api/v1/assessments/compare/latest
+   * Compares the latest 2 completed attempts for immediate growth stats.
+   */
+  async compareLatestResults(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        throw AppError.unauthorized("Authentication required", "AUTH_UNAUTHORIZED");
+      }
+
+      const assessmentCode = (req.query.assessmentCode as string) || "SKILL_FINDER";
+      const result = await assessmentRunnerService.compareLatestResults(userId, assessmentCode);
+
+      res.status(HttpStatus.OK).json({
+        success: true,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const assessmentController = new AssessmentController();

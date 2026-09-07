@@ -41,12 +41,13 @@ export default function SkillFinderReportDirectPage() {
           </p>
           <div className="pt-2">
             <Link
-              href="/participant/assessments/SKILL_FINDER"
+              href="/participant/assessments/skill-finder"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white text-xs font-bold transition-all shadow-md shadow-[#00BFA5]/25"
             >
               <span>Start Assessment</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
+
           </div>
         </div>
       ) : (

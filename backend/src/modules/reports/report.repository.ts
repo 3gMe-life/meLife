@@ -94,17 +94,41 @@ export class ReportRepository {
   }
 
   /**
-   * Finds a report by its UUID.
+   * Finds a report by its UUID (supporting report ID, inner JSON reportId, result ID, or attempt ID).
    */
   async findReportById(reportId: string, client?: PoolClient): Promise<AssessmentReportEntity | null> {
     if (!reportId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(reportId)) {
       return null;
     }
     const db = client || pool;
+
+    // 1. Direct match on assessment_reports.id
     const query = `SELECT * FROM assessment_reports WHERE id = $1 LIMIT 1`;
-    const res = await db.query(query, [reportId]);
-    if (!res.rows[0]) return null;
-    return this.mapRowToEntity(res.rows[0]);
+    let res = await db.query(query, [reportId]);
+    if (res.rows[0]) return this.mapRowToEntity(res.rows[0]);
+
+    // 2. Match on embedded JSON reportId
+    const queryJson = `SELECT * FROM assessment_reports WHERE report_data->>'reportId' = $1 ORDER BY generated_at DESC LIMIT 1`;
+    res = await db.query(queryJson, [reportId]);
+    if (res.rows[0]) return this.mapRowToEntity(res.rows[0]);
+
+    // 3. Match on assessment_result_id
+    const queryResult = `SELECT * FROM assessment_reports WHERE assessment_result_id = $1 ORDER BY generated_at DESC LIMIT 1`;
+    res = await db.query(queryResult, [reportId]);
+    if (res.rows[0]) return this.mapRowToEntity(res.rows[0]);
+
+    // 4. Match on attempt_id
+    const queryAttempt = `
+      SELECT rpt.* FROM assessment_reports rpt
+      JOIN assessment_results res ON rpt.assessment_result_id = res.id
+      WHERE res.attempt_id = $1
+      ORDER BY rpt.generated_at DESC
+      LIMIT 1
+    `;
+    res = await db.query(queryAttempt, [reportId]);
+    if (res.rows[0]) return this.mapRowToEntity(res.rows[0]);
+
+    return null;
   }
 
   /**
@@ -144,10 +168,11 @@ export class ReportRepository {
     const db = client || pool;
     const query = `
       SELECT * FROM assessment_reports
-      WHERE participant_id = $1 AND assessment_code = $2 AND language_code = $3
+      WHERE participant_id = $1 AND (assessment_code = $2 OR UPPER(REPLACE(assessment_code, '-', '_')) = UPPER(REPLACE($2, '-', '_'))) AND language_code = $3
       ORDER BY generated_at DESC
       LIMIT 1
     `;
+
     const res = await db.query(query, [
       participantId,
       assessmentCode,

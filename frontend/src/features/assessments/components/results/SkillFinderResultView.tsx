@@ -2,13 +2,41 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { SkillFinderResult } from "../../types/assessment.types";
 import { SUPPORTED_LANGUAGES } from "../../config/assessment-i18n.config";
-import { Sparkles, Compass, Lightbulb, Target, Brain, Activity, Globe, Printer, BookOpen, ArrowRight, ShieldCheck, Zap, Award } from "lucide-react";
+import {
+  Sparkles,
+  Compass,
+  Lightbulb,
+  Target,
+  Brain,
+  Activity,
+  Globe,
+  Printer,
+  BookOpen,
+  ArrowRight,
+  ShieldCheck,
+  Zap,
+  Award,
+  TrendingUp,
+  RotateCcw,
+  GitCompare,
+  History,
+} from "lucide-react";
 import { ProfileDimensionCard } from "./ProfileDimensionCard";
 import { InterestChart } from "./InterestChart";
 import { StrengthCard } from "./StrengthCard";
 import { DevelopmentCard } from "./DevelopmentCard";
+import { useLatestAssessmentComparisonQuery } from "../../hooks/useLatestAssessmentComparisonQuery";
+import { useAssessmentHistoryQuery } from "../../hooks/useAssessmentHistoryQuery";
+import { useStartRetakeMutation } from "../../hooks/useStartRetakeMutation";
+import { GrowthComparisonCard } from "../comparison/GrowthComparisonCard";
+import { DimensionGrowthChart } from "../comparison/DimensionGrowthChart";
+import { GrowthInsightsCard } from "../comparison/GrowthInsightsCard";
+import { AssessmentTimeline } from "../history/AssessmentTimeline";
+import { AssessmentHistoryCard } from "../history/AssessmentHistoryCard";
+import { RetakeConfirmationModal } from "../history/RetakeConfirmationModal";
 
 interface SkillFinderResultViewProps {
   result: SkillFinderResult;
@@ -22,7 +50,8 @@ type TabType =
   | "skills"
   | "aptitude"
   | "development"
-  | "exploration";
+  | "exploration"
+  | "growth";
 
 const TABS: Array<{ id: TabType; label: string; icon: React.ReactNode }> = [
   { id: "overview", label: "Executive Overview", icon: <Sparkles className="w-4 h-4" /> },
@@ -31,17 +60,44 @@ const TABS: Array<{ id: TabType; label: string; icon: React.ReactNode }> = [
   { id: "aptitude", label: "Demonstrated Aptitude", icon: <Brain className="w-4 h-4" /> },
   { id: "development", label: "Developmental Habits", icon: <Target className="w-4 h-4" /> },
   { id: "exploration", label: "Career Exploration", icon: <Lightbulb className="w-4 h-4" /> },
+  { id: "growth", label: "My Skill Journey & Growth", icon: <TrendingUp className="w-4 h-4" /> },
 ];
+
 
 export function SkillFinderResultView({
   result,
   onLanguageChange,
   currentLanguage = "en",
 }: SkillFinderResultViewProps) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [selectedLang, setSelectedLang] = useState<string>(
     result.language || currentLanguage || "en"
   );
+  const [isRetakeModalOpen, setIsRetakeModalOpen] = useState(false);
+
+  const { data: latestComparisonData, isLoading: isComparisonLoading } =
+    useLatestAssessmentComparisonQuery("skill-finder");
+  const { data: historyData } = useAssessmentHistoryQuery("skill-finder");
+  const startRetakeMutation = useStartRetakeMutation();
+
+  const handleStartRetake = () => {
+    startRetakeMutation.mutate(
+      { assessmentCode: "skill-finder" },
+      {
+        onSuccess: () => {
+          setIsRetakeModalOpen(false);
+          router.push("/participant/assessments/skill-finder");
+        },
+        onError: (err) => {
+          console.error("Failed to start retake:", err);
+          setIsRetakeModalOpen(false);
+          router.push("/participant/assessments/skill-finder");
+        },
+      }
+    );
+  };
+
 
   const learningProfile = result.learningProfile || {
     archetypeTitle: "Practical Explorer",
@@ -158,6 +214,14 @@ export function SkillFinderResultView({
               </div>
             </div>
 
+            <button
+              onClick={() => setIsRetakeModalOpen(true)}
+              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <RotateCcw className="w-4 h-4 text-[#00BFA5]" />
+              <span>Retake</span>
+            </button>
+
             <Link
               href="/participant/reports/skill-finder"
               className="px-4 py-2.5 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white font-bold text-xs shadow-lg shadow-[#00BFA5]/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
@@ -175,6 +239,7 @@ export function SkillFinderResultView({
             </button>
           </div>
         </div>
+
 
         {/* Status Metrics Bar */}
         <div className="mt-8 pt-6 border-t border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
@@ -572,6 +637,128 @@ export function SkillFinderResultView({
           </div>
         </div>
       )}
+
+      {/* 8. TAB 7: MY SKILL JOURNEY & LONGITUDINAL GROWTH */}
+      {activeTab === "growth" && (
+        <div className="space-y-8 animate-in fade-in duration-200">
+          {latestComparisonData?.hasComparison && latestComparisonData.comparison ? (
+            <div className="space-y-8">
+              {/* Executive Longitudinal Comparison Header */}
+              <GrowthComparisonCard comparison={latestComparisonData.comparison} />
+
+              {/* Top Gains & Psychological Insights */}
+              <GrowthInsightsCard
+                topGains={latestComparisonData.comparison.topGains}
+                narrativeInsights={latestComparisonData.comparison.narrativeInsights}
+              />
+
+              {/* Construct Layer Growth Charts */}
+              <div className="space-y-6">
+                <DimensionGrowthChart
+                  title="RIASEC Vocational Interests Evolution"
+                  subtitle="Changes in interest alignment across the 6 Holland constructs"
+                  dimensions={latestComparisonData.comparison.interestComparison}
+                />
+
+                <DimensionGrowthChart
+                  title="Skill Behaviours & Natural Instincts"
+                  subtitle="Growth across execution, problem solving, diagnostic curiosity, and teamwork"
+                  dimensions={latestComparisonData.comparison.skillsComparison}
+                />
+
+                <DimensionGrowthChart
+                  title="Cognitive Aptitude Reasoning"
+                  subtitle="Demonstrated performance across spatial, numerical, verbal, and mechanical challenges"
+                  dimensions={latestComparisonData.comparison.aptitudeComparison}
+                />
+
+                <DimensionGrowthChart
+                  title="Developmental Habits & Strengths"
+                  subtitle="Evolution of intrinsic motivation, strategic thinking, and resilience"
+                  dimensions={latestComparisonData.comparison.strengthsComparison}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-3xl bg-gradient-to-br from-[#172B2A] via-[#1A3331] to-[#0D1C1B] border border-[#00BFA5]/30 p-8 sm:p-10 text-white shadow-xl text-center max-w-3xl mx-auto space-y-6">
+              <div className="w-16 h-16 rounded-2xl bg-[#00BFA5]/15 border border-[#00BFA5]/30 flex items-center justify-center mx-auto text-[#00BFA5]">
+                <TrendingUp className="w-8 h-8" />
+              </div>
+
+              <div className="space-y-2">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-[#00BFA5]/20 text-[#00BFA5] border border-[#00BFA5]/30">
+                  Initial Baseline Established
+                </span>
+                <h3 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                  Unlock Side-by-Side Growth Tracking
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto leading-relaxed">
+                  You have completed your initial baseline evaluation. Retaking the assessment at a later milestone allows our psychometric engine to track your skill gains, shifting interests, and developmental trajectory.
+                </p>
+              </div>
+
+              <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsRetakeModalOpen(true)}
+                  className="px-6 py-3 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white font-bold text-xs shadow-lg shadow-[#00BFA5]/25 transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span>Begin Retake Assessment</span>
+                </button>
+
+                <Link
+                  href="/participant/assessments/history"
+                  className="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs transition-all flex items-center gap-2"
+                >
+                  <History className="w-4 h-4 text-[#00B8D4]" />
+                  <span>View History Ledger</span>
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {/* Timeline & History Section */}
+          {historyData && historyData.history && historyData.history.length > 0 && (
+            <div className="space-y-6 pt-6 border-t border-border-default">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-text-primary">
+                  Evaluation Milestones & History
+                </h3>
+                <Link
+                  href="/participant/assessments/history"
+                  className="text-xs font-bold text-[#008F83] dark:text-[#00BFA5] hover:underline flex items-center gap-1"
+                >
+                  <span>Full Ledger ({historyData.totalAttempts} Attempts)</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+
+              <AssessmentTimeline history={historyData.history} />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                {historyData.history.map((item, idx) => (
+                  <AssessmentHistoryCard
+                    key={item.historyId || item.attemptId}
+                    item={item}
+                    isLatest={idx === 0}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Retake Confirmation Modal */}
+      <RetakeConfirmationModal
+        isOpen={isRetakeModalOpen}
+        onClose={() => setIsRetakeModalOpen(false)}
+        onConfirm={handleStartRetake}
+        isPending={startRetakeMutation.isPending}
+        assessmentName="Skill Finder"
+      />
     </div>
   );
 }
+

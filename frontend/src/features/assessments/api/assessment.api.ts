@@ -121,6 +121,59 @@ export const assessmentApi = {
   },
 
   /**
+   * Starts a clean new retake attempt without overwriting previous attempts or results.
+   */
+  async startRetake(
+    assessmentCode: string,
+    versionCode?: string
+  ): Promise<{ attemptId: string; status: string; isNew: boolean; attemptNumber?: number }> {
+    const res = await fetchApi<
+      ApiResponse<{ attemptId: string; status: string; isNew: boolean; attemptNumber?: number }>
+    >(`/assessments/${assessmentCode}/retake`, {
+      method: "POST",
+      body: JSON.stringify({ versionCode }),
+    });
+    return res.data;
+  },
+
+  /**
+   * Fetches the complete longitudinal assessment history ledger for an assessment code.
+   */
+  async getAssessmentHistory(
+    assessmentCode: string
+  ): Promise<import("../types/assessment.types").AssessmentHistoryResponse> {
+    const res = await fetchApi<
+      ApiResponse<import("../types/assessment.types").AssessmentHistoryResponse>
+    >(`/assessments/${assessmentCode}/history`);
+    return res.data;
+  },
+
+  /**
+   * Compares two specific assessment result snapshots.
+   */
+  async compareResults(
+    oldResultId: string,
+    newResultId: string
+  ): Promise<import("../types/assessment.types").LongitudinalComparisonResult> {
+    const res = await fetchApi<
+      ApiResponse<import("../types/assessment.types").LongitudinalComparisonResult>
+    >(`/assessments/compare?oldResultId=${encodeURIComponent(oldResultId)}&newResultId=${encodeURIComponent(newResultId)}`);
+    return res.data;
+  },
+
+  /**
+   * Compares the latest two completed assessment results for an assessment code.
+   */
+  async compareLatestResults(
+    assessmentCode = "skill-finder"
+  ): Promise<import("../types/assessment.types").LatestComparisonResponse> {
+    const res = await fetchApi<
+      ApiResponse<import("../types/assessment.types").LatestComparisonResponse>
+    >(`/assessments/compare/latest?assessmentCode=${encodeURIComponent(assessmentCode)}`);
+    return res.data;
+  },
+
+  /**
    * Fetches all completed assessment results for the participant.
    */
   async getAllResults(): Promise<unknown[]> {
@@ -128,3 +181,4 @@ export const assessmentApi = {
     return res.data;
   },
 };
+

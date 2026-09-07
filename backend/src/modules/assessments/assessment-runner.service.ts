@@ -1,7 +1,9 @@
+import { pool } from "../../config/database";
 import { assessmentContentRepository } from "./assessment-content.repository";
 import { assessmentRepository } from "./assessment.repository";
 import { userRepository } from "../users/user.repository";
 import { scoringService } from "../scoring/scoring.service";
+import { resultComparisonService } from "../scoring/services/result-comparison.service";
 import { skillFinderQuestionSelectionService } from "./services/skill-finder-question-selection.service";
 import { AppError } from "../../common/errors/app-error";
 import { logger } from "../../common/utils/logger";
@@ -230,6 +232,189 @@ export class AssessmentRunnerService {
    */
   async getLatestUserResult(userId: string, languageCode = "en"): Promise<any | null> {
     return scoringService.getLatestResultForUser(userId, languageCode);
+  }
+
+  /**
+   * Starts a fresh retake attempt for an assessment.
+   * Guarantees zero data loss for previous attempts/results and initiates a clean answer session.
+   */
+  async startRetakeAttempt(
+    userId: string,
+    assessmentCode = "SKILL_FINDER",
+    versionCode?: string
+  ): Promise<{
+    attemptId: string;
+    status: string;
+    isNew: boolean;
+    isRetake: boolean;
+    attemptNumber?: number;
+    versionCode?: string | null;
+    versionName?: string | null;
+  }> {
+    const user = await userRepository.findById(userId);
+    if (!user) {
+      throw AppError.notFound("Participant user not found.", "AUTH_USER_NOT_FOUND");
+    }
+
+    const assessment =
+      (await assessmentRepository.findByIdOrCode(assessmentCode)) ||
+      (await assessmentRepository.findByCode("SKILL_FINDER"));
+
+    if (!assessment) {
+      throw AppError.notFound(`Assessment '${assessmentCode}' not found.`, "ASSESSMENT_NOT_FOUND");
+    }
+
+    // Resolve target version
+    let targetVersion = versionCode
+      ? await skillFinderQuestionSelectionService.getVersionByCode(assessment.id, versionCode)
+      : await skillFinderQuestionSelectionService.getDefaultVersion(assessment.id);
+
+    if (!targetVersion && !versionCode) {
+      targetVersion = await skillFinderQuestionSelectionService.getVersionByCode(
+        assessment.id,
+        "STUDENT_STANDARD"
+      );
+    }
+
+    const totalQuestions = targetVersion?.question_count || assessment.questionCount || 68;
+
+    // Create brand new attempt
+    const newAttempt = await assessmentContentRepository.createAttempt(
+      userId,
+      assessment.id,
+      targetVersion?.id || null,
+      totalQuestions
+    );
+
+    // Count all attempts for this participant to return accurate attemptNumber
+    const countRes = await pool.query(
+      `SELECT COUNT(*)::int as count FROM assessment_attempts WHERE participant_id = $1 AND assessment_id = $2`,
+      [userId, assessment.id]
+    );
+    const attemptNumber = countRes.rows[0]?.count || 1;
+
+    logger.info(
+      {
+        userId,
+        assessmentCode: assessment.code,
+        attemptId: newAttempt.id,
+        attemptNumber,
+        version: targetVersion?.version_code,
+      },
+      "Initiated fresh assessment retake attempt"
+    );
+
+    return {
+      attemptId: newAttempt.id,
+      status: newAttempt.status,
+      isNew: true,
+      isRetake: true,
+      attemptNumber,
+      versionCode: targetVersion?.version_code || null,
+      versionName: targetVersion?.name || null,
+    };
+  }
+
+  /**
+   * Retrieves complete assessment attempt history timeline for a participant.
+   */
+  async getAssessmentHistory(userId: string, assessmentCode = "SKILL_FINDER"): Promise<{
+    totalAttempts: number;
+    history: any[];
+  }> {
+    const historyRows = await assessmentContentRepository.getAssessmentHistoryByStudent(
+      userId,
+      assessmentCode
+    );
+
+    const history = historyRows.map((row) => ({
+      historyId: row.id,
+      attemptId: row.attempt_id,
+      resultId: row.result_id,
+      attemptNumber: row.attempt_number,
+      assessmentCode: row.assessment_code,
+      assessmentName: row.assessment_name,
+      profileType: row.profile_type,
+      dimensionSummary: row.dimension_summary,
+      completedDate: row.completed_date || row.created_at,
+      startedAt: row.started_at,
+      totalQuestions: row.total_questions,
+      answeredCount: row.answered_count,
+      summary: row.summary,
+      profileConfidence: row.profile_confidence,
+      confidenceMetrics: row.confidence_metrics,
+    }));
+
+    return {
+      totalAttempts: history.length,
+      history,
+    };
+  }
+
+  /**
+   * Compares two specific assessment results for growth analysis.
+   */
+  async compareResults(
+    userId: string,
+    oldResultId: string,
+    newResultId: string,
+    requestingRole = "PARTICIPANT"
+  ): Promise<any> {
+    const oldResult = await assessmentContentRepository.findResultById(oldResultId);
+    const newResult = await assessmentContentRepository.findResultById(newResultId);
+
+    if (!oldResult || !newResult) {
+      throw AppError.notFound(
+        "One or both assessment results specified for comparison were not found.",
+        "RESULT_NOT_FOUND"
+      );
+    }
+
+    // Security check: participant must own both results unless authorized staff
+    if (
+      requestingRole === "PARTICIPANT" &&
+      (oldResult.participant_id !== userId || newResult.participant_id !== userId)
+    ) {
+      throw AppError.forbidden(
+        "Access denied to compare these assessment results.",
+        "AUTH_FORBIDDEN"
+      );
+    }
+
+    return resultComparisonService.compareResults(oldResult.participant_id, oldResult, newResult);
+  }
+
+  /**
+   * Compares the latest 2 completed attempts for a student for instant dashboard growth highlights.
+   */
+  async compareLatestResults(
+    userId: string,
+    assessmentCode = "SKILL_FINDER"
+  ): Promise<{ hasComparison: boolean; comparison: any | null; message?: string }> {
+    const latestTwo = await assessmentContentRepository.findLatestTwoResultsForUser(
+      userId,
+      assessmentCode
+    );
+
+    if (!latestTwo || latestTwo.length < 2) {
+      return {
+        hasComparison: false,
+        comparison: null,
+        message: "At least 2 completed assessment attempts are required to compute longitudinal growth tracking.",
+      };
+    }
+
+    // latestTwo[0] is newest, latestTwo[1] is previous baseline
+    const comparison = await resultComparisonService.compareResults(
+      userId,
+      latestTwo[1],
+      latestTwo[0]
+    );
+
+    return {
+      hasComparison: true,
+      comparison,
+    };
   }
 
   /**

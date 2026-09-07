@@ -1,15 +1,22 @@
 import { fetchApi } from "@/services/api/client";
 import { ReportResponseData } from "../types/report.types";
 
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  message?: string;
+}
+
 export const reportApi = {
   /**
    * Generates or retrieves an existing report for an assessment result.
    */
   async generateReport(resultId: string, language = "en"): Promise<ReportResponseData> {
     const query = language ? `?language=${encodeURIComponent(language)}` : "";
-    return fetchApi<ReportResponseData>(`/reports/generate/${resultId}${query}`, {
+    const res = await fetchApi<ApiResponse<ReportResponseData>>(`/reports/generate/${resultId}${query}`, {
       method: "POST",
     });
+    return res.data || (res as unknown as ReportResponseData);
   },
 
   /**
@@ -17,9 +24,10 @@ export const reportApi = {
    */
   async getReport(reportId: string, language?: string): Promise<ReportResponseData> {
     const query = language ? `?language=${encodeURIComponent(language)}` : "";
-    return fetchApi<ReportResponseData>(`/reports/${reportId}${query}`, {
+    const res = await fetchApi<ApiResponse<ReportResponseData>>(`/reports/${reportId}${query}`, {
       method: "GET",
     });
+    return res.data || (res as unknown as ReportResponseData);
   },
 
   /**
@@ -27,9 +35,10 @@ export const reportApi = {
    */
   async getReportByResult(resultId: string, language = "en"): Promise<ReportResponseData> {
     const query = language ? `?language=${encodeURIComponent(language)}` : "";
-    return fetchApi<ReportResponseData>(`/reports/result/${resultId}${query}`, {
+    const res = await fetchApi<ApiResponse<ReportResponseData>>(`/reports/result/${resultId}${query}`, {
       method: "GET",
     });
+    return res.data || (res as unknown as ReportResponseData);
   },
 
   /**
@@ -37,9 +46,10 @@ export const reportApi = {
    */
   async getLatestReport(language = "en"): Promise<ReportResponseData> {
     const query = language ? `?language=${encodeURIComponent(language)}` : "";
-    return fetchApi<ReportResponseData>(`/reports/participant/latest${query}`, {
+    const res = await fetchApi<ApiResponse<ReportResponseData>>(`/reports/participant/latest${query}`, {
       method: "GET",
     });
+    return res.data || (res as unknown as ReportResponseData);
   },
 
   /**

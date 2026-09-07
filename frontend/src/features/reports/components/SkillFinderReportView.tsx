@@ -75,8 +75,27 @@ export function SkillFinderReportView({
   return (
     <div
       dir={isRtl ? "rtl" : "ltr"}
-      className="space-y-8 animate-in fade-in duration-300 max-w-5xl mx-auto pb-16 print:p-0 print:m-0 print:max-w-none"
+      className="space-y-8 animate-in fade-in duration-300 max-w-5xl mx-auto pb-16 print:p-0 print:m-0 print:max-w-none print:space-y-5"
     >
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 10mm 12mm;
+          }
+          body {
+            background: white !important;
+            color: #172b2a !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .print-break-avoid {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+        }
+      `}</style>
+
       {/* 1. Header Toolbar (Navigation, Language Selector, PDF & Print Actions) */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white/80 dark:bg-[#172B2A]/80 backdrop-blur-xl border border-[#E3ECEA] dark:border-white/10 rounded-2xl p-4 shadow-sm print:hidden">
         <Link
@@ -143,7 +162,7 @@ export function SkillFinderReportView({
       )}
 
       {/* 2. Official Report Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#172B2A] via-[#102423] to-[#0D1C1B] text-white p-6 sm:p-8 border border-white/10 shadow-xl">
+      <div className="print-break-avoid relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#172B2A] via-[#102423] to-[#0D1C1B] text-white p-6 sm:p-8 border border-white/10 shadow-xl print:shadow-none print:p-5 print:rounded-2xl">
         <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-[#00BFA5]/15 blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-1/3 w-64 h-64 rounded-full bg-[#00B8D4]/10 blur-2xl pointer-events-none" />
 
@@ -203,7 +222,7 @@ export function SkillFinderReportView({
       </div>
 
       {/* 3. Section 1: Executive Learning Profile Summary */}
-      <div className="rounded-3xl bg-gradient-to-br from-[#E6F7F5] via-white to-[#F0FAF8] dark:from-[#172B2A] dark:via-[#142827] dark:to-[#0D1C1B] border-2 border-[#00BFA5]/40 dark:border-[#00BFA5]/30 p-6 sm:p-8 shadow-lg">
+      <div className="print-break-avoid rounded-3xl bg-gradient-to-br from-[#E6F7F5] via-white to-[#F0FAF8] dark:from-[#172B2A] dark:via-[#142827] dark:to-[#0D1C1B] border-2 border-[#00BFA5]/40 dark:border-[#00BFA5]/30 p-6 sm:p-8 shadow-lg print:shadow-none print:p-5 print:rounded-2xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
           <div>
             <span className="text-[11px] font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] mb-1 block">
@@ -249,7 +268,7 @@ export function SkillFinderReportView({
       </div>
 
       {/* 4. Section 2: Interest Discovery (Holland RIASEC) */}
-      <div className="rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-8 shadow-sm space-y-6">
+      <div className="print-break-avoid rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-8 shadow-sm space-y-6 print:shadow-none print:p-5 print:rounded-2xl">
         <div>
           <span className="text-[11px] font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] block mb-1">
             2. Vocational & Exploratory Interest Profile
@@ -267,7 +286,7 @@ export function SkillFinderReportView({
           {report.interestProfile.topClusters.map((cluster, idx) => (
             <div
               key={cluster.code}
-              className="rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 p-4 space-y-2 hover:border-[#00BFA5]/40 transition-colors"
+              className="rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 p-4 space-y-2 hover:border-[#00BFA5]/40 transition-colors print:p-3"
             >
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5]">
@@ -314,7 +333,7 @@ export function SkillFinderReportView({
       </div>
 
       {/* 5. Section 3: Skill Behaviour Profile */}
-      <div className="rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-8 shadow-sm space-y-6">
+      <div className="print-break-avoid rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-8 shadow-sm space-y-6 print:shadow-none print:p-5 print:rounded-2xl">
         <div>
           <span className="text-[11px] font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] block mb-1">
             3. Skill Behaviour Profile
@@ -329,7 +348,7 @@ export function SkillFinderReportView({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Strongest Box */}
-          <div className="rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 p-5 space-y-4">
+          <div className="rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 p-5 space-y-4 print:p-4">
             <h3 className="text-xs font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
               <Award className="w-4 h-4 text-emerald-600" />
               <span>Strongest Behavioural Instincts</span>
@@ -350,7 +369,7 @@ export function SkillFinderReportView({
           </div>
 
           {/* Growth Box */}
-          <div className="rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 p-5 space-y-4">
+          <div className="rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 p-5 space-y-4 print:p-4">
             <h3 className="text-xs font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 flex items-center gap-2">
               <Lightbulb className="w-4 h-4 text-amber-600" />
               <span>High-Potential Growth Opportunities</span>
@@ -373,7 +392,7 @@ export function SkillFinderReportView({
       </div>
 
       {/* 6. Section 4: Demonstrated Cognitive Aptitude */}
-      <div className="rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-8 shadow-sm space-y-6">
+      <div className="print-break-avoid rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-8 shadow-sm space-y-6 print:shadow-none print:p-5 print:rounded-2xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <span className="text-[11px] font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] block mb-1">
@@ -397,7 +416,7 @@ export function SkillFinderReportView({
           {report.aptitudeInsights.dimensions.map((dim) => (
             <div
               key={dim.code}
-              className="p-3.5 rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-2"
+              className="p-3.5 rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-2 print:p-2.5"
             >
               <div className="flex items-center justify-between text-xs font-bold">
                 <span className="text-[#172B2A] dark:text-[#F7FAF9]">{dim.name}</span>
@@ -417,7 +436,7 @@ export function SkillFinderReportView({
       </div>
 
       {/* 7. Section 5: Developmental Strengths & Learning Habits */}
-      <div className="rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-8 shadow-sm space-y-6">
+      <div className="print-break-avoid rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-8 shadow-sm space-y-6 print:shadow-none print:p-5 print:rounded-2xl">
         <div>
           <span className="text-[11px] font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] block mb-1">
             5. Developmental Strengths & Learning Habits
@@ -434,7 +453,7 @@ export function SkillFinderReportView({
           {report.developmentalStrengths.growthSuggestions.map((sug, idx) => (
             <div
               key={idx}
-              className="p-4 rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 flex items-start gap-3"
+              className="p-4 rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 flex items-start gap-3 print:p-3"
             >
               <CheckCircle2 className="w-4 h-4 text-[#00BFA5] shrink-0 mt-0.5" />
               <p className="text-xs sm:text-sm text-[#172B2A] dark:text-[#F7FAF9] leading-relaxed">
@@ -446,7 +465,7 @@ export function SkillFinderReportView({
       </div>
 
       {/* 8. Section 6: Recommended Exploration Pathways */}
-      <div className="rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-8 shadow-sm space-y-6">
+      <div className="print-break-avoid rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-8 shadow-sm space-y-6 print:shadow-none print:p-5 print:rounded-2xl">
         <div>
           <span className="text-[11px] font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] block mb-1">
             6. Recommended Exploration Pathways
@@ -465,7 +484,7 @@ export function SkillFinderReportView({
           {report.explorationAreas.clusters.map((cluster, idx) => (
             <div
               key={idx}
-              className="rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 p-5 space-y-4 hover:border-[#00BFA5]/40 transition-colors"
+              className="rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 p-5 space-y-4 hover:border-[#00BFA5]/40 transition-colors print:p-4"
             >
               <div className="flex items-center gap-2">
                 <Compass className="w-4 h-4 text-[#00BFA5]" />
@@ -509,7 +528,7 @@ export function SkillFinderReportView({
       </div>
 
       {/* 9. Section 7: Parent & Educator Guidance */}
-      <div className="rounded-3xl bg-gradient-to-br from-[#FAF6EC] via-white to-[#F9F7F1] dark:from-[#211E16] dark:via-[#191814] dark:to-[#141310] border border-[#E5C158]/40 dark:border-[#E5C158]/20 p-6 sm:p-8 shadow-sm space-y-6">
+      <div className="print-break-avoid rounded-3xl bg-gradient-to-br from-[#FAF6EC] via-white to-[#F9F7F1] dark:from-[#211E16] dark:via-[#191814] dark:to-[#141310] border border-[#E5C158]/40 dark:border-[#E5C158]/20 p-6 sm:p-8 shadow-sm space-y-6 print:shadow-none print:p-5 print:rounded-2xl">
         <div>
           <span className="text-[11px] font-black uppercase tracking-wider text-[#996B00] dark:text-[#E5C158] block mb-1">
             7. Parent & Educator Guidance
@@ -524,7 +543,7 @@ export function SkillFinderReportView({
 
         {/* DOs vs DONTs */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="p-5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 space-y-3">
+          <div className="p-5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 space-y-3 print:p-4">
             <h3 className="text-xs font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               <span>Recommended Practices (DOs)</span>
@@ -536,7 +555,7 @@ export function SkillFinderReportView({
             </ul>
           </div>
 
-          <div className="p-5 rounded-2xl bg-rose-50/70 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 space-y-3">
+          <div className="p-5 rounded-2xl bg-rose-50/70 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 space-y-3 print:p-4">
             <h3 className="text-xs font-black uppercase tracking-wider text-rose-800 dark:text-rose-300 flex items-center gap-1.5">
               <AlertTriangle className="w-4 h-4 text-rose-600" />
               <span>Practices to Avoid (DON&apos;Ts)</span>
@@ -550,7 +569,7 @@ export function SkillFinderReportView({
         </div>
 
         {/* Conversation Starters */}
-        <div className="p-5 rounded-2xl bg-white dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-3">
+        <div className="p-5 rounded-2xl bg-white dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-3 print:p-4">
           <h3 className="text-xs font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] flex items-center gap-1.5">
             <MessageSquare className="w-4 h-4" />
             <span>Empathetic Conversation Starters</span>
@@ -569,7 +588,7 @@ export function SkillFinderReportView({
       </div>
 
       {/* 10. Footer Disclaimer */}
-      <div className="text-center text-[11px] text-[#728B88] dark:text-[#7D9491] space-y-1 pt-6 border-t border-[#E3ECEA] dark:border-white/10">
+      <div className="print-break-avoid text-center text-[11px] text-[#728B88] dark:text-[#7D9491] space-y-1 pt-6 border-t border-[#E3ECEA] dark:border-white/10 print:pt-4">
         <p>
           © {new Date().getFullYear()} 3G MeLife Psychometric Assessment System. All rights reserved.
         </p>

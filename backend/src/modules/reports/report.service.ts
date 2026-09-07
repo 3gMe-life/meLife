@@ -74,7 +74,11 @@ export class ReportService {
     };
 
     // 5. Parse result snapshot DTO
-    const resultData = resultEntity.result_data;
+    const rawResultData = resultEntity.result_data;
+    const resultData =
+      typeof rawResultData === "string"
+        ? JSON.parse(rawResultData)
+        : (rawResultData || {});
 
     // 6. Synthesize Report via Template Engine
     const reportId = crypto.randomUUID();
@@ -84,6 +88,7 @@ export class ReportService {
       studentProfile: safeProfile,
       languageCode: lang,
     });
+
 
     // 7. Persist Report in PostgreSQL
     const savedEntity = await reportRepository.saveReport({
@@ -98,6 +103,11 @@ export class ReportService {
       reportData: reportDto,
     });
 
+    const reportDataPayload = savedEntity.report_data || reportDto;
+    if (reportDataPayload) {
+      reportDataPayload.reportId = savedEntity.id;
+    }
+
     logger.info(
       {
         reportId: savedEntity.id,
@@ -110,7 +120,7 @@ export class ReportService {
 
     return {
       report: savedEntity,
-      reportData: savedEntity.report_data,
+      reportData: reportDataPayload,
     };
   }
 
@@ -123,8 +133,35 @@ export class ReportService {
     requestingUserRole: UserRole,
     languageCode?: string
   ): Promise<{ report: AssessmentReportEntity; reportData: SkillFinderReportDTO }> {
+    const lang = (languageCode || "en").toLowerCase().trim();
+
+    // 1. Support "latest"
+    if (reportId === "latest") {
+      const latest = await this.getLatestReportForParticipant(requestingUserId, "SKILL_FINDER", lang);
+      if (!latest) {
+        throw AppError.notFound("No completed assessment report available for this participant.", "REPORT_NOT_FOUND");
+      }
+      return latest;
+    }
+
+    // 2. Direct lookup in reports repository (resolves by DB id, JSON reportId, resultId, or attemptId)
     let reportEntity = await reportRepository.findReportById(reportId);
+
+    // 3. Fallback auto-synthesis if reportId is an assessment result ID or attempt ID
     if (!reportEntity) {
+      const resultEntity =
+        (await assessmentContentRepository.findResultById(reportId)) ||
+        (await assessmentContentRepository.findResultByAttemptId(reportId));
+
+      if (resultEntity) {
+        return this.generateOrGetReport(
+          resultEntity.id,
+          requestingUserId,
+          requestingUserRole,
+          lang
+        );
+      }
+
       throw AppError.notFound("Assessment report not found.", "REPORT_NOT_FOUND");
     }
 
@@ -149,9 +186,14 @@ export class ReportService {
       );
     }
 
+    const reportDataPayload = reportEntity.report_data;
+    if (reportDataPayload) {
+      reportDataPayload.reportId = reportEntity.id;
+    }
+
     return {
       report: reportEntity,
-      reportData: reportEntity.report_data,
+      reportData: reportDataPayload,
     };
   }
 
@@ -177,35 +219,30 @@ export class ReportService {
    */
   async getLatestReportForParticipant(
     participantId: string,
-    assessmentCode = "SKILL_FINDER",
+    _assessmentCode = "SKILL_FINDER",
     languageCode = "en"
   ): Promise<{ report: AssessmentReportEntity; reportData: SkillFinderReportDTO } | null> {
     const lang = (languageCode || "en").toLowerCase().trim();
-    let reportEntity = await reportRepository.findLatestReportByParticipantId(
+
+    // 1. Always find the latest completed assessment result
+    const latestResult = await assessmentContentRepository.findLatestResultByUserId(
+      participantId
+    );
+    if (!latestResult) {
+      return null;
+    }
+
+    // 2. Generate or retrieve the localized report for this latest result
+    const generated = await this.generateOrGetReport(
+      latestResult.id,
       participantId,
-      assessmentCode,
+      "PARTICIPANT",
       lang
     );
 
-    if (!reportEntity) {
-      // Find latest result and synthesize report
-      const latestResult = await assessmentContentRepository.findLatestResultByUserId(
-        participantId
-      );
-      if (!latestResult) return null;
-
-      const generated = await this.generateOrGetReport(
-        latestResult.id,
-        participantId,
-        "PARTICIPANT",
-        lang
-      );
-      reportEntity = generated.report;
-    }
-
     return {
-      report: reportEntity,
-      reportData: reportEntity.report_data,
+      report: generated.report,
+      reportData: generated.reportData,
     };
   }
 
