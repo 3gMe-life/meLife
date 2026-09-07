@@ -6,6 +6,7 @@ import { ProtectedRouteGuard } from "@/features/dashboard/guards/ProtectedRouteG
 import { DashboardShell } from "@/features/dashboard/components/shell/DashboardShell";
 import { useAssessmentResultQuery } from "@/features/assessments/hooks/useAssessmentResultQuery";
 import { SkillFinderResultView } from "@/features/assessments/components/results/SkillFinderResultView";
+import { StreamFinderResultView } from "@/features/assessments/components/results/StreamFinderResultView";
 
 export default function AssessmentResultDetailPage() {
   const params = useParams();
@@ -44,7 +45,7 @@ export default function AssessmentResultDetailPage() {
                 Generating Psychometric Report...
               </h3>
               <p className="text-xs text-text-secondary mt-1">
-                Aggregating interest clusters, aptitude accuracy, and developmental habits.
+                Aggregating interest clusters, stream compatibility matrix, and developmental analytics.
               </p>
             </div>
           ) : isError || !result ? (
@@ -67,6 +68,12 @@ export default function AssessmentResultDetailPage() {
                 Go to Assessments
               </button>
             </div>
+          ) : result.assessmentCode === "STREAM_FINDER" ? (
+            <StreamFinderResultView
+              result={result}
+              currentLanguage={language}
+              onLanguageChange={setLanguage}
+            />
           ) : (
             <SkillFinderResultView
               result={result}

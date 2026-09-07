@@ -7,10 +7,12 @@ import {
   Bell,
   KeyRound,
   Sparkles,
+  Search,
 } from "lucide-react";
 import { DashboardUserMenu } from "./DashboardUserMenu";
 import { ThemeToggle } from "./ThemeToggle";
 import { VoucherRedeemModal } from "../common/VoucherRedeemModal";
+import { toast } from "@/components/ui/toast";
 import type { UserProfile, UserRole } from "../../../auth/types/auth.types";
 
 interface DashboardHeaderProps {
@@ -25,6 +27,7 @@ export function DashboardHeader({
   onMobileMenuToggle,
 }: DashboardHeaderProps) {
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   return (
     <>
@@ -34,8 +37,8 @@ export function DashboardHeader({
       />
 
       <header className="h-18 px-4 sm:px-8 bg-white/90 dark:bg-[#0D1C1B]/85 backdrop-blur-2xl border-b border-[#E3ECEA] dark:border-[rgba(227,236,234,0.1)] sticky top-0 z-30 flex items-center justify-between text-[#172B2A] dark:text-[#F7FAF9] select-none transition-colors duration-200">
-        {/* Left: Mobile Toggle & Brand / Breadcrumb */}
-        <div className="flex items-center gap-3">
+        {/* Left: Mobile Toggle & Search / Breadcrumb */}
+        <div className="flex items-center gap-4 flex-1 max-w-md">
           <button
             type="button"
             onClick={onMobileMenuToggle}
@@ -45,7 +48,19 @@ export function DashboardHeader({
             <Menu className="w-5 h-5" />
           </button>
 
-          <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-[#526866] dark:text-[#9FB3B0]">
+          {/* Search Input inspired by reference image */}
+          <div className="hidden md:flex items-center gap-2.5 w-full px-4 py-2 rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 text-xs text-[#526866] dark:text-[#9FB3B0] focus-within:border-[#00BFA5]/50 focus-within:ring-2 focus-within:ring-[#00BFA5]/20 transition-all">
+            <Search className="w-4 h-4 text-[#728B88] dark:text-[#7D9491] shrink-0" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search assessments, pathways, reports..."
+              className="bg-transparent border-none outline-none w-full text-xs text-[#172B2A] dark:text-[#F7FAF9] placeholder:text-[#728B88] dark:placeholder:text-[#7D9491]"
+            />
+          </div>
+
+          <div className="flex md:hidden items-center gap-2 text-xs font-semibold text-[#526866] dark:text-[#9FB3B0]">
             <span>Portal</span>
             <span>/</span>
             <span className="text-[#172B2A] dark:text-[#F7FAF9] font-bold">Dashboard</span>
@@ -80,15 +95,22 @@ export function DashboardHeader({
           {/* Theme Switcher Toggle */}
           <ThemeToggle />
 
-          {/* Notifications Trigger */}
+          {/* Notifications Trigger with badge count */}
           <div className="relative">
             <button
               type="button"
+              onClick={() =>
+                toast.info("Notifications (2 Unread)", {
+                  description: "1. Your preliminary career report is ready for download. 2. Academic milestone 2025-26 active.",
+                })
+              }
               className="p-2 rounded-2xl bg-[#EBF2F0] hover:bg-[#E3ECEA] dark:bg-white/5 dark:hover:bg-white/10 border border-[#E3ECEA] dark:border-[rgba(227,236,234,0.1)] text-[#526866] hover:text-[#172B2A] dark:text-[#9FB3B0] dark:hover:text-[#F7FAF9] transition-colors cursor-pointer relative"
               aria-label="Notifications"
             >
               <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#00BFA5] ring-2 ring-white dark:ring-[#0D1C1B]" />
+              <span className="absolute -top-1 -right-1 min-w-4.5 h-4.5 px-1 rounded-full bg-rose-500 text-white font-bold text-[10px] flex items-center justify-center ring-2 ring-white dark:ring-[#0D1C1B]">
+                2
+              </span>
             </button>
           </div>
 

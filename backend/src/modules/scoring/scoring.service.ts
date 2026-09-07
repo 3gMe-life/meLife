@@ -5,6 +5,10 @@ import {
   RawResponseItem,
   SkillFinderFullResultDTO,
 } from "./scoring.types";
+import {
+  streamFinderScoringService,
+  type StreamFinderResultDTO,
+} from "../assessments/scoring/stream-finder-scoring.service";
 import { interestScoringEngine } from "./skill-finder/interest.scoring";
 import { skillBehaviourScoringEngine } from "./skill-finder/skill-behaviour.scoring";
 import { aptitudeScoringEngine } from "./skill-finder/aptitude.scoring";
@@ -123,7 +127,7 @@ export class ScoringService {
     userId: string,
     attemptId: string,
     languageCode = "en"
-  ): Promise<{ success: boolean; resultId: string; result: SkillFinderFullResultDTO }> {
+  ): Promise<{ success: boolean; resultId: string; result: SkillFinderFullResultDTO | StreamFinderResultDTO }> {
     const attempt = await assessmentContentRepository.findAttemptById(attemptId);
     if (!attempt) {
       throw AppError.notFound("Assessment attempt not found.", "ATTEMPT_NOT_FOUND");
@@ -152,11 +156,20 @@ export class ScoringService {
     }
 
     // Score constructs
-    const result = this.computeSkillFinderResult(attemptId, userId, rawResponses, {
-      versionCode: attempt.version_code,
-      versionName: attempt.version_name,
-      languageCode,
-    });
+    let result: any;
+    if (attempt.assessment_code === "STREAM_FINDER") {
+      result = streamFinderScoringService.computeStreamFinderResult(attemptId, userId, rawResponses, {
+        versionCode: attempt.version_code,
+        versionName: attempt.version_name,
+        languageCode,
+      });
+    } else {
+      result = this.computeSkillFinderResult(attemptId, userId, rawResponses, {
+        versionCode: attempt.version_code,
+        versionName: attempt.version_name,
+        languageCode,
+      });
+    }
 
     // Save snapshot in database
     const resultId = await assessmentContentRepository.finalizeAttemptAndSaveResult(
@@ -174,7 +187,7 @@ export class ScoringService {
         attemptId,
         resultId,
         code: attempt.assessment_code,
-        archetype: result.learningProfile.archetypeTitle,
+        archetype: result.learningProfile?.archetypeTitle || result.primaryStream,
       },
       "Psychometric scoring completed and result snapshot persisted."
     );
@@ -193,7 +206,7 @@ export class ScoringService {
     userId: string,
     attemptId: string,
     languageCode = "en"
-  ): Promise<SkillFinderFullResultDTO> {
+  ): Promise<any> {
     let savedResult = await assessmentContentRepository.findResultByAttemptId(attemptId);
     if (!savedResult) {
       // Check if attempt exists for this user and auto-score if it has answers
@@ -213,10 +226,10 @@ export class ScoringService {
       throw AppError.forbidden("Access denied to this assessment result.", "AUTH_FORBIDDEN");
     }
 
-    const baseResult: SkillFinderFullResultDTO = savedResult.result_data;
+    const baseResult: any = savedResult.result_data;
 
-    // Apply language localization on the fly if requested language is different
-    if (languageCode && languageCode !== baseResult.language) {
+    // Apply language localization on the fly if requested language is different (for SKILL_FINDER)
+    if (baseResult?.assessmentCode === "SKILL_FINDER" && languageCode && languageCode !== baseResult.language) {
       baseResult.learningProfile = profileGenerator.generateLearningProfile(
         baseResult.interestDiscovery,
         baseResult.skillBehaviour,
@@ -239,7 +252,7 @@ export class ScoringService {
     userId: string,
     resultId: string,
     languageCode = "en"
-  ): Promise<SkillFinderFullResultDTO> {
+  ): Promise<any> {
     let savedResult = await assessmentContentRepository.findResultById(resultId);
     if (!savedResult) {
       // Check if resultId was actually an attempt ID for this user
@@ -259,8 +272,8 @@ export class ScoringService {
       throw AppError.forbidden("Access denied to this assessment result.", "AUTH_FORBIDDEN");
     }
 
-    const baseResult: SkillFinderFullResultDTO = savedResult.result_data;
-    if (languageCode && languageCode !== baseResult.language) {
+    const baseResult: any = savedResult.result_data;
+    if (baseResult?.assessmentCode === "SKILL_FINDER" && languageCode && languageCode !== baseResult.language) {
       baseResult.learningProfile = profileGenerator.generateLearningProfile(
         baseResult.interestDiscovery,
         baseResult.skillBehaviour,
@@ -282,14 +295,14 @@ export class ScoringService {
   async getLatestResultForUser(
     userId: string,
     languageCode = "en"
-  ): Promise<SkillFinderFullResultDTO | null> {
+  ): Promise<any | null> {
     const savedResult = await assessmentContentRepository.findLatestResultByUserId(userId);
     if (!savedResult) {
       return null;
     }
 
-    const baseResult: SkillFinderFullResultDTO = savedResult.result_data;
-    if (languageCode && languageCode !== baseResult.language) {
+    const baseResult: any = savedResult.result_data;
+    if (baseResult?.assessmentCode === "SKILL_FINDER" && languageCode && languageCode !== baseResult.language) {
       baseResult.learningProfile = profileGenerator.generateLearningProfile(
         baseResult.interestDiscovery,
         baseResult.skillBehaviour,

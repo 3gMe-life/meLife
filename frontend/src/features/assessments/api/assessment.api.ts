@@ -4,6 +4,7 @@ import {
   AssessmentAttemptQuestionsResponse,
   SaveResponsePayload,
   SkillFinderResult,
+  StreamFinderResult,
 } from "../types/assessment.types";
 
 export interface ApiResponse<T> {
@@ -73,9 +74,9 @@ export const assessmentApi = {
   async submitAttempt(
     attemptId: string,
     language = "en"
-  ): Promise<{ success: boolean; resultId: string; result: SkillFinderResult }> {
+  ): Promise<{ success: boolean; resultId: string; result: any }> {
     const res = await fetchApi<
-      ApiResponse<{ success: boolean; resultId: string; result: SkillFinderResult }>
+      ApiResponse<{ success: boolean; resultId: string; result: any }>
     >(`/attempts/${attemptId}/submit?language=${encodeURIComponent(language)}`, {
       method: "POST",
     });
@@ -88,9 +89,9 @@ export const assessmentApi = {
   async scoreAttempt(
     attemptId: string,
     language = "en"
-  ): Promise<{ success: boolean; resultId: string; result: SkillFinderResult }> {
+  ): Promise<{ success: boolean; resultId: string; result: any }> {
     const res = await fetchApi<
-      ApiResponse<{ success: boolean; resultId: string; result: SkillFinderResult }>
+      ApiResponse<{ success: boolean; resultId: string; result: any }>
     >(`/attempts/${attemptId}/score?language=${encodeURIComponent(language)}`, {
       method: "POST",
     });
@@ -103,8 +104,8 @@ export const assessmentApi = {
   async getAttemptResult(
     attemptId: string,
     language = "en"
-  ): Promise<SkillFinderResult | null> {
-    const res = await fetchApi<ApiResponse<SkillFinderResult | null>>(
+  ): Promise<any | null> {
+    const res = await fetchApi<ApiResponse<any | null>>(
       `/results/${attemptId}?language=${encodeURIComponent(language)}`
     );
     return res.data;
@@ -113,8 +114,8 @@ export const assessmentApi = {
   /**
    * Fetches the participant's most recently completed assessment result.
    */
-  async getLatestResult(language = "en"): Promise<SkillFinderResult | null> {
-    const res = await fetchApi<ApiResponse<SkillFinderResult | null>>(
+  async getLatestResult(language = "en"): Promise<any | null> {
+    const res = await fetchApi<ApiResponse<any | null>>(
       `/assessments/results/latest?language=${encodeURIComponent(language)}`
     );
     return res.data;

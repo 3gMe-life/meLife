@@ -8,6 +8,7 @@ import type { ParticipantAssessmentItem } from "@/features/assessments/types/ass
 import type { AssessmentItem } from "../../types/dashboard.types";
 import { useStartRetakeMutation } from "@/features/assessments/hooks/useStartRetakeMutation";
 import { RetakeConfirmationModal } from "@/features/assessments/components/history/RetakeConfirmationModal";
+import { toast } from "@/components/ui/toast";
 
 export type AssessmentCardItem = (ParticipantAssessmentItem | AssessmentItem) & {
   title?: string;
@@ -37,11 +38,17 @@ export function AssessmentProgressCard({ assessment }: AssessmentProgressCardPro
       {
         onSuccess: () => {
           setIsRetakeModalOpen(false);
+          toast.success("New Milestone Initialized", {
+            description: `A fresh retake session for "${title}" is ready.`,
+          });
           router.push(`/participant/assessments/${assessmentCode}`);
         },
         onError: (err) => {
           console.error("Failed to start retake:", err);
           setIsRetakeModalOpen(false);
+          toast.info("Resuming Assessment Session", {
+            description: `Routing to "${title}".`,
+          });
           router.push(`/participant/assessments/${assessmentCode}`);
         },
       }

@@ -11,10 +11,11 @@ interface LikertQuestionProps {
 }
 
 const DEFAULT_LIKERT_LABELS: Record<string, { label: string; sub: string }> = {
-  "1": { label: "Not like me", sub: "Does not describe me" },
-  "2": { label: "A little like me", sub: "Applies slightly" },
-  "3": { label: "Mostly like me", sub: "Often true for me" },
-  "4": { label: "Very much like me", sub: "Strongly describes me" },
+  "1": { label: "Strongly Disagree", sub: "Not like me" },
+  "2": { label: "Disagree", sub: "Slightly like me" },
+  "3": { label: "Not Sure / Mostly like me", sub: "Neutral or moderate" },
+  "4": { label: "Agree", sub: "Frequently like me" },
+  "5": { label: "Strongly Agree", sub: "Completely like me" },
 };
 
 export function LikertQuestion({
@@ -27,14 +28,20 @@ export function LikertQuestion({
     options && options.length > 0
       ? options
       : [
-          { id: "1", optionKey: "1", optionText: "Not like me", displayOrder: 1 },
-          { id: "2", optionKey: "2", optionText: "A little like me", displayOrder: 2 },
-          { id: "3", optionKey: "3", optionText: "Mostly like me", displayOrder: 3 },
-          { id: "4", optionKey: "4", optionText: "Very much like me", displayOrder: 4 },
+          { id: "1", optionKey: "1", optionText: "Strongly Disagree", displayOrder: 1 },
+          { id: "2", optionKey: "2", optionText: "Disagree", displayOrder: 2 },
+          { id: "3", optionKey: "3", optionText: "Not Sure", displayOrder: 3 },
+          { id: "4", optionKey: "4", optionText: "Agree", displayOrder: 4 },
+          { id: "5", optionKey: "5", optionText: "Strongly Agree", displayOrder: 5 },
         ];
 
+  const gridColsClass =
+    displayOptions.length === 5
+      ? "grid-cols-1 sm:grid-cols-3 md:grid-cols-5"
+      : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4";
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 my-6">
+    <div className={`grid ${gridColsClass} gap-3 my-6`}>
       {displayOptions.map((opt) => {
         const isSelected = selectedValue === opt.optionKey;
         const meta = DEFAULT_LIKERT_LABELS[opt.optionKey] || {

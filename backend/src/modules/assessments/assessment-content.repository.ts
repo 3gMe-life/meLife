@@ -6,6 +6,10 @@ import {
   SKILL_FINDER_QUESTIONS,
 } from "./content/skill-finder-catalog.data";
 import {
+  STREAM_FINDER_SECTIONS,
+  STREAM_FINDER_QUESTIONS,
+} from "./content/stream-finder-catalog.data";
+import {
   SanitizedQuestionDTO,
   AssessmentSectionSummaryDTO,
   AssessmentAttemptQuestionsResponseDTO,
@@ -374,6 +378,124 @@ export class AssessmentContentRepository {
     }
 
     logger.info("✨ Skill Finder 104-item question bank & options seeded successfully.");
+  }
+
+  /**
+   * Seeds all 80 questions, sections, dimensions, and options for Stream Finder idempotently.
+   */
+  async seedStreamFinderContent(client?: PoolClient): Promise<void> {
+    const db = client || pool;
+
+    // 1. Find STREAM_FINDER assessment ID
+    const assessRes = await db.query(
+      `SELECT id FROM assessments WHERE code = 'STREAM_FINDER' LIMIT 1`
+    );
+    if (!assessRes.rows[0]) {
+      logger.warn("STREAM_FINDER assessment catalog entry missing, skipping content seeding");
+      return;
+    }
+    const assessmentId = assessRes.rows[0].id;
+
+    // Fast check: if already seeded 80 items, return immediately
+    const countCheck = await db.query(
+      `SELECT COUNT(*) as count FROM assessment_questions WHERE assessment_id = $1`,
+      [assessmentId]
+    );
+    if (parseInt(countCheck.rows[0]?.count, 10) === 80) {
+      logger.info("✨ Stream Finder question bank already fully seeded (80 items).");
+      return;
+    }
+
+    // 2. Upsert Sections
+    const sectionMap: Record<string, string> = {};
+    for (const sec of STREAM_FINDER_SECTIONS) {
+      const sRes = await db.query(
+        `INSERT INTO assessment_sections (assessment_id, code, name, description, display_order, updated_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())
+         ON CONFLICT (assessment_id, code) DO UPDATE SET
+           name = EXCLUDED.name,
+           description = EXCLUDED.description,
+           display_order = EXCLUDED.display_order,
+           updated_at = NOW()
+         RETURNING id`,
+        [assessmentId, sec.code, sec.name, sec.description, sec.displayOrder]
+      );
+      sectionMap[sec.code] = sRes.rows[0].id;
+    }
+
+    // 3. Upsert Dimensions & Questions
+    const dimensionMap: Record<string, string> = {};
+
+    for (const q of STREAM_FINDER_QUESTIONS) {
+      const sectionId = sectionMap[q.sectionCode];
+      if (!sectionId) continue;
+
+      // Upsert Dimension if not yet in map
+      const dimKey = `${q.sectionCode}_${q.dimensionCode}`;
+      if (!dimensionMap[dimKey]) {
+        const dRes = await db.query(
+          `INSERT INTO assessment_dimensions (section_id, code, name, display_order, updated_at)
+           VALUES ($1, $2, $3, $4, NOW())
+           ON CONFLICT (section_id, code) DO UPDATE SET
+             name = EXCLUDED.name,
+             updated_at = NOW()
+           RETURNING id`,
+          [sectionId, q.dimensionCode, q.dimensionName, q.questionNumber]
+        );
+        dimensionMap[dimKey] = dRes.rows[0].id;
+      }
+      const dimensionId = dimensionMap[dimKey];
+
+      const maxPoints = q.questionType === "likert_1_5" ? 5.0 : 3.0;
+
+      // Upsert Question
+      const qRes = await db.query(
+        `INSERT INTO assessment_questions (
+           assessment_id, section_id, dimension_id, question_number, question_text,
+           question_type, max_points, is_required, display_order, updated_at
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+         ON CONFLICT (assessment_id, question_number) DO UPDATE SET
+           section_id = EXCLUDED.section_id,
+           dimension_id = EXCLUDED.dimension_id,
+           question_text = EXCLUDED.question_text,
+           question_type = EXCLUDED.question_type,
+           max_points = EXCLUDED.max_points,
+           display_order = EXCLUDED.display_order,
+           updated_at = NOW()
+         RETURNING id`,
+        [
+          assessmentId,
+          sectionId,
+          dimensionId,
+          q.questionNumber,
+          q.questionText,
+          q.questionType,
+          maxPoints,
+          true,
+          q.questionNumber,
+        ]
+      );
+      const questionId = qRes.rows[0].id;
+
+      // Upsert Options
+      if (q.options && q.options.length > 0) {
+        for (const opt of q.options) {
+          await db.query(
+            `INSERT INTO question_options (question_id, option_key, option_text, score_value, display_order, updated_at)
+             VALUES ($1, $2, $3, $4, $5, NOW())
+             ON CONFLICT (question_id, option_key) DO UPDATE SET
+               option_text = EXCLUDED.option_text,
+               score_value = EXCLUDED.score_value,
+               display_order = EXCLUDED.display_order,
+               updated_at = NOW()`,
+            [questionId, opt.optionKey, opt.optionText, opt.scoreValue || 0, opt.displayOrder]
+          );
+        }
+      }
+    }
+
+    logger.info("✨ Stream Finder 80-item question bank & options seeded successfully.");
   }
 
   /**
@@ -764,18 +886,41 @@ export class AssessmentContentRepository {
       [attemptId]
     );
 
-    const profileType = resultData?.learningProfile?.archetypeTitle || null;
-    const summary = resultData?.learningProfile?.strengthSummary || null;
-    const profileVector = resultData?.profileVector || null;
-    const profileConfidence = resultData?.profileConfidence || resultData?.confidence?.level || resultData?.responseQuality?.consistencySignal || null;
-    const confidenceMetrics = resultData?.confidenceMetrics || resultData?.confidence || resultData?.responseQuality || null;
+    const profileType =
+      resultData?.learningProfile?.archetypeTitle ||
+      (resultData?.primaryStream ? `${resultData.primaryStream} Stream` : null) ||
+      resultData?.profileType ||
+      null;
 
-    const dimensionScores = {
-      interest: resultData?.interestDiscovery?.dimensions || [],
-      skills: resultData?.skillBehaviour?.dimensions || [],
-      aptitude: resultData?.demonstratedAptitude?.dimensions || [],
-      strengths: resultData?.developmentalStrengths?.dimensions || [],
-    };
+    const summary =
+      resultData?.learningProfile?.strengthSummary ||
+      resultData?.counsellingSummary ||
+      resultData?.summary ||
+      null;
+
+    const profileVector = resultData?.profileVector || null;
+    const profileConfidence =
+      resultData?.profileConfidence ||
+      resultData?.confidence?.level ||
+      resultData?.clarity ||
+      resultData?.responseQuality?.consistencySignal ||
+      null;
+
+    const confidenceMetrics =
+      resultData?.confidenceMetrics ||
+      resultData?.confidence ||
+      resultData?.responseQuality ||
+      (resultData?.scoreGap != null ? { scoreGap: resultData.scoreGap, clarity: resultData.clarity } : null) ||
+      null;
+
+    const dimensionScores = resultData?.streamScores
+      ? { streamScores: resultData.streamScores, sectionBreakdown: resultData.sectionBreakdown }
+      : {
+          interest: resultData?.interestDiscovery?.dimensions || [],
+          skills: resultData?.skillBehaviour?.dimensions || [],
+          aptitude: resultData?.demonstratedAptitude?.dimensions || [],
+          strengths: resultData?.developmentalStrengths?.dimensions || [],
+        };
 
     const res = await db.query(
       `INSERT INTO assessment_results (attempt_id, participant_id, assessment_code, profile_type, summary, dimension_scores, profile_vector, profile_confidence, confidence_metrics, result_data, updated_at)

@@ -2,6 +2,8 @@ import { AssessmentCode } from "./assessment.types";
 
 export type QuestionType =
   | "likert_1_4"
+  | "likert_1_5"
+  | "forced_choice_4"
   | "mcq_text"
   | "mcq_image"
   | "open_scored";

@@ -79,7 +79,7 @@ export function QuestionRenderer({
         )}
 
         {/* Input Delegator */}
-        {question.questionType === "likert_1_4" && (
+        {(question.questionType === "likert_1_4" || question.questionType === "likert_1_5") && (
           <LikertQuestion
             options={question.options}
             selectedValue={currentResponse?.responseValue}
@@ -88,7 +88,9 @@ export function QuestionRenderer({
           />
         )}
 
-        {(question.questionType === "mcq_text" || question.questionType === "mcq_image") && (
+        {(question.questionType === "mcq_text" ||
+          question.questionType === "mcq_image" ||
+          question.questionType === "forced_choice_4") && (
           <MultipleChoiceQuestion
             options={question.options}
             selectedValue={currentResponse?.responseValue}

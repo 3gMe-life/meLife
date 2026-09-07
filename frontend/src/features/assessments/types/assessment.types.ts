@@ -42,6 +42,8 @@ export interface ParticipantAssessmentsResponse {
 
 export type QuestionType =
   | "likert_1_4"
+  | "likert_1_5"
+  | "forced_choice_4"
   | "mcq_text"
   | "mcq_image"
   | "open_scored";
@@ -305,3 +307,96 @@ export interface LatestComparisonResponse {
   comparison: LongitudinalComparisonResult | null;
   message?: string;
 }
+
+export type StreamName = "Science" | "Commerce" | "Humanities" | "Applied / Technical";
+
+export type AlignmentBand =
+  | "Very Strong Alignment"
+  | "Strong Alignment"
+  | "Moderate Alignment"
+  | "Developing Alignment"
+  | "Low Alignment"
+  | "Incomplete";
+
+export type RecommendationClarity =
+  | "High Clarity"
+  | "Moderate Clarity"
+  | "Mixed Profile / Further Exploration"
+  | "Incomplete";
+
+export interface StreamScoreItem {
+  stream: StreamName;
+  traitPoints: number;
+  maxTraitPoints: number;
+  choicePoints: number;
+  maxChoicePoints: number;
+  totalRaw: number;
+  maxTotal: number;
+  compatibilityPercentage: number;
+  displayPercentage: number;
+  alignment: AlignmentBand;
+}
+
+export interface SectionStreamBreakdownItem {
+  sectionCode: string;
+  sectionName: string;
+  questionCount: number;
+  answeredCount: number;
+  scienceScore: number;
+  commerceScore: number;
+  humanitiesScore: number;
+  appliedScore: number;
+}
+
+export interface StreamCareerClusterItem {
+  profileKey: string;
+  suggestedCareerFamilies: string[];
+  exampleAreas: string[];
+  counsellingNote: string;
+}
+
+export interface AcademicEvidenceItem {
+  subject: string;
+  relevance: string;
+  thresholdNote: string;
+}
+
+export interface StreamFinderResult {
+  resultId: string;
+  attemptId: string;
+  participantId: string;
+  assessmentCode: "STREAM_FINDER";
+  assessmentName: string;
+  versionCode?: string | null;
+  versionName?: string | null;
+  language?: string;
+  completedAt: string;
+  completedQuestions: number;
+  totalQuestions: number;
+  completionPercentage: number;
+  isComplete: boolean;
+
+  streamScores: Record<StreamName, StreamScoreItem>;
+  sortedStreams: StreamScoreItem[];
+
+  primaryStream: StreamName;
+  primaryScore: number;
+  primaryDisplayPercentage: number;
+  primaryAlignment: AlignmentBand;
+
+  secondaryStream: StreamName;
+  secondaryScore: number;
+  secondaryDisplayPercentage: number;
+  secondaryAlignment: AlignmentBand;
+
+  scoreGap: number;
+  scoreGapPercentage: number;
+  clarity: RecommendationClarity;
+  isMixedProfile: boolean;
+
+  careerClusters: StreamCareerClusterItem[];
+  sectionBreakdown: SectionStreamBreakdownItem[];
+  academicEvidence: AcademicEvidenceItem[];
+  counsellingSummary: string;
+}
+

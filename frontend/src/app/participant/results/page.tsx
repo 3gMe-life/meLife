@@ -6,6 +6,7 @@ import { DashboardShell } from "@/features/dashboard/components/shell/DashboardS
 import { ProtectedRouteGuard } from "@/features/dashboard/guards/ProtectedRouteGuard";
 import { useLatestAssessmentResultQuery } from "@/features/assessments/hooks/useAssessmentResultQuery";
 import { SkillFinderResultView } from "@/features/assessments/components/results/SkillFinderResultView";
+import { StreamFinderResultView } from "@/features/assessments/components/results/StreamFinderResultView";
 import { Sparkles, ArrowRight, BrainCircuit, RefreshCw } from "lucide-react";
 
 export default function ParticipantResultsPage() {
@@ -86,8 +87,15 @@ export default function ParticipantResultsPage() {
                 </Link>
               </div>
             </div>
+          ) : latestResult.assessmentCode === "STREAM_FINDER" ? (
+            /* Render Live Stream Finder Psychometric Evaluation */
+            <StreamFinderResultView
+              result={latestResult}
+              currentLanguage={language}
+              onLanguageChange={setLanguage}
+            />
           ) : (
-            /* Render Live Validated Psychometric Evaluation */
+            /* Render Live Skill Finder Psychometric Evaluation */
             <SkillFinderResultView
               result={latestResult}
               currentLanguage={language}

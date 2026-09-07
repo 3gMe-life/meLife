@@ -1,7 +1,6 @@
-"use client";
-
 import React, { useState } from "react";
 import { KeyRound, X, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { toast } from "@/components/ui/toast";
 
 interface VoucherRedeemModalProps {
   isOpen: boolean;
@@ -23,7 +22,9 @@ export function VoucherRedeemModal({ isOpen, onClose }: VoucherRedeemModalProps)
 
     const trimmed = code.trim().toUpperCase();
     if (!trimmed) {
-      setErrorMessage("Please enter an assessment access code.");
+      const msg = "Please enter an assessment access code.";
+      setErrorMessage(msg);
+      toast.warning("Access Code Required", { description: msg });
       return;
     }
 
@@ -33,10 +34,18 @@ export function VoucherRedeemModal({ isOpen, onClose }: VoucherRedeemModalProps)
     setTimeout(() => {
       setIsRedeeming(false);
       if (trimmed.startsWith("MELIFE-") || trimmed.length >= 6) {
-        setSuccessMessage(`Assessment voucher "${trimmed}" verified and unlocked successfully!`);
+        const msg = `Assessment voucher "${trimmed}" verified and unlocked successfully!`;
+        setSuccessMessage(msg);
+        toast.success("Voucher Unlocked!", {
+          description: `Assessment module "${trimmed}" has been credited to your student dashboard.`,
+        });
         setCode("");
       } else {
-        setErrorMessage("Invalid or expired assessment code. Please check with your institution.");
+        const msg = "Invalid or expired assessment code. Please check with your institution.";
+        setErrorMessage(msg);
+        toast.error("Voucher Verification Failed", {
+          description: msg,
+        });
       }
     }, 800);
   };

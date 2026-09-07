@@ -8,7 +8,9 @@ import { participantRepository } from "./modules/participants/participant.reposi
 import { assessmentRepository } from "./modules/assessments/assessment.repository";
 import { assessmentContentRepository } from "./modules/assessments/assessment-content.repository";
 import { skillFinderQuestionSelectionService } from "./modules/assessments/services/skill-finder-question-selection.service";
+import { streamFinderQuestionSelectionService } from "./modules/assessments/services/stream-finder-question-selection.service";
 import { skillFinderTranslationsService } from "./modules/assessments/services/skill-finder-translations.service";
+import { streamFinderTranslationsService } from "./modules/assessments/services/stream-finder-translations.service";
 import { reportRepository } from "./modules/reports/report.repository";
 import { careerRepository } from "./modules/careers/career.repository";
 import { careerReportRepository } from "./modules/careers/reports/career-report.repository";
@@ -30,11 +32,16 @@ const bootstrap = async () => {
     await assessmentRepository.initSchema();
     await assessmentRepository.seedCatalog();
 
-    // 5. Initialize assessment runner schema & seed Skill Finder question bank & versions
+    // 5. Initialize assessment runner schema & seed Skill Finder + Stream Finder question bank & versions
     await assessmentContentRepository.initSchema();
     await assessmentContentRepository.seedSkillFinderContent();
     await skillFinderQuestionSelectionService.seedSkillFinderVersions();
     await skillFinderTranslationsService.seedSkillFinderTranslations();
+
+    // 5b. Stream Finder Question Bank & Versions & Translations
+    await assessmentContentRepository.seedStreamFinderContent();
+    await streamFinderQuestionSelectionService.seedStreamFinderVersions();
+    await streamFinderTranslationsService.seedStreamFinderTranslations();
 
     // 6. Initialize psychometric reports schema
     await reportRepository.initSchema();

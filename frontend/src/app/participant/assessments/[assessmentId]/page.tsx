@@ -15,6 +15,14 @@ export default function AssessmentRunnerPage() {
     ? params.assessmentId[0]
     : (params?.assessmentId as string);
 
+  // Read initial stored language preference if available
+  const [preferredLang, setPreferredLang] = React.useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("preferred_assessment_language") || "en";
+    }
+    return "en";
+  });
+
   // 1. Initialize or resume active attempt via start API
   const {
     data: startData,
@@ -32,13 +40,13 @@ export default function AssessmentRunnerPage() {
 
   const attemptId = startData?.attemptId || "";
 
-  // 2. Fetch questions and saved responses once attemptId is resolved
+  // 2. Fetch questions and saved responses once attemptId is resolved with preferred language
   const {
     data: attemptQuestionsData,
     isLoading: isQuestionsLoading,
     isError: isQuestionsError,
     error: questionsError,
-  } = useAssessmentAttemptQuestionsQuery(attemptId);
+  } = useAssessmentAttemptQuestionsQuery(attemptId, preferredLang);
 
   const isLoading = isStartLoading || (Boolean(attemptId) && isQuestionsLoading);
   const isError = isStartError || isQuestionsError;

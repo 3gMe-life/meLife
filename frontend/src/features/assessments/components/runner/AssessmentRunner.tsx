@@ -2,9 +2,11 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   AssessmentAttemptQuestionsResponse,
 } from "../../types/assessment.types";
+import { assessmentApi } from "../../api/assessment.api";
 import { useSaveAssessmentResponseMutation } from "../../hooks/useSaveAssessmentResponseMutation";
 import { useSubmitAssessmentMutation } from "../../hooks/useSubmitAssessmentMutation";
 import { useAssessmentAttemptQuestionsQuery } from "../../hooks/useAssessmentAttemptQuestionsQuery";
@@ -35,6 +37,7 @@ interface AssessmentRunnerProps {
 
 export function AssessmentRunner({ attemptData }: AssessmentRunnerProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const attemptId = attemptData.attemptId;
 
   // Language state (persisted in localStorage)
@@ -47,10 +50,22 @@ export function AssessmentRunner({ attemptData }: AssessmentRunnerProps) {
   });
 
   // Fetch language-specific questions dynamically with React Query cache
-  const { data: dynamicQuestionsData } = useAssessmentAttemptQuestionsQuery(
-    attemptId,
-    language
-  );
+  const { data: dynamicQuestionsData, isFetching: isLanguageFetching } =
+    useAssessmentAttemptQuestionsQuery(attemptId, language);
+
+  // Prefetch other supported languages in the background for 0ms instant language switching
+  useEffect(() => {
+    const supportedLangs = attemptData.supportedLanguages || SUPPORTED_LANGUAGES;
+    supportedLangs.forEach((l) => {
+      if (l.code !== language) {
+        queryClient.prefetchQuery({
+          queryKey: ["attemptQuestions", attemptId, l.code],
+          queryFn: () => assessmentApi.getAttemptQuestions(attemptId, l.code),
+          staleTime: 1000 * 60 * 15,
+        });
+      }
+    });
+  }, [attemptId, language, queryClient, attemptData.supportedLanguages]);
 
   const activeAttemptData = dynamicQuestionsData || attemptData;
   const rawQuestions = activeAttemptData.questions;

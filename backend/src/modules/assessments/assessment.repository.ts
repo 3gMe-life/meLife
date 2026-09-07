@@ -64,9 +64,9 @@ export class AssessmentRepository {
         code: "STREAM_FINDER" as AssessmentCode,
         name: "Stream Finder",
         category: "Academic Streams & Subject Affinity",
-        description: "Comprehensive subject affinity and vocational interests battery guiding students toward optimal Senior Secondary stream choices (Science, Commerce, Arts/Humanities).",
+        description: "Comprehensive subject affinity, problem-solving, and vocational interests battery guiding Class 9-10 students toward optimal Senior Secondary stream choices (Science, Commerce, Humanities, Applied / Technical).",
         estimatedMinutes: 25,
-        questionCount: 40,
+        questionCount: 80,
         minAge: 14,
         maxAge: 16,
         allowedStages: ["SCHOOL"],
@@ -200,7 +200,7 @@ export class AssessmentRepository {
       ORDER BY display_order ASC
     `;
     const res = await db.query(query);
-    return res.rows.map(this.mapRowToEntity);
+    return res.rows.map((row) => this.mapRowToEntity(row));
   }
 
   /**
@@ -209,10 +209,11 @@ export class AssessmentRepository {
   async findByIdOrCode(idOrCode: string, client?: PoolClient): Promise<AssessmentCatalogEntity | null> {
     const db = client || pool;
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrCode);
+    const normalizedCode = idOrCode ? idOrCode.toUpperCase().replace(/-/g, "_") : "";
     const query = isUuid
       ? `SELECT * FROM assessments WHERE id = $1 LIMIT 1`
-      : `SELECT * FROM assessments WHERE code = $1 LIMIT 1`;
-    const res = await db.query(query, [idOrCode]);
+      : `SELECT * FROM assessments WHERE code = $1 OR code = $2 LIMIT 1`;
+    const res = await db.query(query, isUuid ? [idOrCode] : [idOrCode, normalizedCode]);
     if (!res.rows[0]) return null;
     return this.mapRowToEntity(res.rows[0]);
   }
@@ -222,16 +223,17 @@ export class AssessmentRepository {
    */
   async findByCode(code: string, client?: PoolClient): Promise<AssessmentCatalogEntity | null> {
     const db = client || pool;
+    const normalizedCode = code ? code.toUpperCase().replace(/-/g, "_") : "";
     const query = `
       SELECT
         id, code, name, category, description, estimated_minutes, question_count,
         min_age, max_age, allowed_stages, allowed_grades, status, display_order,
         created_at, updated_at
       FROM assessments
-      WHERE code = $1
+      WHERE code = $1 OR code = $2
       LIMIT 1
     `;
-    const res = await db.query(query, [code]);
+    const res = await db.query(query, [code, normalizedCode]);
     if (!res.rows[0]) return null;
     return this.mapRowToEntity(res.rows[0]);
   }

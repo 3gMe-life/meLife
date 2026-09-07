@@ -37,6 +37,7 @@ import { GrowthInsightsCard } from "../comparison/GrowthInsightsCard";
 import { AssessmentTimeline } from "../history/AssessmentTimeline";
 import { AssessmentHistoryCard } from "../history/AssessmentHistoryCard";
 import { RetakeConfirmationModal } from "../history/RetakeConfirmationModal";
+import { toast } from "@/components/ui/toast";
 
 interface SkillFinderResultViewProps {
   result: SkillFinderResult;
@@ -87,11 +88,17 @@ export function SkillFinderResultView({
       {
         onSuccess: () => {
           setIsRetakeModalOpen(false);
+          toast.success("New Retake Session Initialized", {
+            description: "Questions reset for your fresh milestone evaluation.",
+          });
           router.push("/participant/assessments/skill-finder");
         },
         onError: (err) => {
           console.error("Failed to start retake:", err);
           setIsRetakeModalOpen(false);
+          toast.info("Resuming Assessment Session", {
+            description: "Routing to your assessment questions.",
+          });
           router.push("/participant/assessments/skill-finder");
         },
       }
