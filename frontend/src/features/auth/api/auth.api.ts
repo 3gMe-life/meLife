@@ -1,4 +1,4 @@
-import { fetchApi } from "@/services/api/client";
+import { fetchApi, ACCESS_TOKEN_KEY } from "@/services/api/client";
 import type {
   LoginPayload,
   GoogleAuthPayload,
@@ -11,75 +11,97 @@ import type {
   CurrentUserResponse,
 } from "../types/auth.types";
 
+function storeAuthToken(res: AuthResponse) {
+  if (typeof window !== "undefined") {
+    const token = res.data?.accessToken || res.data?.token;
+    if (token) {
+      localStorage.setItem(ACCESS_TOKEN_KEY, token);
+    }
+  }
+}
+
 export const authApi = {
   /**
    * Universal Login
    */
   async login(payload: LoginPayload): Promise<AuthResponse> {
-    return fetchApi<AuthResponse>("/auth/login", {
+    const res = await fetchApi<AuthResponse>("/auth/login", {
       method: "POST",
       body: JSON.stringify(payload),
     });
+    storeAuthToken(res);
+    return res;
   },
 
   /**
    * Google OAuth Sign-In & Sign-Up
    */
   async googleAuth(payload: GoogleAuthPayload): Promise<AuthResponse> {
-    return fetchApi<AuthResponse>("/auth/google", {
+    const res = await fetchApi<AuthResponse>("/auth/google", {
       method: "POST",
       body: JSON.stringify(payload),
     });
+    storeAuthToken(res);
+    return res;
   },
 
   /**
    * Student Registration
    */
   async registerStudent(payload: StudentRegistrationPayload): Promise<AuthResponse> {
-    return fetchApi<AuthResponse>("/auth/register/student", {
+    const res = await fetchApi<AuthResponse>("/auth/register/student", {
       method: "POST",
       body: JSON.stringify(payload),
     });
+    storeAuthToken(res);
+    return res;
   },
 
   /**
    * Parent / Guardian Registration
    */
   async registerParent(payload: ParentRegistrationPayload): Promise<AuthResponse> {
-    return fetchApi<AuthResponse>("/auth/register/parent", {
+    const res = await fetchApi<AuthResponse>("/auth/register/parent", {
       method: "POST",
       body: JSON.stringify(payload),
     });
+    storeAuthToken(res);
+    return res;
   },
 
   /**
    * Counsellor Application
    */
   async applyCounsellor(payload: CounsellorApplicationPayload): Promise<AuthResponse> {
-    return fetchApi<AuthResponse>("/auth/apply/counsellor", {
+    const res = await fetchApi<AuthResponse>("/auth/apply/counsellor", {
       method: "POST",
       body: JSON.stringify(payload),
     });
+    storeAuthToken(res);
+    return res;
   },
 
   /**
    * School / Institution Application
    */
   async applyInstitution(payload: InstitutionApplicationPayload): Promise<AuthResponse> {
-    return fetchApi<AuthResponse>("/auth/apply/institution", {
+    const res = await fetchApi<AuthResponse>("/auth/apply/institution", {
       method: "POST",
       body: JSON.stringify(payload),
     });
+    storeAuthToken(res);
+    return res;
   },
 
   /**
    * Student Onboarding (Class stage & Guardian information)
    */
   async submitStudentOnboarding(payload: StudentOnboardingPayload): Promise<AuthResponse> {
-    return fetchApi<AuthResponse>("/students/onboarding", {
+    const res = await fetchApi<AuthResponse>("/students/onboarding", {
       method: "POST",
       body: JSON.stringify(payload),
     });
+    return res;
   },
 
   /**
@@ -95,8 +117,15 @@ export const authApi = {
    * User Logout
    */
   async logout(): Promise<{ success: boolean }> {
-    return fetchApi<{ success: boolean }>("/auth/logout", {
-      method: "POST",
-    });
+    try {
+      const res = await fetchApi<{ success: boolean }>("/auth/logout", {
+        method: "POST",
+      });
+      return res;
+    } finally {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+      }
+    }
   },
 };

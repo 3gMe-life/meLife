@@ -35,6 +35,21 @@ export interface AssessmentCatalogEntity {
   updatedAt: string;
 }
 
+export interface PrerequisiteStatusDTO {
+  code: AssessmentCode;
+  name: string;
+  isSatisfied: boolean;
+}
+
+export interface AssessmentPrerequisiteEntity {
+  id: string;
+  assessmentId: string;
+  assessmentCode: AssessmentCode;
+  prerequisiteAssessmentId: string;
+  prerequisiteAssessmentCode: AssessmentCode;
+  requiredStatus: string;
+}
+
 export interface ParticipantAssessmentItemDTO {
   id: string;
   code: AssessmentCode;
@@ -47,6 +62,15 @@ export interface ParticipantAssessmentItemDTO {
   progressPercentage: number;
   isEligible: boolean;
   eligibilityReason: string;
+  canStart: boolean;
+  canContinue: boolean;
+  canRetake: boolean;
+  canViewResult: boolean;
+  lockReason: string | null;
+  prerequisites: PrerequisiteStatusDTO[];
+  isRecommended: boolean;
+  recommendationReason?: string | null;
+  journeyOrder: number;
   activeAttemptId?: string | null;
   completedAt?: string | null;
   dominantTrait?: string | null;
@@ -62,6 +86,7 @@ export interface ParticipantAssessmentsResponseDTO {
   derivedAge: number | null;
   educationStage: string | null;
   gradeLevel: string | null;
+  primaryAssessmentCode: AssessmentCode | null;
   totalAvailable: number;
   completedCount: number;
   overallProgressPercentage: number;

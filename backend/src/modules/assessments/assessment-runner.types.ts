@@ -23,6 +23,7 @@ export interface SanitizedQuestionDTO {
   dimensionCode: string;
   dimensionName: string;
   questionText: string;
+  originalQuestionText?: string | null;
   questionType: QuestionType;
   imageUrl: string | null;
   isRequired: boolean;
@@ -59,6 +60,8 @@ export interface AssessmentAttemptQuestionsResponseDTO {
   currentLanguage?: string;
   supportedLanguages?: SupportedLanguageDTO[];
   status: "IN_PROGRESS" | "COMPLETED" | "ABANDONED";
+  startedAt?: string | null;
+  serverTime?: string;
   totalQuestions: number;
   answeredCount: number;
   currentQuestionIndex: number;

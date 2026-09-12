@@ -78,8 +78,12 @@ export function SkillFinderResultView({
   const [isRetakeModalOpen, setIsRetakeModalOpen] = useState(false);
 
   const { data: latestComparisonData, isLoading: isComparisonLoading } =
-    useLatestAssessmentComparisonQuery("skill-finder");
-  const { data: historyData } = useAssessmentHistoryQuery("skill-finder");
+    useLatestAssessmentComparisonQuery("skill-finder", {
+      enabled: activeTab === "growth",
+    });
+  const { data: historyData } = useAssessmentHistoryQuery("skill-finder", {
+    enabled: activeTab === "growth",
+  });
   const startRetakeMutation = useStartRetakeMutation();
 
   const handleStartRetake = () => {

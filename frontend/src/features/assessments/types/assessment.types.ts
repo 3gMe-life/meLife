@@ -14,6 +14,12 @@ export type AssessmentEligibilityState =
   | "PROFILE_INCOMPLETE"
   | "NO_ELIGIBLE_ASSESSMENTS";
 
+export interface PrerequisiteStatus {
+  code: AssessmentProductCode | string;
+  name: string;
+  isSatisfied: boolean;
+}
+
 export interface ParticipantAssessmentItem {
   id: string;
   code: AssessmentProductCode;
@@ -26,7 +32,17 @@ export interface ParticipantAssessmentItem {
   progressPercentage: number;
   isEligible: boolean;
   eligibilityReason?: string;
+  canStart?: boolean;
+  canContinue?: boolean;
+  canRetake?: boolean;
+  canViewResult?: boolean;
+  lockReason?: string | null;
+  prerequisites?: PrerequisiteStatus[];
+  isRecommended?: boolean;
+  recommendationReason?: string | null;
+  journeyOrder?: number;
   activeAttemptId?: string | null;
+  completedAt?: string | null;
 }
 
 export interface ParticipantAssessmentsResponse {
@@ -34,6 +50,7 @@ export interface ParticipantAssessmentsResponse {
   derivedAge: number | null;
   educationStage: string | null;
   gradeLevel: string | null;
+  primaryAssessmentCode?: AssessmentProductCode | string | null;
   totalAvailable: number;
   completedCount: number;
   overallProgressPercentage: number;
@@ -44,6 +61,7 @@ export type QuestionType =
   | "likert_1_4"
   | "likert_1_5"
   | "forced_choice_4"
+  | "forced_choice_8"
   | "mcq_text"
   | "mcq_image"
   | "open_scored";
@@ -63,6 +81,7 @@ export interface SanitizedQuestion {
   dimensionCode: string;
   dimensionName: string;
   questionText: string;
+  originalQuestionText?: string | null;
   questionType: QuestionType;
   imageUrl: string | null;
   isRequired: boolean;
@@ -99,6 +118,8 @@ export interface AssessmentAttemptQuestionsResponse {
   currentLanguage?: string;
   supportedLanguages?: SupportedLanguage[];
   status: "IN_PROGRESS" | "COMPLETED" | "ABANDONED";
+  startedAt?: string | null;
+  serverTime?: string;
   totalQuestions: number;
   answeredCount: number;
   currentQuestionIndex: number;
@@ -398,5 +419,96 @@ export interface StreamFinderResult {
   sectionBreakdown: SectionStreamBreakdownItem[];
   academicEvidence: AcademicEvidenceItem[];
   counsellingSummary: string;
+}
+
+export type EngineeringBranchCode =
+  | "CSE"
+  | "ECE"
+  | "EEE"
+  | "ME"
+  | "CE"
+  | "CHE"
+  | "BME"
+  | "AERO";
+
+export interface EngineeringBranchScoreItem {
+  branchCode: EngineeringBranchCode;
+  branchName: string;
+  likertPoints: number;
+  maxLikertPoints: number;
+  choicePoints: number;
+  maxChoicePoints: number;
+  totalRaw: number;
+  maxTotal: number;
+  compatibilityPercentage: number;
+  displayPercentage: number;
+  alignment: string;
+  coreFocus: string;
+  exampleAreas: string;
+  counsellingNote: string;
+  suggestedProjects: string[];
+  keySchoolSubjects: string[];
+}
+
+export interface EngineeringConstructScoreItem {
+  constructCode: string;
+  name: string;
+  description: string;
+  rawScore: number;
+  maxScore: number;
+  normalizedScore: number;
+  associatedBranches: string[];
+}
+
+export interface EngineeringBranchFinderResult {
+  resultId: string;
+  attemptId: string;
+  participantId: string;
+  assessmentCode: "ENGINEERING_BRANCH_FINDER";
+  assessmentName: string;
+  versionCode?: string | null;
+  versionName?: string | null;
+  language?: string;
+  completedAt: string;
+  completedQuestions: number;
+  totalQuestions: number;
+  completionPercentage: number;
+  isComplete: boolean;
+  pilotStatus: string;
+
+  branchScores: Record<EngineeringBranchCode, EngineeringBranchScoreItem>;
+  sortedBranches: EngineeringBranchScoreItem[];
+
+  primaryBranch: EngineeringBranchScoreItem;
+  secondaryBranch: EngineeringBranchScoreItem;
+
+  scoreGap: number;
+  scoreGapPercentage: number;
+  clarity: string;
+  isMixedProfile: boolean;
+
+  constructScores: Record<string, EngineeringConstructScoreItem>;
+  topConstructs: EngineeringConstructScoreItem[];
+
+  explorationRationale: {
+    primaryWhy: string;
+    secondaryWhy: string;
+    interdisciplinaryNote?: string;
+  };
+
+  responseQuality: {
+    isComplete: boolean;
+    answeredCount: number;
+    totalQuestions: number;
+    straightLiningDetected: boolean;
+    qualityFlag: string;
+    pilotDisclaimer: string;
+  };
+
+  counsellorGuide: {
+    discussionQuestions: string[];
+    recommendedNextSteps: string[];
+    academicSubjectGuidance: string[];
+  };
 }
 

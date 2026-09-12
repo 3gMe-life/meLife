@@ -26,12 +26,13 @@ export function DashboardShell({
 
   return (
     <ProtectedRouteGuard allowedRoles={allowedRoles}>
-      <div className="min-h-screen bg-[#F7FAF9] dark:bg-[#0D1C1B] text-[#172B2A] dark:text-[#F7FAF9] flex flex-col lg:flex-row antialiased transition-colors duration-200">
-        {/* Desktop Sidebar */}
+      <div className="min-h-screen bg-[#F7FAF9] dark:bg-[#0D1C1B] text-[#172B2A] dark:text-[#F7FAF9] flex flex-col antialiased transition-colors duration-200">
+        {/* Top Header */}
         {user && (
-          <DashboardSidebar
+          <DashboardHeader
+            user={user}
             role={role}
-            educationStage={educationStage}
+            onMobileMenuToggle={() => setIsMobileNavOpen(true)}
           />
         )}
 
@@ -46,19 +47,20 @@ export function DashboardShell({
           />
         )}
 
-        {/* Main Content Viewport */}
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Header */}
+        {/* Body Area: Floating Pill Navigation Rail on Left + Main Content Viewport */}
+        <div className="flex-1 flex w-full">
+          {/* Desktop Floating Pill Sidebar Rail */}
           {user && (
-            <DashboardHeader
-              user={user}
-              role={role}
-              onMobileMenuToggle={() => setIsMobileNavOpen(true)}
-            />
+            <aside className="hidden lg:block shrink-0 pl-4 sm:pl-6 lg:pl-8 py-3.5 sticky top-24 self-start z-40">
+              <DashboardSidebar
+                role={role}
+                educationStage={educationStage}
+              />
+            </aside>
           )}
 
-          {/* Page Body */}
-          <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6">
+          {/* Main Content Viewport */}
+          <main className="flex-1 p-4 sm:p-6 lg:p-8 pt-3 sm:pt-4 max-w-7xl w-full mx-auto space-y-6 min-w-0">
             {children}
           </main>
         </div>

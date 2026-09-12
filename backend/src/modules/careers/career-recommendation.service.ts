@@ -8,25 +8,58 @@ import {
   CareerMatchReasoning,
 } from "./career.types";
 import { SkillFinderFullResultDTO } from "../scoring/scoring.types";
-import { careerMatchingService } from "./career-matching.service";
+import { StreamFinderResultDTO } from "../assessments/scoring/stream-finder-scoring.service";
+import { careerMatchingService, MultiAssessmentInput } from "./career-matching.service";
+
+export interface CareerRecommendationsResponseDTO {
+  recommendations: CareerMatchDTO[];
+  isAssessed: boolean;
+  assessmentCode?: string;
+  confidenceLevel?: string;
+  assessmentCoverage?: string;
+}
 
 export class CareerRecommendationService {
   /**
    * Generates or retrieves ranked career pathway recommendations mapped to the student's
-   * psychometric assessment results using the scientific 4-pillar matching engine.
+   * psychometric assessment results using the calibrated multi-pillar matching engine.
    */
   async getRecommendedPathways(
     userId: string,
     languageCode = "en"
-  ): Promise<{ recommendations: CareerMatchDTO[]; isAssessed: boolean; assessmentCode?: string }> {
+  ): Promise<CareerRecommendationsResponseDTO> {
     const lang = (languageCode || "en").toLowerCase().trim();
 
-    // 1. Fetch student's latest completed assessment result
-    const latestResultRow = await assessmentContentRepository.findLatestResultByUserId(userId);
+    // 1. Fetch all completed assessment results for the student
+    const resultRows = await assessmentContentRepository.findAllResultsByUserId(userId);
     const careers = await careerRepository.findAllCareers(lang);
 
-    if (!latestResultRow || !latestResultRow.result_data) {
-      // Return curated general pathways for students who haven't completed assessment yet
+    let skillFinderResult: SkillFinderFullResultDTO | null = null;
+    let streamFinderResult: StreamFinderResultDTO | null = null;
+    let latestResultId: string | null = null;
+
+    for (const row of resultRows) {
+      if (!latestResultId) latestResultId = row.id;
+      const data = row.result_data;
+      if (!data) continue;
+
+      if (
+        (row.assessment_code === "SKILL_FINDER" || data.interestDiscovery || data.profileVector) &&
+        !skillFinderResult
+      ) {
+        skillFinderResult = data as SkillFinderFullResultDTO;
+      } else if (
+        (row.assessment_code === "STREAM_FINDER" || data.streamScores) &&
+        !streamFinderResult
+      ) {
+        streamFinderResult = data as StreamFinderResultDTO;
+      }
+    }
+
+    const isAssessed = Boolean(skillFinderResult || streamFinderResult);
+
+    // 2. Unassessed state handling
+    if (!isAssessed) {
       const unassessedRecommendations: CareerMatchDTO[] = careers.map((career, idx) => ({
         id: career.id,
         slug: career.slug,
@@ -35,36 +68,47 @@ export class CareerRecommendationService {
         industry: career.industry,
         description: career.description,
         futureGrowth: career.future_growth,
-        matchPercentage: Math.max(70, 92 - idx * 3),
+        matchPercentage: Math.max(65, 88 - idx * 2),
         keySkills: career.required_skills.slice(0, 4),
         reasoning: {
-          summary: "Curated foundational pathway recommendation based on educational stage. You may explore this pathway to discover emerging multidisciplinary disciplines.",
+          summary: "Curated exploratory pathway recommendation. Complete the Skill Finder or Stream Finder assessment to calibrate your personalized psychometric alignment.",
           topMatchingFactors: ["General Academic Exploration", "Foundational Career Literacy"],
-          alignmentNote: "Take the 3G MeLife Skill Finder assessment to unlock multidimensional cognitive matching.",
+          alignmentNote: "Take the 3G MeLife assessments to unlock dimensional cognitive matching and stream compatibility.",
         },
         strengthAlignment: ["Curiosity & Exploration", "Academic Baseline"],
         developmentAreas: ["Complete Skill Finder Assessment to identify personalized growth areas"],
         matchBreakdown: {
-          interestScore: 75,
-          skillScore: 75,
-          aptitudeScore: 75,
-          personalityScore: 75,
+          interestScore: 70,
+          skillScore: 70,
+          aptitudeScore: 70,
+          personalityScore: 70,
         },
+        confidence: "Exploratory",
+        assessmentCoverage: "Unassessed Baseline",
       }));
 
       return {
         recommendations: unassessedRecommendations,
         isAssessed: false,
+        confidenceLevel: "Exploratory",
+        assessmentCoverage: "Unassessed Baseline",
       };
     }
 
-    // 2. Student has a completed result snapshot -> Compute matches via scientific 4-pillar engine
-    const studentResult: SkillFinderFullResultDTO = latestResultRow.result_data;
-    const scoredMatches = careerMatchingService.computeCareerMatches(careers, studentResult, {
+    // 3. Multi-assessment input assembly
+    const multiInput: MultiAssessmentInput = {
+      skillFinderResult,
+      streamFinderResult,
+    };
+
+    const scoredMatches = careerMatchingService.computeCareerMatches(careers, multiInput, {
       languageCode: lang,
     });
 
-    // 3. Persist matches in database
+    const topConfidence = scoredMatches[0]?.confidence || "Moderate Confidence";
+    const topCoverage = scoredMatches[0]?.assessmentCoverage || "Skill Finder Calibrated";
+
+    // 4. Persist matches in database asynchronously
     try {
       await careerRepository.saveCareerMatches(
         userId,
@@ -72,7 +116,7 @@ export class CareerRecommendationService {
           careerId: m.id,
           matchPercentage: m.matchPercentage,
           reasoning: m.reasoning,
-          assessmentResultId: latestResultRow.id,
+          assessmentResultId: latestResultId,
         }))
       );
     } catch (err: any) {
@@ -82,7 +126,9 @@ export class CareerRecommendationService {
     return {
       recommendations: scoredMatches,
       isAssessed: true,
-      assessmentCode: latestResultRow.assessment_code || "SKILL_FINDER",
+      assessmentCode: skillFinderResult ? "SKILL_FINDER" : "STREAM_FINDER",
+      confidenceLevel: topConfidence,
+      assessmentCoverage: topCoverage,
     };
   }
 
@@ -100,9 +146,31 @@ export class CareerRecommendationService {
       throw AppError.notFound("Career pathway not found.", "CAREER_NOT_FOUND");
     }
 
-    // Get student's assessment result for personalized matching
-    const latestResultRow = await assessmentContentRepository.findLatestResultByUserId(userId);
-    let matchScore = 85;
+    // Get student's assessment results for personalized matching
+    const resultRows = await assessmentContentRepository.findAllResultsByUserId(userId);
+    let skillFinderResult: SkillFinderFullResultDTO | null = null;
+    let streamFinderResult: StreamFinderResultDTO | null = null;
+
+    for (const row of resultRows) {
+      const data = row.result_data;
+      if (!data) continue;
+
+      if (
+        (row.assessment_code === "SKILL_FINDER" || data.interestDiscovery || data.profileVector) &&
+        !skillFinderResult
+      ) {
+        skillFinderResult = data as SkillFinderFullResultDTO;
+      } else if (
+        (row.assessment_code === "STREAM_FINDER" || data.streamScores) &&
+        !streamFinderResult
+      ) {
+        streamFinderResult = data as StreamFinderResultDTO;
+      }
+    }
+
+    let matchScore = 80;
+    let confidence: "High Confidence" | "Moderate Confidence" | "Baseline Confidence" | "Exploratory" = "Exploratory";
+    let assessmentCoverage = "Unassessed Baseline";
     let reasoning: CareerMatchReasoning = {
       summary: "Foundational career pathway. You may explore this pathway to broaden your horizons.",
       topMatchingFactors: ["Curated Educational Pathway", "High Industry Growth Opportunity"],
@@ -111,19 +179,21 @@ export class CareerRecommendationService {
     let strengthAlignment: string[] = ["Foundational Academic Literacy", "Curiosity & Exploration"];
     let developmentAreas: string[] = ["Take the Skill Finder assessment to unlock custom developmental targets."];
     let matchBreakdown = {
-      interestScore: 80,
-      skillScore: 80,
-      aptitudeScore: 80,
-      personalityScore: 80,
+      interestScore: 75,
+      skillScore: 75,
+      aptitudeScore: 75,
+      personalityScore: 75,
     };
 
-    if (latestResultRow && latestResultRow.result_data) {
+    if (skillFinderResult || streamFinderResult) {
       const matchResult = careerMatchingService.computeSingleCareerMatch(
         career,
-        latestResultRow.result_data,
+        { skillFinderResult, streamFinderResult },
         lang
       );
       matchScore = matchResult.matchPercentage;
+      confidence = matchResult.confidence || "Moderate Confidence";
+      assessmentCoverage = matchResult.assessmentCoverage || "Skill Finder Calibrated";
       reasoning = matchResult.reasoning;
       strengthAlignment = matchResult.strengthAlignment || strengthAlignment;
       developmentAreas = matchResult.developmentAreas || developmentAreas;
@@ -158,6 +228,8 @@ export class CareerRecommendationService {
       strengthAlignment,
       developmentAreas,
       matchBreakdown,
+      confidence,
+      assessmentCoverage,
       educationPaths: career.education_paths,
       requiredSkills: career.required_skills,
       recommendedSubjects: career.recommended_subjects,

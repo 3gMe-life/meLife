@@ -81,9 +81,17 @@ export const CareerDetailModal: React.FC<CareerDetailModalProps> = ({
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
               {career.title}
             </h2>
-            <div className="flex items-center gap-2 mt-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold">
-              <TrendingUp className="h-3.5 w-3.5" />
-              <span>{career.futureGrowth} Long-Term Industry Growth</span>
+            <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold">
+              <span className="flex items-center gap-1">
+                <TrendingUp className="h-3.5 w-3.5" />
+                <span>{career.futureGrowth} Industry Growth</span>
+              </span>
+              {career.confidence && (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" />
+                  <span>{career.confidence}</span>
+                </span>
+              )}
             </div>
           </div>
 

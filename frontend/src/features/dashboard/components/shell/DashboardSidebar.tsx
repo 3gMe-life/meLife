@@ -3,7 +3,6 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sparkles, GraduationCap } from "lucide-react";
 import { DashboardIcon } from "../common/DashboardIcon";
 import { getNavigationForRole } from "../../config/navigation.config";
 import type { UserRole } from "../../../auth/types/auth.types";
@@ -20,124 +19,89 @@ export function DashboardSidebar({
   const pathname = usePathname();
   const navigation = getNavigationForRole(role);
 
-  const formatStageLabel = (stage?: string | null) => {
-    if (!stage) return "Student Profile";
-    return stage
-      .replace("grade_", "Class ")
-      .replace("college", "Higher Ed")
-      .replace("_", " ")
-      .toUpperCase();
-  };
-
   return (
-    <aside className="hidden lg:flex flex-col w-64 bg-white dark:bg-[#0D1C1B]/95 backdrop-blur-2xl border-r border-[#E3ECEA] dark:border-[rgba(227,236,234,0.1)] h-screen sticky top-0 z-40 select-none text-[#172B2A] dark:text-[#F7FAF9] transition-colors duration-200">
-      {/* 1. Brand Logo Header */}
-      <div className="h-18 flex items-center px-6 border-b border-[#E3ECEA] dark:border-[rgba(227,236,234,0.1)] justify-between">
-        <Link href="/participant/dashboard" className="flex items-center gap-3 group">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#00B8D4] via-[#00BFA5] to-[#00C896] flex items-center justify-center font-black text-sm text-[#172B2A] shadow-md shadow-[#00BFA5]/20 group-hover:scale-105 transition-transform duration-200">
-            3G
-          </div>
-          <div className="flex flex-col">
-            <span className="text-base font-black tracking-tight text-[#172B2A] dark:text-[#F7FAF9] flex items-center gap-1">
-              <span>MeLife</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-[#00BFA5]" />
-            </span>
-            <span className="text-[10px] font-bold text-[#008F83] dark:text-[#00BFA5] tracking-wider uppercase">
-              Student Portal
-            </span>
-          </div>
-        </Link>
-      </div>
+    <nav
+      aria-label="Sidebar Navigation"
+      className="w-[68px] rounded-full bg-[#172B2A] dark:bg-[#112423] py-6 px-2 flex flex-col items-center shadow-2xl shadow-[#172B2A]/25 dark:shadow-black/50 border border-white/10 dark:border-white/10 select-none transition-all duration-200"
+    >
+      {/* Navigation Items List */}
+      <div className="flex flex-col items-center gap-3.5 w-full">
+        {navigation.map((section, sIdx) => (
+          <React.Fragment key={section.id}>
+            {/* Subtle Divider between sections */}
+            {sIdx > 0 && <div className="w-6 h-px bg-white/15 dark:bg-white/10 my-0.5" />}
 
-      {/* 2. Navigation List */}
-      <div className="flex-1 overflow-y-auto px-4 py-5 space-y-6 custom-scrollbar">
-        {navigation.map((section) => (
-          <div key={section.id} className="space-y-1">
-            {section.title && (
-              <h3 className="px-3 text-[10px] font-bold uppercase tracking-wider text-[#728B88] dark:text-[#7D9491] mb-2">
-                {section.title}
-              </h3>
-            )}
+            {section.items.map((item) => {
+              const isActive = item.isExact
+                ? pathname === item.href
+                : pathname === item.href ||
+                  pathname.startsWith(`${item.href}/`) ||
+                  (item.id === "reports" &&
+                    (pathname.startsWith("/participant/career-reports") ||
+                      pathname.startsWith("/participant/reports"))) ||
+                  (item.id === "pathways" &&
+                    (pathname.startsWith("/participant/career-pathways") ||
+                      pathname.startsWith("/participant/pathways"))) ||
+                  (item.id === "counsellor" &&
+                    (pathname.startsWith("/participant/counsellors") ||
+                      pathname.startsWith("/participant/counsellor"))) ||
+                  (item.id === "students" &&
+                    pathname.startsWith("/counsellor/students"));
 
-            <div className="space-y-1">
-              {section.items.map((item) => {
-                const isActive = item.isExact
-                  ? pathname === item.href
-                  : pathname === item.href ||
-                    pathname.startsWith(`${item.href}/`) ||
-                    (item.id === "reports" && (pathname.startsWith("/participant/career-reports") || pathname.startsWith("/participant/reports"))) ||
-                    (item.id === "pathways" && (pathname.startsWith("/participant/career-pathways") || pathname.startsWith("/participant/pathways"))) ||
-                    (item.id === "counsellor" && (pathname.startsWith("/participant/counsellors") || pathname.startsWith("/participant/counsellor"))) ||
-                    (item.id === "students" && pathname.startsWith("/counsellor/students"));
-
-                return (
+              return (
+                <div key={item.id} className="relative flex items-center justify-center group">
                   <Link
-                    key={item.id}
                     href={item.href}
-                    className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 group ${
+                    aria-label={item.label}
+                    aria-current={isActive ? "page" : undefined}
+                    className={`w-12 h-12 rounded-full flex items-center justify-center relative transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00BFA5] focus-visible:ring-offset-2 focus-visible:ring-offset-[#172B2A] ${
                       isActive
-                        ? "bg-[#00BFA5] text-[#172B2A] font-bold shadow-md shadow-[#00BFA5]/25"
-                        : "text-[#526866] dark:text-[#9FB3B0] hover:text-[#172B2A] dark:hover:text-[#F7FAF9] hover:bg-[#EBF2F0] dark:hover:bg-white/5"
+                        ? "bg-[#00BFA5] text-[#172B2A] shadow-md shadow-[#00BFA5]/30 font-bold"
+                        : "text-[#9FB3B0] hover:text-white hover:bg-white/10 active:scale-95"
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`transition-colors ${
-                          isActive
-                            ? "text-[#172B2A]"
-                            : "text-[#728B88] dark:text-[#7D9491] group-hover:text-[#008F83] dark:group-hover:text-[#00BFA5]"
-                        }`}
-                      >
-                        <DashboardIcon name={item.icon} className="w-4 h-4" />
-                      </div>
-                      <span>{item.label}</span>
-                    </div>
+                    <DashboardIcon
+                      name={item.icon}
+                      className={`w-[22px] h-[22px] transition-transform duration-200 ${
+                        isActive
+                          ? "text-[#172B2A] stroke-[2.35] scale-105"
+                          : "text-[#9FB3B0] group-hover:text-white group-hover:scale-110 stroke-[1.85]"
+                      }`}
+                    />
 
+                    {/* Notification / Badge Dot */}
                     {item.badge && (
                       <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        className={`absolute top-2.5 right-2.5 w-2 h-2 rounded-full ring-2 ${
                           isActive
-                            ? "bg-[#172B2A] text-white"
-                            : "bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5] border border-[#00BFA5]/30"
+                            ? "bg-[#172B2A] ring-[#00BFA5]"
+                            : "bg-[#00BFA5] ring-[#172B2A] animate-pulse"
                         }`}
-                      >
+                        aria-hidden="true"
+                      />
+                    )}
+                  </Link>
+
+                  {/* Floating Tooltip on Hover and Focus */}
+                  <div
+                    role="tooltip"
+                    className="absolute left-full ml-3.5 px-3 py-1.5 rounded-xl bg-[#172B2A] text-white text-xs font-semibold whitespace-nowrap shadow-xl border border-white/15 pointer-events-none opacity-0 -translate-x-2 transition-all duration-150 ease-out z-50 flex items-center gap-2 group-hover:opacity-100 group-hover:translate-x-0 group-focus-within:opacity-100 group-focus-within:translate-x-0"
+                  >
+                    <span>{item.label}</span>
+                    {item.badge && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[#00BFA5] text-[#172B2A]">
                         {item.badge}
                       </span>
                     )}
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
+                    {/* Tooltip arrow pointing left */}
+                    <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 bg-[#172B2A] rotate-45 border-l border-b border-white/15" />
+                  </div>
+                </div>
+              );
+            })}
+          </React.Fragment>
         ))}
       </div>
-
-      {/* 3. Bottom Education Stage Banner & User Snapshot */}
-      <div className="p-4 border-t border-[#E3ECEA] dark:border-[rgba(227,236,234,0.1)] bg-[#F7FAF9] dark:bg-[#172B2A] transition-colors duration-200">
-        <div className="p-3 rounded-2xl bg-white dark:bg-[#0D1C1B]/60 border border-[#E3ECEA] dark:border-[rgba(227,236,234,0.12)] shadow-2xs">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5] flex items-center justify-center">
-                <GraduationCap className="w-4 h-4" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[11px] font-bold text-[#172B2A] dark:text-[#F7FAF9] leading-none">
-                  {formatStageLabel(educationStage)}
-                </span>
-                <span className="text-[9px] text-[#728B88] dark:text-[#7D9491]">Calibrated Stage</span>
-              </div>
-            </div>
-            <Sparkles className="w-3.5 h-3.5 text-[#00BFA5] animate-pulse" />
-          </div>
-
-          <Link
-            href="/participant/assessments"
-            className="block text-center text-[10px] font-bold text-[#008F83] dark:text-[#00BFA5] hover:text-[#00BFA5] dark:hover:text-[#00C896] hover:underline transition-colors mt-1"
-          >
-            Explore Next Assessment →
-          </Link>
-        </div>
-      </div>
-    </aside>
+    </nav>
   );
 }

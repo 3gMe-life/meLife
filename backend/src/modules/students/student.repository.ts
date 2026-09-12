@@ -38,6 +38,29 @@ export class StudentRepository {
       data.guardianPhone || null,
       data.guardianEmail || null,
     ]);
+
+    // Also sync canonical participant_profiles table
+    const participantQuery = `
+      INSERT INTO participant_profiles (
+        user_id, education_stage, guardian_name, guardian_phone, guardian_email, is_onboarded, onboarding_completed_at, updated_at
+      )
+      VALUES ($1, $2, $3, $4, $5, true, NOW(), NOW())
+      ON CONFLICT (user_id) DO UPDATE
+      SET education_stage = EXCLUDED.education_stage,
+          guardian_name = COALESCE(EXCLUDED.guardian_name, participant_profiles.guardian_name),
+          guardian_phone = COALESCE(EXCLUDED.guardian_phone, participant_profiles.guardian_phone),
+          guardian_email = COALESCE(EXCLUDED.guardian_email, participant_profiles.guardian_email),
+          is_onboarded = true,
+          onboarding_completed_at = COALESCE(participant_profiles.onboarding_completed_at, NOW()),
+          updated_at = NOW()
+    `;
+    await db.query(participantQuery, [
+      data.userId,
+      data.educationStage,
+      data.guardianName || null,
+      data.guardianPhone || null,
+      data.guardianEmail || null,
+    ]);
   }
 
   /**

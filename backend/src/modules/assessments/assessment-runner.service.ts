@@ -1,6 +1,7 @@
 import { pool } from "../../config/database";
 import { assessmentContentRepository } from "./assessment-content.repository";
 import { assessmentRepository } from "./assessment.repository";
+import { assessmentEligibilityService } from "./assessment-eligibility.service";
 import { userRepository } from "../users/user.repository";
 import { scoringService } from "../scoring/scoring.service";
 import { resultComparisonService } from "../scoring/services/result-comparison.service";
@@ -77,6 +78,19 @@ export class AssessmentRunnerService {
       throw AppError.notFound(
         `Assessment '${assessmentCode}' not found.`,
         "ASSESSMENT_NOT_FOUND"
+      );
+    }
+
+    // 4. Authoritative Backend Guard: Verify student has access to start/resume this assessment
+    const access = await assessmentEligibilityService.checkAssessmentAccess(userId, assessment.code);
+    if (!access.canAccess) {
+      logger.warn(
+        { userId, assessmentCode: assessment.code, reason: access.lockReason },
+        "Access denied to locked assessment"
+      );
+      throw AppError.forbidden(
+        access.lockReason || "Assessment is locked. Prerequisites not satisfied.",
+        "ASSESSMENT_LOCKED"
       );
     }
 
@@ -194,11 +208,65 @@ export class AssessmentRunnerService {
       );
     }
 
+    // Look up question to validate input strictly against question type (no silent clamping)
+    const question = await assessmentContentRepository.findQuestionById(dto.questionId);
+    if (!question) {
+      throw AppError.notFound("Question not found.", "QUESTION_NOT_FOUND");
+    }
+
+    if (question.assessment_id !== attempt.assessment_id) {
+      throw AppError.badRequest("Question does not belong to this assessment.", "INVALID_QUESTION_ASSESSMENT");
+    }
+
+    let normalizedValue = String(dto.responseValue ?? "").trim();
+
+    if (question.question_type === "likert_1_5") {
+      if (!["1", "2", "3", "4", "5"].includes(normalizedValue)) {
+        throw AppError.badRequest(
+          `Invalid response value for 5-point Likert question. Expected '1', '2', '3', '4', or '5', received '${dto.responseValue}'.`,
+          "INVALID_RESPONSE_VALUE"
+        );
+      }
+    } else if (question.question_type === "likert_1_4") {
+      if (!["1", "2", "3", "4"].includes(normalizedValue)) {
+        throw AppError.badRequest(
+          `Invalid response value for 4-point Likert question. Expected '1', '2', '3', or '4', received '${dto.responseValue}'.`,
+          "INVALID_RESPONSE_VALUE"
+        );
+      }
+    } else if (question.question_type === "forced_choice_4") {
+      const upper = normalizedValue.toUpperCase();
+      if (!["A", "B", "C", "D"].includes(upper)) {
+        throw AppError.badRequest(
+          `Invalid response value for forced-choice question. Expected 'A', 'B', 'C', or 'D', received '${dto.responseValue}'.`,
+          "INVALID_RESPONSE_VALUE"
+        );
+      }
+      normalizedValue = upper;
+    } else if (question.question_type === "forced_choice_8") {
+      const upper = normalizedValue.toUpperCase();
+      if (!["A", "B", "C", "D", "E", "F", "G", "H"].includes(upper)) {
+        throw AppError.badRequest(
+          `Invalid response value for 8-option forced-choice question. Expected 'A', 'B', 'C', 'D', 'E', 'F', 'G', or 'H', received '${dto.responseValue}'.`,
+          "INVALID_RESPONSE_VALUE"
+        );
+      }
+      normalizedValue = upper;
+    } else if (question.question_type === "mcq_text" || question.question_type === "mcq_image") {
+      if (!normalizedValue) {
+        throw AppError.badRequest("Response value cannot be empty.", "INVALID_RESPONSE_VALUE");
+      }
+    } else if (question.question_type === "open_scored") {
+      if (!normalizedValue) {
+        throw AppError.badRequest("Response value cannot be empty.", "INVALID_RESPONSE_VALUE");
+      }
+    }
+
     await assessmentContentRepository.saveResponse(
       attemptId,
       dto.questionId,
       dto.selectedOptionId || null,
-      dto.responseValue,
+      normalizedValue,
       0
     );
 
@@ -262,6 +330,19 @@ export class AssessmentRunnerService {
 
     if (!assessment) {
       throw AppError.notFound(`Assessment '${assessmentCode}' not found.`, "ASSESSMENT_NOT_FOUND");
+    }
+
+    // Verify access
+    const access = await assessmentEligibilityService.checkAssessmentAccess(userId, assessment.code);
+    if (!access.canAccess) {
+      logger.warn(
+        { userId, assessmentCode: assessment.code, reason: access.lockReason },
+        "Access denied to locked assessment on retake attempt"
+      );
+      throw AppError.forbidden(
+        access.lockReason || "Assessment is locked. Prerequisites not satisfied.",
+        "ASSESSMENT_LOCKED"
+      );
     }
 
     // Resolve target version

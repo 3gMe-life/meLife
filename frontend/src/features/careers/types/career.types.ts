@@ -22,6 +22,7 @@ export interface MatchPillarBreakdown {
   skillScore: number;
   aptitudeScore: number;
   personalityScore: number;
+  streamScore?: number;
 }
 
 export interface CareerMatchDTO {
@@ -38,6 +39,8 @@ export interface CareerMatchDTO {
   strengthAlignment?: string[];
   developmentAreas?: string[];
   matchBreakdown?: MatchPillarBreakdown;
+  confidence?: "High Confidence" | "Moderate Confidence" | "Baseline Confidence" | "Exploratory";
+  assessmentCoverage?: string;
 }
 
 export interface CareerDetailDTO extends CareerMatchDTO {
@@ -60,4 +63,6 @@ export interface CareerRecommendationsResponse {
   recommendations: CareerMatchDTO[];
   isAssessed: boolean;
   assessmentCode?: string;
+  confidenceLevel?: string;
+  assessmentCoverage?: string;
 }

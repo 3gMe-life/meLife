@@ -3,7 +3,18 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Clock, HelpCircle, CheckCircle2, Play, Sparkles, ArrowRight, ShieldCheck, RotateCcw, History } from "lucide-react";
+import {
+  Clock,
+  HelpCircle,
+  CheckCircle2,
+  Play,
+  Sparkles,
+  ArrowRight,
+  ShieldCheck,
+  RotateCcw,
+  History,
+  Lock,
+} from "lucide-react";
 import type { ParticipantAssessmentItem } from "@/features/assessments/types/assessment.types";
 import type { AssessmentItem } from "../../types/dashboard.types";
 import { useStartRetakeMutation } from "@/features/assessments/hooks/useStartRetakeMutation";
@@ -16,6 +27,10 @@ export type AssessmentCardItem = (ParticipantAssessmentItem | AssessmentItem) & 
   code?: string;
   activeAttemptId?: string | null;
   eligibilityReason?: string;
+  lockReason?: string | null;
+  prerequisites?: Array<{ code: string; name: string; isSatisfied: boolean }>;
+  isRecommended?: boolean;
+  recommendationReason?: string | null;
 };
 
 interface AssessmentProgressCardProps {
@@ -29,6 +44,8 @@ export function AssessmentProgressCard({ assessment }: AssessmentProgressCardPro
 
   const isCompleted = assessment.status === "COMPLETED";
   const isInProgress = assessment.status === "IN_PROGRESS";
+  const isLocked = assessment.status === "LOCKED";
+  const isRecommended = !!assessment.isRecommended;
   const title = assessment.name || assessment.title || "Psychometric Assessment";
   const assessmentCode = assessment.code || assessment.id || "skill-finder";
 
@@ -72,6 +89,22 @@ export function AssessmentProgressCard({ assessment }: AssessmentProgressCardPro
         </span>
       );
     }
+    if (isLocked) {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30">
+          <Lock className="w-3 h-3" />
+          <span>Locked</span>
+        </span>
+      );
+    }
+    if (isRecommended) {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#00BFA5]/20 text-[#008F83] dark:text-[#00BFA5] border border-[#00BFA5]/40">
+          <Sparkles className="w-3 h-3 fill-current text-[#00BFA5]" />
+          <span>Recommended</span>
+        </span>
+      );
+    }
     return (
       <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#EBF2F0] dark:bg-white/5 text-[#526866] dark:text-[#9FB3B0] border border-[#E3ECEA] dark:border-white/10">
         <span>Available</span>
@@ -81,7 +114,13 @@ export function AssessmentProgressCard({ assessment }: AssessmentProgressCardPro
 
   return (
     <>
-      <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-[#172B2A] backdrop-blur-xl border border-[#E3ECEA] dark:border-[rgba(227,236,234,0.12)] p-5 sm:p-6 flex flex-col justify-between hover:border-[#00BFA5]/50 dark:hover:border-[#00BFA5]/40 shadow-xs dark:shadow-none transition-all duration-300 hover:shadow-lg group">
+      <div className={`relative overflow-hidden rounded-3xl backdrop-blur-xl border p-5 sm:p-6 flex flex-col justify-between transition-all duration-300 group ${
+        isRecommended && !isCompleted
+          ? "bg-gradient-to-br from-[#00BFA5]/[0.08] via-white to-white dark:from-[#00BFA5]/15 dark:via-[#172B2A] dark:to-[#172B2A] border-[#00BFA5]/50 dark:border-[#00BFA5]/40 shadow-md ring-1 ring-[#00BFA5]/30"
+          : isLocked
+          ? "bg-white/60 dark:bg-[#172B2A]/60 border-[#E3ECEA]/80 dark:border-white/5 opacity-90 hover:opacity-100 hover:border-amber-400/40"
+          : "bg-white dark:bg-[#172B2A] border-[#E3ECEA] dark:border-[rgba(227,236,234,0.12)] hover:border-[#00BFA5]/50 dark:hover:border-[#00BFA5]/40 shadow-xs hover:shadow-lg"
+      }`}>
         <div>
           {/* Top Meta */}
           <div className="flex items-center justify-between gap-2 mb-3">
@@ -92,20 +131,34 @@ export function AssessmentProgressCard({ assessment }: AssessmentProgressCardPro
           </div>
 
           {/* Title & Description */}
-          <h3 className="text-base sm:text-lg font-bold text-[#172B2A] dark:text-[#F7FAF9] group-hover:text-[#008F83] dark:group-hover:text-[#00BFA5] transition-colors mb-1.5 line-clamp-1">
+          <h3 className={`text-base sm:text-lg font-bold transition-colors mb-1.5 line-clamp-1 ${
+            isLocked
+              ? "text-[#3D5250] dark:text-[#E0E8E6]"
+              : "text-[#172B2A] dark:text-[#F7FAF9] group-hover:text-[#008F83] dark:group-hover:text-[#00BFA5]"
+          }`}>
             {title}
           </h3>
           <p className="text-xs text-[#526866] dark:text-[#9FB3B0] leading-relaxed mb-3.5 line-clamp-2">
             {assessment.description}
           </p>
 
-          {/* Eligibility Reason Badge */}
-          {assessment.eligibilityReason && (
+          {/* Recommendation Reason / Locked Reason / Eligibility Reason Badge */}
+          {isRecommended && assessment.recommendationReason && !isCompleted ? (
+            <div className="mb-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#00BFA5]/10 dark:bg-[#00BFA5]/15 border border-[#00BFA5]/25 text-[11px] font-semibold text-[#008F83] dark:text-[#00BFA5]">
+              <Sparkles className="w-3.5 h-3.5 shrink-0 text-[#00BFA5]" />
+              <span className="truncate">{assessment.recommendationReason}</span>
+            </div>
+          ) : isLocked && assessment.lockReason ? (
+            <div className="mb-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/25 text-[11px] font-semibold text-amber-800 dark:text-amber-300">
+              <Lock className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+              <span className="truncate">{assessment.lockReason}</span>
+            </div>
+          ) : assessment.eligibilityReason ? (
             <div className="mb-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#00BFA5]/10 dark:bg-[#00BFA5]/15 border border-[#00BFA5]/25 text-[11px] font-semibold text-[#008F83] dark:text-[#00BFA5]">
               <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-[#00BFA5]" />
               <span className="truncate">{assessment.eligibilityReason}</span>
             </div>
-          )}
+          ) : null}
 
           {/* Details: Duration & Questions */}
           <div className="flex items-center gap-4 text-[11px] text-[#728B88] dark:text-[#7D9491] mb-5">
@@ -125,21 +178,23 @@ export function AssessmentProgressCard({ assessment }: AssessmentProgressCardPro
           {/* Progress Bar */}
           <div>
             <div className="flex items-center justify-between text-[10px] font-bold text-[#728B88] dark:text-[#7D9491] mb-1.5">
-              <span>Progress</span>
-              <span className={isCompleted ? "text-[#008F83] dark:text-[#00C896]" : "text-[#172B2A] dark:text-[#F7FAF9]"}>
-                {assessment.progressPercentage}%
+              <span>{isLocked ? "Access Status" : "Progress"}</span>
+              <span className={isCompleted ? "text-[#008F83] dark:text-[#00C896]" : isLocked ? "text-amber-700 dark:text-amber-400" : "text-[#172B2A] dark:text-[#F7FAF9]"}>
+                {isLocked ? "Locked" : `${assessment.progressPercentage}%`}
               </span>
             </div>
-            <div className="w-full h-1.5 rounded-full bg-[#EBF2F0] dark:bg-black/30 overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  isCompleted
-                    ? "bg-gradient-to-r from-[#00BFA5] to-[#00C896]"
-                    : "bg-gradient-to-r from-[#00B8D4] via-[#00BFA5] to-[#00C896]"
-                }`}
-                style={{ width: `${assessment.progressPercentage}%` }}
-              />
-            </div>
+            {!isLocked && (
+              <div className="w-full h-1.5 rounded-full bg-[#EBF2F0] dark:bg-black/30 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    isCompleted
+                      ? "bg-gradient-to-r from-[#00BFA5] to-[#00C896]"
+                      : "bg-gradient-to-r from-[#00B8D4] via-[#00BFA5] to-[#00C896]"
+                  }`}
+                  style={{ width: `${assessment.progressPercentage}%` }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Action Button */}
@@ -186,12 +241,18 @@ export function AssessmentProgressCard({ assessment }: AssessmentProgressCardPro
                 <span>Resume Assessment</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
+            ) : isLocked ? (
+              <div className="w-full py-2.5 px-4 rounded-xl bg-[#E3ECEA]/40 dark:bg-white/5 border border-[#E3ECEA]/80 dark:border-white/10 text-xs font-bold text-[#728B88] dark:text-[#7D9491] flex items-center justify-center gap-2 cursor-not-allowed select-none">
+                <Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                <span>{assessment.lockReason || "Prerequisites Required"}</span>
+              </div>
             ) : (
               <Link
                 href={`/participant/assessments/${assessment.code || assessment.id}`}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#EBF2F0] hover:bg-[#E3ECEA] dark:bg-white/10 dark:hover:bg-white/20 border border-[#E3ECEA] dark:border-white/20 text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9] transition-colors flex items-center justify-center gap-2"
+                className="w-full py-2.5 px-4 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white text-xs font-bold transition-all shadow-md shadow-[#00BFA5]/20 flex items-center justify-center gap-2"
               >
-                <span>Start Assessment</span>
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>{isRecommended ? "Start Recommended Assessment" : "Start Assessment"}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             )}

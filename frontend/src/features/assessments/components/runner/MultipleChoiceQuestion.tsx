@@ -2,6 +2,7 @@
 
 import React from "react";
 import { QuestionOption } from "../../types/assessment.types";
+import { Check } from "lucide-react";
 
 interface MultipleChoiceQuestionProps {
   options: QuestionOption[];
@@ -27,7 +28,11 @@ export function MultipleChoiceQuestion({
         ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 my-6">
+    <div
+      className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5 my-6 sm:my-8"
+      role="radiogroup"
+      aria-label="Multiple choice assessment options"
+    >
       {displayOptions.map((opt) => {
         const isSelected = selectedValue?.toUpperCase() === opt.optionKey.toUpperCase();
 
@@ -35,44 +40,52 @@ export function MultipleChoiceQuestion({
           <button
             key={opt.optionKey}
             type="button"
+            role="radio"
+            aria-checked={isSelected}
             disabled={disabled}
-            onClick={() => onSelect(opt.optionKey, opt.id)}
-            className={`group relative flex items-center p-4 sm:p-5 rounded-2xl border-2 text-left transition-all duration-200 cursor-pointer select-none outline-none ${
+            onClick={() => !disabled && onSelect(opt.optionKey, opt.id)}
+            className={`group relative flex items-center justify-between p-4 sm:p-5 rounded-2xl border text-left transition-all duration-180 select-none outline-none cursor-pointer ${
+              disabled ? "opacity-60 pointer-events-none cursor-not-allowed" : ""
+            } ${
               isSelected
-                ? "bg-primary-50/80 dark:bg-primary-950/30 border-primary shadow-md shadow-primary/10 scale-[1.01]"
-                : "bg-surface-elevated hover:bg-surface-muted/60 border-border-default hover:border-primary/40 text-text-secondary hover:text-text-primary"
+                ? "bg-[#00BFA5]/10 dark:bg-[#00BFA5]/15 border-[#00BFA5] ring-2 ring-[#00BFA5]/40 shadow-sm"
+                : "bg-white dark:bg-[#172B2A] border-[#E3ECEA] dark:border-white/10 hover:border-[#00BFA5]/50 hover:bg-[#F7FAF9] dark:hover:bg-white/5"
             }`}
           >
-            {/* Letter Badge */}
-            <div
-              className={`w-9 h-9 rounded-xl shrink-0 flex items-center justify-center font-bold text-sm mr-4 transition-colors ${
-                isSelected
-                  ? "bg-primary text-slate-900 shadow-sm"
-                  : "bg-surface-muted text-text-secondary group-hover:bg-primary-100 dark:group-hover:bg-primary-900/40 group-hover:text-primary"
-              }`}
-            >
-              {opt.optionKey}
-            </div>
+            <div className="flex items-center gap-3.5 pr-2">
+              {/* Letter / Index Badge */}
+              <span
+                className={`font-mono text-xs font-bold w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                  isSelected
+                    ? "bg-[#00BFA5] text-[#172B2A] font-black"
+                    : "bg-[#EBF2F0] dark:bg-white/10 text-[#526866] dark:text-[#9FB3B0] group-hover:bg-[#00BFA5]/20 group-hover:text-[#008F83] dark:group-hover:text-[#00BFA5]"
+                }`}
+              >
+                {opt.optionKey}
+              </span>
 
-            {/* Option Text */}
-            <div className="flex-1 font-medium text-sm sm:text-base text-text-primary">
-              {opt.optionText}
+              {/* Option Text */}
+              <span
+                className={`text-xs sm:text-sm font-semibold leading-relaxed tracking-tight ${
+                  isSelected
+                    ? "text-[#172B2A] dark:text-[#F7FAF9] font-bold"
+                    : "text-[#172B2A] dark:text-[#F7FAF9] group-hover:text-[#008F83] dark:group-hover:text-[#00BFA5]"
+                }`}
+              >
+                {opt.optionText}
+              </span>
             </div>
 
             {/* Selection Checkmark */}
-            {isSelected && (
-              <div className="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center ml-2 shrink-0">
-                <svg
-                  className="w-3.5 h-3.5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-            )}
+            <div
+              className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition-all ${
+                isSelected
+                  ? "border-[#00BFA5] bg-[#00BFA5] text-[#172B2A]"
+                  : "border-[#E3ECEA] dark:border-white/20 group-hover:border-[#00BFA5]/60 text-transparent"
+              }`}
+            >
+              <Check className="w-3.5 h-3.5 stroke-[3]" />
+            </div>
           </button>
         );
       })}

@@ -1,6 +1,4 @@
-/**
- * 3G MeLife Curated Career Pathways Seed Data & Multilingual Dictionaries
- */
+import { CareerRelatedDimensions, FutureGrowthOutlook } from "./career.types";
 
 export interface CareerSeedItem {
   slug: string;
@@ -9,7 +7,7 @@ export interface CareerSeedItem {
   industry: string;
   description: string;
   overview: string;
-  future_growth: "Very High" | "High" | "Moderate" | "Emerging";
+  future_growth: FutureGrowthOutlook;
   education_paths: string[];
   required_skills: string[];
   recommended_subjects: string[];
@@ -20,12 +18,7 @@ export interface CareerSeedItem {
     focusAreas: string[];
   }>;
   sample_roles: string[];
-  related_dimensions: {
-    riasec: Record<string, number>;
-    skills: Record<string, number>;
-    aptitude: Record<string, number>;
-    archetypes: string[];
-  };
+  related_dimensions: CareerRelatedDimensions;
   display_order: number;
   translations?: Record<
     string,
@@ -79,9 +72,11 @@ export const SEED_CAREERS: CareerSeedItem[] = [
     ],
     sample_roles: ["Machine Learning Engineer", "AI Research Scientist", "Data Systems Architect", "Robotics Software Lead"],
     related_dimensions: {
-      riasec: { I: 0.9, R: 0.7, C: 0.6, A: 0.4, E: 0.3, S: 0.2 },
-      skills: { analytical_inquiry: 0.95, technical_curiosity: 0.9, structured_execution: 0.8, creative_ideation: 0.7 },
-      aptitude: { deductive_logic: 0.9, spatial_reasoning: 0.85, pattern_recognition: 0.95, numerical_deduction: 0.9 },
+      riasec: { I: 0.95, R: 0.70, C: 0.65, A: 0.35, E: 0.30, S: 0.20 },
+      skills: { logical_problem_solving: 0.95, practical_technical: 0.85, creative_thinking: 0.70, self_management: 0.80, visual_spatial: 0.60 },
+      aptitude: { pattern_logic: 0.95, numerical_reasoning: 0.90, spatial_reasoning: 0.80, practical_troubleshooting: 0.75 },
+      development: { curiosity: 0.95, persistence: 0.90, learning_independence: 0.90, attention_to_detail: 0.85 },
+      streams: { science: 0.95, applied_technical: 0.90, commerce: 0.40, humanities: 0.20 },
       archetypes: ["Analytical Systems Thinker", "Practical Explorer", "Strategic Coordinator"],
     },
     display_order: 1,
@@ -171,9 +166,11 @@ export const SEED_CAREERS: CareerSeedItem[] = [
     ],
     sample_roles: ["Robotics Engineer", "Mechatronics Specialist", "Automation Architect", "Autonomous Vehicle Systems Engineer"],
     related_dimensions: {
-      riasec: { R: 0.95, I: 0.85, C: 0.5, A: 0.4, E: 0.3, S: 0.2 },
-      skills: { technical_curiosity: 0.95, structured_execution: 0.85, analytical_inquiry: 0.8, creative_ideation: 0.75 },
-      aptitude: { spatial_reasoning: 0.95, mechanical_reasoning: 0.9, pattern_recognition: 0.85, deductive_logic: 0.85 },
+      riasec: { R: 0.95, I: 0.85, C: 0.60, A: 0.45, E: 0.30, S: 0.20 },
+      skills: { practical_technical: 0.95, logical_problem_solving: 0.90, visual_spatial: 0.85, creative_thinking: 0.75 },
+      aptitude: { spatial_reasoning: 0.95, practical_troubleshooting: 0.95, pattern_logic: 0.85, numerical_reasoning: 0.85 },
+      development: { persistence: 0.95, curiosity: 0.90, learning_independence: 0.85, attention_to_detail: 0.90 },
+      streams: { science: 0.95, applied_technical: 0.95, commerce: 0.30, humanities: 0.20 },
       archetypes: ["Practical Explorer", "Analytical Systems Thinker", "Creative Maker"],
     },
     display_order: 2,
@@ -245,10 +242,12 @@ export const SEED_CAREERS: CareerSeedItem[] = [
     ],
     sample_roles: ["Bioinformatics Scientist", "Genomics Data Analyst", "Computational Biologist", "Clinical Research Data Lead"],
     related_dimensions: {
-      riasec: { I: 0.95, C: 0.7, R: 0.5, S: 0.5, A: 0.3, E: 0.2 },
-      skills: { analytical_inquiry: 0.95, structured_execution: 0.85, technical_curiosity: 0.8, problem_solving: 0.85 },
-      aptitude: { deductive_logic: 0.9, pattern_recognition: 0.9, attention_to_detail: 0.95, numerical_deduction: 0.85 },
-      archetypes: ["Analytical Systems Thinker", "Empathetic Catalyst", "Practical Explorer"],
+      riasec: { I: 0.95, R: 0.60, C: 0.75, S: 0.50, A: 0.35, E: 0.25 },
+      skills: { logical_problem_solving: 0.95, self_management: 0.90, communication: 0.70, practical_technical: 0.75 },
+      aptitude: { pattern_logic: 0.90, numerical_reasoning: 0.90, planning_estimation: 0.85, verbal_reasoning: 0.75 },
+      development: { attention_to_detail: 0.95, persistence: 0.90, curiosity: 0.95, learning_independence: 0.85 },
+      streams: { science: 0.95, applied_technical: 0.75, commerce: 0.40, humanities: 0.30 },
+      archetypes: ["Analytical Systems Thinker", "Curious Researcher", "Strategic Coordinator"],
     },
     display_order: 3,
   },
@@ -290,10 +289,12 @@ export const SEED_CAREERS: CareerSeedItem[] = [
     ],
     sample_roles: ["Renewable Energy Engineer", "Solar Systems Designer", "Smart Grid Specialist", "Sustainability Consultant"],
     related_dimensions: {
-      riasec: { R: 0.85, I: 0.85, S: 0.6, C: 0.5, E: 0.4, A: 0.3 },
-      skills: { problem_solving: 0.9, technical_curiosity: 0.85, structured_execution: 0.8, collaboration_empathy: 0.75 },
-      aptitude: { mechanical_reasoning: 0.9, spatial_reasoning: 0.85, deductive_logic: 0.85, pattern_recognition: 0.8 },
-      archetypes: ["Practical Explorer", "Analytical Systems Thinker", "Empathetic Catalyst"],
+      riasec: { R: 0.90, I: 0.85, S: 0.50, C: 0.55, E: 0.40, A: 0.35 },
+      skills: { practical_technical: 0.90, logical_problem_solving: 0.85, visual_spatial: 0.80, social_teamwork: 0.70 },
+      aptitude: { practical_troubleshooting: 0.90, spatial_reasoning: 0.85, pattern_logic: 0.80, numerical_reasoning: 0.80 },
+      development: { initiative: 0.90, persistence: 0.85, collaboration: 0.80, curiosity: 0.85 },
+      streams: { science: 0.95, applied_technical: 0.90, commerce: 0.45, humanities: 0.40 },
+      archetypes: ["Practical Explorer", "Impact Catalyst", "Analytical Systems Thinker"],
     },
     display_order: 4,
   },
@@ -335,9 +336,11 @@ export const SEED_CAREERS: CareerSeedItem[] = [
     ],
     sample_roles: ["UX/UI Designer", "Product Designer", "Creative Technologist", "Design Researcher"],
     related_dimensions: {
-      riasec: { A: 0.95, S: 0.7, I: 0.6, E: 0.5, R: 0.4, C: 0.3 },
-      skills: { creative_ideation: 0.95, collaboration_empathy: 0.9, technical_curiosity: 0.75, problem_solving: 0.8 },
-      aptitude: { creative_fluency: 0.95, spatial_reasoning: 0.85, verbal_inference: 0.8, attention_to_detail: 0.85 },
+      riasec: { A: 0.95, I: 0.70, S: 0.65, E: 0.50, R: 0.40, C: 0.30 },
+      skills: { creative_thinking: 0.95, visual_spatial: 0.90, communication: 0.85, social_teamwork: 0.80, logical_problem_solving: 0.70 },
+      aptitude: { creative_performance: 0.95, spatial_reasoning: 0.85, social_judgment: 0.85, verbal_reasoning: 0.80 },
+      development: { curiosity: 0.95, adaptability: 0.90, collaboration: 0.85, initiative: 0.80 },
+      streams: { humanities: 0.85, applied_technical: 0.85, science: 0.60, commerce: 0.65 },
       archetypes: ["Creative Maker", "Empathetic Catalyst", "Practical Explorer"],
     },
     display_order: 5,
@@ -380,10 +383,12 @@ export const SEED_CAREERS: CareerSeedItem[] = [
     ],
     sample_roles: ["Quantitative Analyst (Quant)", "Economic Strategist", "Portfolio Risk Manager", "Policy Economist"],
     related_dimensions: {
-      riasec: { C: 0.9, I: 0.85, E: 0.8, R: 0.3, A: 0.3, S: 0.2 },
-      skills: { analytical_inquiry: 0.95, structured_execution: 0.9, leadership_initiative: 0.75, problem_solving: 0.85 },
-      aptitude: { numerical_deduction: 0.95, deductive_logic: 0.9, pattern_recognition: 0.85, attention_to_detail: 0.9 },
-      archetypes: ["Strategic Coordinator", "Analytical Systems Thinker", "Practical Explorer"],
+      riasec: { C: 0.90, I: 0.85, E: 0.80, R: 0.20, A: 0.30, S: 0.40 },
+      skills: { logical_problem_solving: 0.95, leadership_initiative: 0.85, communication: 0.80, self_management: 0.85 },
+      aptitude: { numerical_reasoning: 0.95, pattern_logic: 0.90, planning_estimation: 0.90, verbal_reasoning: 0.80 },
+      development: { attention_to_detail: 0.95, persistence: 0.85, initiative: 0.90, learning_independence: 0.85 },
+      streams: { commerce: 0.95, science: 0.70, applied_technical: 0.60, humanities: 0.50 },
+      archetypes: ["Strategic Coordinator", "Analytical Systems Thinker", "Enterprising Leader"],
     },
     display_order: 6,
   },
@@ -425,10 +430,12 @@ export const SEED_CAREERS: CareerSeedItem[] = [
     ],
     sample_roles: ["Aerospace Engineer", "Propulsion Specialist", "Flight Control Systems Engineer", "Satellite Systems Architect"],
     related_dimensions: {
-      riasec: { R: 0.95, I: 0.9, C: 0.6, A: 0.3, E: 0.3, S: 0.2 },
-      skills: { technical_curiosity: 0.95, analytical_inquiry: 0.9, structured_execution: 0.85, problem_solving: 0.9 },
-      aptitude: { spatial_reasoning: 0.95, mechanical_reasoning: 0.95, deductive_logic: 0.9, numerical_deduction: 0.9 },
-      archetypes: ["Practical Explorer", "Analytical Systems Thinker", "Creative Maker"],
+      riasec: { R: 0.95, I: 0.90, C: 0.70, A: 0.30, E: 0.30, S: 0.20 },
+      skills: { visual_spatial: 0.95, logical_problem_solving: 0.95, practical_technical: 0.90, self_management: 0.85 },
+      aptitude: { spatial_reasoning: 0.95, numerical_reasoning: 0.95, pattern_logic: 0.90, practical_troubleshooting: 0.85 },
+      development: { attention_to_detail: 0.95, persistence: 0.95, curiosity: 0.90, learning_independence: 0.85 },
+      streams: { science: 0.95, applied_technical: 0.95, commerce: 0.30, humanities: 0.15 },
+      archetypes: ["Analytical Systems Thinker", "Practical Explorer", "Creative Maker"],
     },
     display_order: 7,
   },
@@ -470,9 +477,11 @@ export const SEED_CAREERS: CareerSeedItem[] = [
     ],
     sample_roles: ["Security Operations Lead", "Penetration Tester / Ethical Hacker", "Digital Forensics Investigator", "Chief Information Security Architect"],
     related_dimensions: {
-      riasec: { I: 0.9, C: 0.85, R: 0.7, E: 0.4, A: 0.3, S: 0.2 },
-      skills: { analytical_inquiry: 0.95, structured_execution: 0.9, technical_curiosity: 0.85, problem_solving: 0.9 },
-      aptitude: { deductive_logic: 0.95, pattern_recognition: 0.9, attention_to_detail: 0.95, spatial_reasoning: 0.75 },
+      riasec: { I: 0.90, C: 0.85, R: 0.70, E: 0.40, A: 0.30, S: 0.20 },
+      skills: { logical_problem_solving: 0.95, self_management: 0.90, practical_technical: 0.85, creative_thinking: 0.75 },
+      aptitude: { pattern_logic: 0.95, practical_troubleshooting: 0.90, numerical_reasoning: 0.85, planning_estimation: 0.80 },
+      development: { persistence: 0.95, attention_to_detail: 0.95, curiosity: 0.90, learning_independence: 0.85 },
+      streams: { science: 0.90, applied_technical: 0.95, commerce: 0.50, humanities: 0.20 },
       archetypes: ["Analytical Systems Thinker", "Strategic Coordinator", "Practical Explorer"],
     },
     display_order: 8,
@@ -515,9 +524,11 @@ export const SEED_CAREERS: CareerSeedItem[] = [
     ],
     sample_roles: ["Climate Data Scientist", "GIS Specialist", "Ecological Impact Evaluator", "Atmospheric Modeling Analyst"],
     related_dimensions: {
-      riasec: { I: 0.9, S: 0.7, R: 0.6, C: 0.6, A: 0.4, E: 0.3 },
-      skills: { analytical_inquiry: 0.9, problem_solving: 0.85, collaboration_empathy: 0.8, technical_curiosity: 0.8 },
-      aptitude: { spatial_reasoning: 0.9, pattern_recognition: 0.9, deductive_logic: 0.85, verbal_inference: 0.8 },
+      riasec: { I: 0.95, R: 0.70, S: 0.60, C: 0.65, A: 0.40, E: 0.30 },
+      skills: { logical_problem_solving: 0.90, communication: 0.80, practical_technical: 0.75, visual_spatial: 0.75 },
+      aptitude: { pattern_logic: 0.90, numerical_reasoning: 0.85, spatial_reasoning: 0.85, verbal_reasoning: 0.80 },
+      development: { curiosity: 0.95, collaboration: 0.85, persistence: 0.85, initiative: 0.80 },
+      streams: { science: 0.95, applied_technical: 0.80, humanities: 0.60, commerce: 0.45 },
       archetypes: ["Empathetic Catalyst", "Analytical Systems Thinker", "Practical Explorer"],
     },
     display_order: 9,
@@ -560,9 +571,11 @@ export const SEED_CAREERS: CareerSeedItem[] = [
     ],
     sample_roles: ["Industrial Designer", "Consumer Hardware Designer", "Ergonomics Specialist", "Automotive Exterior/Interior Designer"],
     related_dimensions: {
-      riasec: { A: 0.95, R: 0.85, I: 0.6, E: 0.4, C: 0.4, S: 0.3 },
-      skills: { creative_ideation: 0.95, technical_curiosity: 0.85, structured_execution: 0.8, problem_solving: 0.85 },
-      aptitude: { spatial_reasoning: 0.95, creative_fluency: 0.9, mechanical_reasoning: 0.85, attention_to_detail: 0.9 },
+      riasec: { A: 0.95, R: 0.85, I: 0.60, E: 0.50, S: 0.40, C: 0.35 },
+      skills: { visual_spatial: 0.95, creative_thinking: 0.95, practical_technical: 0.85, communication: 0.75 },
+      aptitude: { spatial_reasoning: 0.95, creative_performance: 0.95, practical_troubleshooting: 0.80, pattern_logic: 0.75 },
+      development: { curiosity: 0.95, adaptability: 0.90, persistence: 0.85, attention_to_detail: 0.85 },
+      streams: { applied_technical: 0.95, science: 0.65, humanities: 0.70, commerce: 0.50 },
       archetypes: ["Creative Maker", "Practical Explorer", "Analytical Systems Thinker"],
     },
     display_order: 10,
@@ -605,9 +618,11 @@ export const SEED_CAREERS: CareerSeedItem[] = [
     ],
     sample_roles: ["Learning Experience Designer (LXD)", "Cognitive Science Researcher", "EdTech Product Lead", "Educational Psychologist"],
     related_dimensions: {
-      riasec: { S: 0.95, I: 0.8, A: 0.7, E: 0.5, C: 0.4, R: 0.3 },
-      skills: { collaboration_empathy: 0.95, creative_ideation: 0.85, analytical_inquiry: 0.8, problem_solving: 0.8 },
-      aptitude: { verbal_inference: 0.95, creative_fluency: 0.85, pattern_recognition: 0.8, attention_to_detail: 0.8 },
+      riasec: { S: 0.95, I: 0.80, A: 0.70, E: 0.50, C: 0.40, R: 0.20 },
+      skills: { communication: 0.95, social_teamwork: 0.95, creative_thinking: 0.85, logical_problem_solving: 0.75 },
+      aptitude: { verbal_reasoning: 0.95, social_judgment: 0.95, creative_performance: 0.85, planning_estimation: 0.75 },
+      development: { collaboration: 0.95, curiosity: 0.90, adaptability: 0.90, initiative: 0.85 },
+      streams: { humanities: 0.95, applied_technical: 0.70, commerce: 0.50, science: 0.50 },
       archetypes: ["Empathetic Catalyst", "Creative Maker", "Strategic Coordinator"],
     },
     display_order: 11,
@@ -650,9 +665,11 @@ export const SEED_CAREERS: CareerSeedItem[] = [
     ],
     sample_roles: ["Clinical Systems Engineer", "Medical Device Developer", "Healthcare Technology Consultant", "Biomedical Specialist"],
     related_dimensions: {
-      riasec: { I: 0.9, S: 0.85, R: 0.7, C: 0.6, E: 0.4, A: 0.3 },
-      skills: { problem_solving: 0.9, collaboration_empathy: 0.9, technical_curiosity: 0.85, structured_execution: 0.85 },
-      aptitude: { deductive_logic: 0.9, spatial_reasoning: 0.85, attention_to_detail: 0.95, pattern_recognition: 0.85 },
+      riasec: { I: 0.95, S: 0.85, R: 0.70, C: 0.70, E: 0.30, A: 0.30 },
+      skills: { logical_problem_solving: 0.90, self_management: 0.90, communication: 0.85, practical_technical: 0.80 },
+      aptitude: { pattern_logic: 0.90, numerical_reasoning: 0.85, verbal_reasoning: 0.85, practical_troubleshooting: 0.80 },
+      development: { attention_to_detail: 0.95, persistence: 0.90, collaboration: 0.85, curiosity: 0.90 },
+      streams: { science: 0.95, applied_technical: 0.75, humanities: 0.60, commerce: 0.30 },
       archetypes: ["Empathetic Catalyst", "Practical Explorer", "Analytical Systems Thinker"],
     },
     display_order: 12,

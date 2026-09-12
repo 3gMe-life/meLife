@@ -11,6 +11,8 @@ import { skillFinderQuestionSelectionService } from "./modules/assessments/servi
 import { streamFinderQuestionSelectionService } from "./modules/assessments/services/stream-finder-question-selection.service";
 import { skillFinderTranslationsService } from "./modules/assessments/services/skill-finder-translations.service";
 import { streamFinderTranslationsService } from "./modules/assessments/services/stream-finder-translations.service";
+import { engineeringBranchFinderQuestionSelectionService } from "./modules/assessments/services/engineering-branch-finder-question-selection.service";
+import { engineeringBranchFinderTranslationsService } from "./modules/assessments/services/engineering-branch-finder-translations.service";
 import { reportRepository } from "./modules/reports/report.repository";
 import { careerRepository } from "./modules/careers/career.repository";
 import { careerReportRepository } from "./modules/careers/reports/career-report.repository";
@@ -42,6 +44,11 @@ const bootstrap = async () => {
     await assessmentContentRepository.seedStreamFinderContent();
     await streamFinderQuestionSelectionService.seedStreamFinderVersions();
     await streamFinderTranslationsService.seedStreamFinderTranslations();
+
+    // 5c. Engineering Branch Finder Question Bank & Versions & Translations
+    await assessmentContentRepository.seedEngineeringBranchFinderContent();
+    await engineeringBranchFinderQuestionSelectionService.seedEngineeringBranchFinderVersions();
+    await engineeringBranchFinderTranslationsService.seedEngineeringBranchFinderTranslations();
 
     // 6. Initialize psychometric reports schema
     await reportRepository.initSchema();

@@ -105,7 +105,9 @@ export function StreamFinderResultView({ result }: StreamFinderResultViewProps) 
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [isRetakeModalOpen, setIsRetakeModalOpen] = useState(false);
 
-  const { data: historyData } = useAssessmentHistoryQuery("stream-finder");
+  const { data: historyData } = useAssessmentHistoryQuery("stream-finder", {
+    enabled: activeTab === "history",
+  });
   const startRetakeMutation = useStartRetakeMutation();
 
   const handleStartRetake = () => {

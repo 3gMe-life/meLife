@@ -34,7 +34,7 @@ export function ThemeToggle() {
   if (!isMounted) {
     return (
       <div
-        className="w-9 h-9 rounded-2xl bg-[#EBF2F0] dark:bg-white/5 border border-[#E3ECEA] dark:border-[rgba(227,236,234,0.1)]"
+        className="w-9 h-9 rounded-xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 shrink-0"
         aria-hidden="true"
       />
     );
@@ -52,7 +52,7 @@ export function ThemeToggle() {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 p-2 rounded-2xl bg-[#EBF2F0] hover:bg-[#E3ECEA] dark:bg-white/5 dark:hover:bg-white/10 border border-[#E3ECEA] dark:border-[rgba(227,236,234,0.1)] text-[#526866] dark:text-[#9FB3B0] hover:text-[#172B2A] dark:hover:text-[#F7FAF9] transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#00BFA5]/40 select-none group"
+        className="h-9 px-2 rounded-xl bg-[#F4F8F7] hover:bg-[#EBF2F0] dark:bg-white/5 dark:hover:bg-white/10 border border-[#E3ECEA] dark:border-white/10 text-[#526866] dark:text-[#9FB3B0] hover:text-[#172B2A] dark:hover:text-[#F7FAF9] transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#00BFA5]/40 select-none flex items-center gap-1 group shrink-0"
         aria-label={`Current theme: ${theme}. Click to change theme.`}
         aria-expanded={isOpen}
       >

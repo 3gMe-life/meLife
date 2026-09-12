@@ -9,6 +9,8 @@ import { useLatestAssessmentComparisonQuery } from "@/features/assessments/hooks
 import { useAssessmentHistoryQuery } from "@/features/assessments/hooks/useAssessmentHistoryQuery";
 import { useStartRetakeMutation } from "@/features/assessments/hooks/useStartRetakeMutation";
 
+import { useCareerPathwaysQuery } from "@/features/careers/hooks/useCareerPathwaysQuery";
+
 import { WelcomeCard } from "./widgets/WelcomeCard";
 import { MetricCardsRow } from "./widgets/MetricCardsRow";
 import { MyAssessmentsPanel } from "./widgets/MyAssessmentsPanel";
@@ -55,15 +57,18 @@ export function ParticipantDashboardView({
   const { data: latestResult, isLoading: isResultLoading } =
     useLatestAssessmentResultQuery("en");
 
-  // 3. Growth & Retest Comparison Query
+  // 3. Career Pathways Query (Calculated via psychometric matching engine)
+  const { data: pathwaysData } = useCareerPathwaysQuery("en");
+
+  // 4. Growth & Retest Comparison Query
   const { data: comparisonData } =
     useLatestAssessmentComparisonQuery("skill-finder");
 
-  // 4. Assessment History Query (for attempts & milestone calendar tracking)
+  // 5. Assessment History Query (for attempts & milestone calendar tracking)
   const { data: historyData } =
     useAssessmentHistoryQuery("skill-finder");
 
-  // 5. Retake Mutation
+  // 6. Retake Mutation
   const startRetakeMutation = useStartRetakeMutation();
 
   const handleExecuteRetake = () => {
@@ -99,13 +104,21 @@ export function ParticipantDashboardView({
   const effectiveStage = assessmentData?.educationStage || educationStage;
   const derivedAge = assessmentData?.derivedAge;
 
-  const firstPendingAssessment = assessments.find((a) => a.status !== "COMPLETED");
+  const firstPendingAssessment =
+    assessments.find((a) => a.isRecommended && (a.status === "AVAILABLE" || a.status === "IN_PROGRESS")) ||
+    assessments.find((a) => a.status === "IN_PROGRESS") ||
+    assessments.find((a) => a.status === "AVAILABLE") ||
+    null;
 
-  // Derive Top Strength from Real Results
-  let topStrengthName = "Logical Problem Solving";
-  let topStrengthScore = 92;
-
-  if (latestResult?.demonstratedAptitude?.dimensions?.length) {
+  // Derive Top Strength from result
+  let topStrengthName = "Analytical Thinking";
+  let topStrengthScore = 85;
+  if (latestResult?.skillBehaviour?.strongestIndicators?.[0]) {
+    topStrengthName = latestResult.skillBehaviour.strongestIndicators[0].name;
+    topStrengthScore = Math.round(
+      latestResult.skillBehaviour.strongestIndicators[0].scalePositionPercentage
+    );
+  } else if (latestResult?.demonstratedAptitude?.dimensions?.length) {
     const sortedApt = [...latestResult.demonstratedAptitude.dimensions].sort(
       (a, b) => b.scalePositionPercentage - a.scalePositionPercentage
     )[0];
@@ -115,8 +128,23 @@ export function ParticipantDashboardView({
     }
   }
 
-  // Derive Career Pathways
+  // Derive Career Pathways from live calibrated recommendations
   const careerPathways: CareerPathwayPreview[] = React.useMemo(() => {
+    if (pathwaysData?.recommendations && pathwaysData.recommendations.length > 0) {
+      return pathwaysData.recommendations.slice(0, 3).map((rec) => ({
+        id: rec.id || rec.slug,
+        title: rec.title,
+        category: rec.category,
+        matchScore: rec.matchPercentage,
+        stream: rec.industry,
+        growthOutlook: rec.futureGrowth,
+        keySkills: rec.keySkills && rec.keySkills.length > 0
+          ? rec.keySkills.slice(0, 3)
+          : ["Analytical Thinking", "Problem Solving", "Domain Application"],
+        description: rec.description,
+      }));
+    }
+
     if (latestResult?.explorationDirections?.length) {
       return latestResult.explorationDirections.map((p: any, idx: number) => ({
         id: `pathway-${idx}`,
@@ -131,22 +159,8 @@ export function ParticipantDashboardView({
         description: p.description || "Synthesizes multidimensional aptitude and exploratory interest domains.",
       }));
     }
-    if (latestResult?.careerClusters?.length) {
-      return latestResult.careerClusters.map((c: any, idx: number) => ({
-        id: `pathway-${idx}`,
-        title: c.suggestedCareerFamilies?.[0] || c.profileKey || "Stream Career Cluster",
-        category: c.profileKey || "Academic Stream",
-        matchScore: Math.max(80, 95 - idx * 5),
-        stream: c.profileKey || "Senior Secondary Stream",
-        growthOutlook: "High",
-        keySkills: c.exampleAreas && c.exampleAreas.length > 0
-          ? c.exampleAreas.slice(0, 3)
-          : ["Analytical Thinking", "Subject Mastery", "Applied Skills"],
-        description: c.counsellingNote || "Mapped directly from your verified academic stream affinity.",
-      }));
-    }
     return [];
-  }, [latestResult]);
+  }, [pathwaysData, latestResult]);
 
   // Derive Dates for Calendar
   const milestoneDates = React.useMemo(() => {

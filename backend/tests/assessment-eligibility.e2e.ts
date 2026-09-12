@@ -65,7 +65,7 @@ async function runAssessmentTests() {
           registrationPath: "STUDENT",
         }),
       });
-      const data = await regRes.json();
+      const data: any = await regRes.json();
       return { token: data.data.accessToken, userId: data.data.user.id };
     }
 
@@ -85,7 +85,7 @@ async function runAssessmentTests() {
         registrationPath: "PARENT",
       }),
     });
-    const parentData = await parentRegRes.json();
+    const parentData: any = await parentRegRes.json();
     const parentForbiddenRes = await fetch(`${baseUrl}/participant/assessments`, {
       headers: { Authorization: `Bearer ${parentData.data.accessToken}` },
     });
@@ -96,13 +96,13 @@ async function runAssessmentTests() {
     const incompleteRes = await fetch(`${baseUrl}/participant/assessments`, {
       headers: { Authorization: `Bearer ${p1.token}` },
     });
-    const incompleteData = await incompleteRes.json();
+    const incompleteData: any = await incompleteRes.json();
     assert(
       incompleteData.data?.state === "PROFILE_INCOMPLETE" && incompleteData.data?.assessments.length === 0,
       "Eligibility: Un-onboarded participant returns state: PROFILE_INCOMPLETE"
     );
 
-    // CASE 4: Middle School Student (Class 7, Age 12) -> SKILL_FINDER
+    // CASE 4: Middle School Student (Class 7, Age 12) -> Primary: SKILL_FINDER, All 7 available
     const p2 = await createParticipant(`middle_school_${timestamp}@example.com`, "Ananya");
     await fetch(`${baseUrl}/participant/onboarding`, {
       method: "POST",
@@ -121,17 +121,18 @@ async function runAssessmentTests() {
     const msRes = await fetch(`${baseUrl}/participant/assessments`, {
       headers: { Authorization: `Bearer ${p2.token}` },
     });
-    const msData = await msRes.json();
+    const msData: any = await msRes.json();
     const msCodes = msData.data?.assessments.map((a: any) => a.code);
+    const msSkill = msData.data?.assessments.find((a: any) => a.code === "SKILL_FINDER");
     assert(
       msData.data?.state === "ELIGIBLE" &&
-      msCodes.includes("SKILL_FINDER") &&
-      !msCodes.includes("STREAM_FINDER") &&
-      !msCodes.includes("RIGHT_CAREER_FINDER"),
-      "Eligibility: Middle School (Class 7, Age 12) unlocks SKILL_FINDER only"
+      msData.data?.primaryAssessmentCode === "SKILL_FINDER" &&
+      msSkill?.isRecommended === true &&
+      msCodes.length === 7,
+      "Eligibility: Middle School (Class 7, Age 12) recommends SKILL_FINDER and provides open access to all 7 modules"
     );
 
-    // CASE 5: Secondary School Student (Class 10, Age 15) -> STREAM_FINDER
+    // CASE 5: Secondary School Student (Class 10, Age 15) -> Primary: STREAM_FINDER, All 7 available
     const p3 = await createParticipant(`sec_school_${timestamp}@example.com`, "Kabir");
     await fetch(`${baseUrl}/participant/onboarding`, {
       method: "POST",
@@ -150,16 +151,18 @@ async function runAssessmentTests() {
     const secRes = await fetch(`${baseUrl}/participant/assessments`, {
       headers: { Authorization: `Bearer ${p3.token}` },
     });
-    const secData = await secRes.json();
+    const secData: any = await secRes.json();
     const secCodes = secData.data?.assessments.map((a: any) => a.code);
+    const secStream = secData.data?.assessments.find((a: any) => a.code === "STREAM_FINDER");
     assert(
       secData.data?.state === "ELIGIBLE" &&
-      secCodes.includes("STREAM_FINDER") &&
-      !msCodes.includes("ENGINEERING_BRANCH_FINDER"),
-      "Eligibility: Secondary School (Class 10, Age 15) unlocks STREAM_FINDER"
+      secData.data?.primaryAssessmentCode === "STREAM_FINDER" &&
+      secStream?.isRecommended === true &&
+      secCodes.length === 7,
+      "Eligibility: Secondary School (Class 10, Age 15) recommends STREAM_FINDER with all 7 modules unlocked"
     );
 
-    // CASE 6: Higher Secondary Student (Class 12, Age 17) -> Engineering, Commerce & Humanities Career Finders
+    // CASE 6: Higher Secondary Student (Class 12, Age 17) -> All 7 available with specializations accessible
     const p4 = await createParticipant(`higher_sec_${timestamp}@example.com`, "Diya");
     await fetch(`${baseUrl}/participant/onboarding`, {
       method: "POST",
@@ -178,18 +181,18 @@ async function runAssessmentTests() {
     const hsRes = await fetch(`${baseUrl}/participant/assessments`, {
       headers: { Authorization: `Bearer ${p4.token}` },
     });
-    const hsData = await hsRes.json();
+    const hsData: any = await hsRes.json();
     const hsCodes = hsData.data?.assessments.map((a: any) => a.code);
     assert(
       hsData.data?.state === "ELIGIBLE" &&
       hsCodes.includes("ENGINEERING_BRANCH_FINDER") &&
       hsCodes.includes("COMMERCE_CAREER_FINDER") &&
       hsCodes.includes("HUMANITIES_CAREER_FINDER") &&
-      !hsCodes.includes("SKILL_FINDER"),
-      "Eligibility: Higher Secondary (Class 12, Age 17) unlocks Engineering, Commerce & Humanities finders"
+      hsCodes.length === 7,
+      "Eligibility: Higher Secondary (Class 12, Age 17) provides open access to all 7 modules"
     );
 
-    // CASE 7: College / Adult Participant (Age 21) -> RIGHT_CAREER_FINDER & AI_JOB_RISK_FINDER
+    // CASE 7: College / Adult Participant (Age 21) -> Primary: RIGHT_CAREER_FINDER, All 7 available
     const p5 = await createParticipant(`college_adult_${timestamp}@example.com`, "Aditya");
     await fetch(`${baseUrl}/participant/onboarding`, {
       method: "POST",
@@ -206,14 +209,15 @@ async function runAssessmentTests() {
     const adultRes = await fetch(`${baseUrl}/participant/assessments`, {
       headers: { Authorization: `Bearer ${p5.token}` },
     });
-    const adultData = await adultRes.json();
+    const adultData: any = await adultRes.json();
     const adultCodes = adultData.data?.assessments.map((a: any) => a.code);
+    const adultRight = adultData.data?.assessments.find((a: any) => a.code === "RIGHT_CAREER_FINDER");
     assert(
       adultData.data?.state === "ELIGIBLE" &&
-      adultCodes.includes("RIGHT_CAREER_FINDER") &&
-      adultCodes.includes("AI_JOB_RISK_FINDER") &&
-      !adultCodes.includes("STREAM_FINDER"),
-      "Eligibility: College / Adult participant unlocks RIGHT_CAREER_FINDER & AI_JOB_RISK_FINDER"
+      adultData.data?.primaryAssessmentCode === "RIGHT_CAREER_FINDER" &&
+      adultRight?.isRecommended === true &&
+      adultCodes.length === 7,
+      "Eligibility: College / Adult participant recommends RIGHT_CAREER_FINDER with open access to all 7 modules"
     );
 
     // CASE 8: Security Check: No scoring formulas, keys, or private configs leaked
@@ -236,7 +240,7 @@ async function runAssessmentTests() {
     const inactiveFilterRes = await fetch(`${baseUrl}/participant/assessments`, {
       headers: { Authorization: `Bearer ${p5.token}` },
     });
-    const inactiveFilterData = await inactiveFilterRes.json();
+    const inactiveFilterData: any = await inactiveFilterRes.json();
     const filteredCodes = inactiveFilterData.data?.assessments.map((a: any) => a.code);
     assert(
       !filteredCodes.includes("AI_JOB_RISK_FINDER"),

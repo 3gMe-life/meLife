@@ -13,6 +13,15 @@ async function testMultilingualSwitching() {
   const userId = userRes.rows[0].id;
   console.log("Testing with User:", userId);
 
+  // Ensure participant profile exists for demographic eligibility
+  await pool.query(
+    `INSERT INTO participant_profiles (user_id, education_stage, grade_level, date_of_birth, is_onboarded)
+     VALUES ($1, 'SCHOOL', '10', '2011-04-15', true)
+     ON CONFLICT (user_id) DO UPDATE
+     SET education_stage = 'SCHOOL', grade_level = '10', date_of_birth = '2011-04-15', is_onboarded = true`,
+    [userId]
+  );
+
   // Clean any existing in-progress attempts for STREAM_FINDER
   await pool.query(
     `DELETE FROM assessment_attempts 

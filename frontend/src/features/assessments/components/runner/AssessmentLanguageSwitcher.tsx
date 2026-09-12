@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Globe, Check, ChevronDown } from "lucide-react";
+import { Globe, Check, ChevronDown, Loader2 } from "lucide-react";
 import { SupportedLanguage } from "../../types/assessment.types";
 import { SUPPORTED_LANGUAGES } from "../../config/assessment-i18n.config";
 
@@ -10,6 +10,7 @@ interface AssessmentLanguageSwitcherProps {
   onLanguageChange: (languageCode: string) => void;
   supportedLanguages?: SupportedLanguage[];
   disabled?: boolean;
+  isFetching?: boolean;
 }
 
 export function AssessmentLanguageSwitcher({
@@ -17,6 +18,7 @@ export function AssessmentLanguageSwitcher({
   onLanguageChange,
   supportedLanguages = SUPPORTED_LANGUAGES,
   disabled = false,
+  isFetching = false,
 }: AssessmentLanguageSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -50,18 +52,22 @@ export function AssessmentLanguageSwitcher({
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+        className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all duration-150 cursor-pointer ${
           isOpen
             ? "bg-[#00BFA5]/15 border-[#00BFA5] text-[#008F83] dark:text-[#00BFA5] ring-2 ring-[#00BFA5]/20"
-            : "bg-[#EBF2F0] hover:bg-[#E3ECEA] dark:bg-white/5 dark:hover:bg-white/10 border-[#E3ECEA] dark:border-white/10 text-[#172B2A] dark:text-[#F7FAF9]"
+            : "bg-white/80 hover:bg-[#EBF2F0] dark:bg-white/5 dark:hover:bg-white/10 border-[#E3ECEA] dark:border-white/10 text-[#172B2A] dark:text-[#F7FAF9]"
         } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
         aria-haspopup="true"
         aria-expanded={isOpen}
       >
-        <Globe className="w-3.5 h-3.5 text-[#00BFA5] shrink-0" />
+        {isFetching ? (
+          <Loader2 className="w-3.5 h-3.5 text-[#00BFA5] animate-spin shrink-0" />
+        ) : (
+          <Globe className="w-3.5 h-3.5 text-[#00BFA5] shrink-0" />
+        )}
         <span className="font-bold">{activeLang.nativeName}</span>
         <ChevronDown
-          className={`w-3.5 h-3.5 text-[#728B88] dark:text-[#7D9491] transition-transform duration-200 ${
+          className={`w-3 h-3 text-[#728B88] dark:text-[#7D9491] transition-transform duration-200 ${
             isOpen ? "rotate-180 text-[#00BFA5]" : ""
           }`}
         />

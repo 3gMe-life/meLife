@@ -143,13 +143,27 @@ export class StreamFinderScoringService {
       const qNum = parseInt(String(r.question_number), 10);
       if (!isNaN(qNum)) {
         let val: number | string = r.response_value || "";
-        // Parse numeric for Likert Q1-Q60
+        // Strict validation for Likert Q1-Q60 (no silent clamping)
         if (qNum <= 60) {
-          const numVal = parseInt(String(r.response_value || "0"), 10);
-          val = isNaN(numVal) ? 0 : Math.min(5, Math.max(1, numVal));
+          const rawStr = String(r.response_value ?? "").trim();
+          const numVal = parseInt(rawStr, 10);
+          if (isNaN(numVal) || numVal < 1 || numVal > 5 || String(numVal) !== rawStr) {
+            throw AppError.badRequest(
+              `Invalid psychometric response for Likert Question ${qNum}. Expected value 1 to 5, received '${r.response_value}'.`,
+              "INVALID_PSYCHOMETRIC_RESPONSE"
+            );
+          }
+          val = numVal;
         } else {
-          // Forced Choice Q61-Q80 ('A', 'B', 'C', 'D')
-          val = String(r.response_value || "").trim().toUpperCase();
+          // Strict validation for Forced Choice Q61-Q80 ('A', 'B', 'C', 'D')
+          const ch = String(r.response_value ?? "").trim().toUpperCase();
+          if (!["A", "B", "C", "D"].includes(ch)) {
+            throw AppError.badRequest(
+              `Invalid psychometric response for Forced Choice Question ${qNum}. Expected 'A', 'B', 'C', or 'D', received '${r.response_value}'.`,
+              "INVALID_PSYCHOMETRIC_RESPONSE"
+            );
+          }
+          val = ch;
         }
         responsesByQNum[qNum] = { value: val };
       }

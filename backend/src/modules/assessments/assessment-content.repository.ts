@@ -10,6 +10,10 @@ import {
   STREAM_FINDER_QUESTIONS,
 } from "./content/stream-finder-catalog.data";
 import {
+  ENGINEERING_SECTIONS,
+  ENGINEERING_QUESTIONS,
+} from "./content/engineering-branch-finder-catalog.data";
+import {
   SanitizedQuestionDTO,
   AssessmentSectionSummaryDTO,
   AssessmentAttemptQuestionsResponseDTO,
@@ -499,6 +503,124 @@ export class AssessmentContentRepository {
   }
 
   /**
+   * Seeds all 80 questions, sections, dimensions, and options for Engineering Branch Finder idempotently.
+   */
+  async seedEngineeringBranchFinderContent(client?: PoolClient): Promise<void> {
+    const db = client || pool;
+
+    // 1. Find ENGINEERING_BRANCH_FINDER assessment ID
+    const assessRes = await db.query(
+      `SELECT id FROM assessments WHERE code = 'ENGINEERING_BRANCH_FINDER' LIMIT 1`
+    );
+    if (!assessRes.rows[0]) {
+      logger.warn("ENGINEERING_BRANCH_FINDER assessment catalog entry missing, skipping content seeding");
+      return;
+    }
+    const assessmentId = assessRes.rows[0].id;
+
+    // Fast check: if already seeded 80 items, return immediately
+    const countCheck = await db.query(
+      `SELECT COUNT(*) as count FROM assessment_questions WHERE assessment_id = $1`,
+      [assessmentId]
+    );
+    if (parseInt(countCheck.rows[0]?.count, 10) === 80) {
+      logger.info("✨ Engineering Branch Finder question bank already fully seeded (80 items).");
+      return;
+    }
+
+    // 2. Upsert Sections
+    const sectionMap: Record<string, string> = {};
+    for (const sec of ENGINEERING_SECTIONS) {
+      const sRes = await db.query(
+        `INSERT INTO assessment_sections (assessment_id, code, name, description, display_order, updated_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())
+         ON CONFLICT (assessment_id, code) DO UPDATE SET
+           name = EXCLUDED.name,
+           description = EXCLUDED.description,
+           display_order = EXCLUDED.display_order,
+           updated_at = NOW()
+         RETURNING id`,
+        [assessmentId, sec.code, sec.name, sec.description, sec.displayOrder]
+      );
+      sectionMap[sec.code] = sRes.rows[0].id;
+    }
+
+    // 3. Upsert Dimensions & Questions
+    const dimensionMap: Record<string, string> = {};
+
+    for (const q of ENGINEERING_QUESTIONS) {
+      const sectionId = sectionMap[q.sectionCode];
+      if (!sectionId) continue;
+
+      // Upsert Dimension if not yet in map
+      const dimKey = `${q.sectionCode}_${q.dimensionCode}`;
+      if (!dimensionMap[dimKey]) {
+        const dRes = await db.query(
+          `INSERT INTO assessment_dimensions (section_id, code, name, display_order, updated_at)
+           VALUES ($1, $2, $3, $4, NOW())
+           ON CONFLICT (section_id, code) DO UPDATE SET
+             name = EXCLUDED.name,
+             updated_at = NOW()
+           RETURNING id`,
+          [sectionId, q.dimensionCode, q.dimensionName, q.questionNumber]
+        );
+        dimensionMap[dimKey] = dRes.rows[0].id;
+      }
+      const dimensionId = dimensionMap[dimKey];
+
+      const maxPoints = q.questionType === "likert_1_4" ? 4.0 : 1.0;
+
+      // Upsert Question
+      const qRes = await db.query(
+        `INSERT INTO assessment_questions (
+           assessment_id, section_id, dimension_id, question_number, question_text,
+           question_type, max_points, is_required, display_order, updated_at
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+         ON CONFLICT (assessment_id, question_number) DO UPDATE SET
+           section_id = EXCLUDED.section_id,
+           dimension_id = EXCLUDED.dimension_id,
+           question_text = EXCLUDED.question_text,
+           question_type = EXCLUDED.question_type,
+           max_points = EXCLUDED.max_points,
+           display_order = EXCLUDED.display_order,
+           updated_at = NOW()
+         RETURNING id`,
+        [
+          assessmentId,
+          sectionId,
+          dimensionId,
+          q.questionNumber,
+          q.questionText,
+          q.questionType,
+          maxPoints,
+          true,
+          q.questionNumber,
+        ]
+      );
+      const questionId = qRes.rows[0].id;
+
+      // Upsert Options
+      if (q.options && q.options.length > 0) {
+        for (const opt of q.options) {
+          await db.query(
+            `INSERT INTO question_options (question_id, option_key, option_text, score_value, display_order, updated_at)
+             VALUES ($1, $2, $3, $4, $5, NOW())
+             ON CONFLICT (question_id, option_key) DO UPDATE SET
+               option_text = EXCLUDED.option_text,
+               score_value = EXCLUDED.score_value,
+               display_order = EXCLUDED.display_order,
+               updated_at = NOW()`,
+            [questionId, opt.optionKey, opt.optionText, opt.scoreValue || 0, opt.displayOrder]
+          );
+        }
+      }
+    }
+
+    logger.info("✨ Engineering Branch Finder 80-item question bank & options seeded successfully.");
+  }
+
+  /**
    * Finds an existing active attempt for participant and assessment.
    */
   async findActiveAttempt(userId: string, assessmentId: string, client?: PoolClient): Promise<any> {
@@ -554,6 +676,37 @@ export class AssessmentContentRepository {
        WHERE a.id = $1
        LIMIT 1`,
       [attemptId]
+    );
+    return res.rows[0] || null;
+  }
+
+  /**
+   * Finds question details by ID including type, section, and options.
+   */
+  async findQuestionById(questionId: string, client?: PoolClient | import("pg").Pool): Promise<any> {
+    if (!questionId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(questionId)) {
+      return null;
+    }
+    const db = client || pool;
+    const res = await db.query(
+      `SELECT q.id, q.assessment_id, q.section_id, q.dimension_id, q.question_number,
+              q.question_text, q.question_type, q.max_points,
+              COALESCE(
+                json_agg(
+                  json_build_object(
+                    'id', o.id,
+                    'optionKey', o.option_key,
+                    'optionText', o.option_text,
+                    'scoreValue', o.score_value
+                  ) ORDER BY o.display_order ASC
+                ) FILTER (WHERE o.id IS NOT NULL),
+                '[]'
+              ) as options
+       FROM assessment_questions q
+       LEFT JOIN question_options o ON q.id = o.question_id
+       WHERE q.id = $1
+       GROUP BY q.id`,
+      [questionId]
     );
     return res.rows[0] || null;
   }
@@ -643,6 +796,7 @@ export class AssessmentContentRepository {
            q.id,
            vq.display_order as question_number,
            COALESCE(qt.question_text, q.question_text) as question_text,
+           q.question_text as original_question_text,
            q.question_type, q.image_url, vq.is_required,
            s.code as section_code,
            COALESCE(st.name, s.name) as section_name,
@@ -678,6 +832,7 @@ export class AssessmentContentRepository {
       : `SELECT
            q.id, q.question_number,
            COALESCE(qt.question_text, q.question_text) as question_text,
+           q.question_text as original_question_text,
            q.question_type, q.image_url, q.is_required,
            s.code as section_code,
            COALESCE(st.name, s.name) as section_name,
@@ -724,6 +879,7 @@ export class AssessmentContentRepository {
       dimensionCode: row.dimension_code || "GENERAL",
       dimensionName: row.dimension_name || "General",
       questionText: row.question_text,
+      originalQuestionText: row.original_question_text || null,
       questionType: row.question_type,
       imageUrl: row.image_url || null,
       isRequired: Boolean(row.is_required),
@@ -747,6 +903,8 @@ export class AssessmentContentRepository {
       currentLanguage: lang,
       supportedLanguages: SUPPORTED_ASSESSMENT_LANGUAGES,
       status: attempt.status,
+      startedAt: attempt.started_at ? new Date(attempt.started_at).toISOString() : null,
+      serverTime: new Date().toISOString(),
       totalQuestions: parseInt(attempt.total_questions, 10) || questions.length,
       answeredCount: parseInt(attempt.answered_count, 10) || 0,
       currentQuestionIndex: parseInt(attempt.current_question_index, 10) || 0,

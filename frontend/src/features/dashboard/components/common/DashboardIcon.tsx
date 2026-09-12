@@ -29,9 +29,11 @@ import {
   ChevronRight,
   Flame,
   Award,
+  Home,
 } from "lucide-react";
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  Home,
   LayoutDashboard,
   BookOpenCheck,
   LineChart,

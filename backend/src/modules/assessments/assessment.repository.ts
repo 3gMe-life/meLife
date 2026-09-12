@@ -34,9 +34,22 @@ export class AssessmentRepository {
       CREATE INDEX IF NOT EXISTS idx_assessments_status ON assessments(status);
       CREATE INDEX IF NOT EXISTS idx_assessments_code ON assessments(code);
       CREATE INDEX IF NOT EXISTS idx_assessments_display_order ON assessments(display_order);
+
+      -- Assessment Prerequisites Table
+      CREATE TABLE IF NOT EXISTS assessment_prerequisites (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        assessment_id UUID NOT NULL REFERENCES assessments(id) ON DELETE CASCADE,
+        prerequisite_assessment_id UUID NOT NULL REFERENCES assessments(id) ON DELETE CASCADE,
+        required_status VARCHAR(50) NOT NULL DEFAULT 'COMPLETED',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(assessment_id, prerequisite_assessment_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_prereq_assessment ON assessment_prerequisites(assessment_id);
+      CREATE INDEX IF NOT EXISTS idx_prereq_required ON assessment_prerequisites(prerequisite_assessment_id);
     `;
     await db.query(query);
-    logger.info("📦 Assessment catalog schema initialized and verified.");
+    logger.info("📦 Assessment catalog and prerequisite schema initialized and verified.");
   }
 
   /**
@@ -78,12 +91,12 @@ export class AssessmentRepository {
         code: "ENGINEERING_BRANCH_FINDER" as AssessmentCode,
         name: "Engineering Branch Finder",
         category: "STEM & Technical Specializations",
-        description: "Assesses computational logic, mechanics intuition, algorithmic systems thinking, and technical orientation for Engineering disciplines (AI, CS, Mechanical, ECE, Biotech).",
+        description: "Assesses interests and aptitudes across 8 core engineering disciplines (Computer Science, ECE, Electrical, Mechanical, Civil, Chemical, Biomedical, Aerospace) through 64 Likert preferences and 16 forced-choice engineering scenarios.",
         estimatedMinutes: 25,
-        questionCount: 40,
+        questionCount: 80,
         minAge: 16,
         maxAge: 18,
-        allowedStages: ["SCHOOL"],
+        allowedStages: ["SCHOOL", "COLLEGE_UNIVERSITY"],
         allowedGrades: ["11", "12"],
         status: "ACTIVE",
         displayOrder: 3,
@@ -182,7 +195,59 @@ export class AssessmentRepository {
       ]);
     }
 
-    logger.info("✨ 3G MeLife official assessment catalog seeded successfully.");
+    // Seed official assessment prerequisites
+    const prerequisiteLinks: Array<{ targetCode: AssessmentCode; requiredCode: AssessmentCode }> = [
+      { targetCode: "STREAM_FINDER", requiredCode: "SKILL_FINDER" },
+      { targetCode: "ENGINEERING_BRANCH_FINDER", requiredCode: "STREAM_FINDER" },
+      { targetCode: "COMMERCE_CAREER_FINDER", requiredCode: "STREAM_FINDER" },
+      { targetCode: "HUMANITIES_CAREER_FINDER", requiredCode: "STREAM_FINDER" },
+      { targetCode: "RIGHT_CAREER_FINDER", requiredCode: "STREAM_FINDER" },
+      { targetCode: "AI_JOB_RISK_FINDER", requiredCode: "RIGHT_CAREER_FINDER" },
+    ];
+
+    for (const link of prerequisiteLinks) {
+      const insertPrereqQuery = `
+        INSERT INTO assessment_prerequisites (assessment_id, prerequisite_assessment_id, required_status)
+        SELECT a.id, p.id, 'COMPLETED'
+        FROM assessments a, assessments p
+        WHERE a.code = $1 AND p.code = $2
+        ON CONFLICT (assessment_id, prerequisite_assessment_id) DO NOTHING
+      `;
+      await db.query(insertPrereqQuery, [link.targetCode, link.requiredCode]);
+    }
+
+    logger.info("✨ 3G MeLife official assessment catalog and prerequisites seeded successfully.");
+  }
+
+  /**
+   * Retrieves all defined prerequisite mappings across the catalog.
+   */
+  async findAllPrerequisites(client?: PoolClient): Promise<
+    Array<{
+      assessmentId: string;
+      assessmentCode: AssessmentCode;
+      prerequisiteAssessmentId: string;
+      prerequisiteCode: AssessmentCode;
+      prerequisiteName: string;
+      requiredStatus: string;
+    }>
+  > {
+    const db = client || pool;
+    const query = `
+      SELECT
+        ap.assessment_id AS "assessmentId",
+        a.code AS "assessmentCode",
+        ap.prerequisite_assessment_id AS "prerequisiteAssessmentId",
+        p.code AS "prerequisiteCode",
+        p.name AS "prerequisiteName",
+        ap.required_status AS "requiredStatus"
+      FROM assessment_prerequisites ap
+      JOIN assessments a ON a.id = ap.assessment_id
+      JOIN assessments p ON p.id = ap.prerequisite_assessment_id
+      ORDER BY a.display_order ASC
+    `;
+    const res = await db.query(query);
+    return res.rows;
   }
 
   /**

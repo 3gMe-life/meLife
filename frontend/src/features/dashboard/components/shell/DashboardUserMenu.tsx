@@ -91,25 +91,20 @@ export function DashboardUserMenu({ user, role = "PARTICIPANT" }: DashboardUserM
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2.5 p-1.5 pl-2 pr-3 rounded-2xl bg-[#EBF2F0] hover:bg-[#E3ECEA] dark:bg-white/5 dark:hover:bg-white/10 border border-[#E3ECEA] dark:border-[rgba(227,236,234,0.1)] transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#00BFA5]/40 select-none group"
+        className="h-9 px-1.5 sm:px-2 rounded-xl bg-[#F4F8F7] hover:bg-[#EBF2F0] dark:bg-white/5 dark:hover:bg-white/10 border border-[#E3ECEA] dark:border-white/10 transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#00BFA5]/40 select-none flex items-center gap-1.5 sm:gap-2 group shrink-0"
         aria-expanded={isOpen}
         aria-label="User profile menu"
       >
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#00B8D4] via-[#00BFA5] to-[#00C896] flex items-center justify-center font-bold text-xs text-[#172B2A] shadow-md shadow-[#00BFA5]/20 ring-1 ring-black/5 dark:ring-white/20">
+        <div className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-lg bg-gradient-to-tr from-[#00B8D4] via-[#00BFA5] to-[#00C896] flex items-center justify-center font-black text-[10px] sm:text-xs text-[#172B2A] shadow-xs shrink-0">
           {initials}
         </div>
 
-        <div className="hidden sm:flex flex-col text-left">
-          <span className="text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9] group-hover:text-[#008F83] dark:group-hover:text-[#00BFA5] transition-colors leading-tight truncate max-w-[120px]">
-            {user.firstName} {user.lastName}
-          </span>
-          <span className="text-[10px] text-[#526866] dark:text-[#9FB3B0] leading-tight">
-            {getRoleDisplayName(role)}
-          </span>
-        </div>
+        <span className="text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9] group-hover:text-[#008F83] dark:group-hover:text-[#00BFA5] transition-colors leading-tight truncate max-w-[110px] hidden sm:block">
+          {user.firstName || "Student"}
+        </span>
 
         <ChevronDown
-          className={`w-3.5 h-3.5 text-[#728B88] group-hover:text-[#172B2A] dark:group-hover:text-white transition-transform duration-200 ${
+          className={`w-3.5 h-3.5 text-[#728B88] group-hover:text-[#172B2A] dark:group-hover:text-white transition-transform duration-200 shrink-0 ${
             isOpen ? "rotate-180" : ""
           }`}
         />

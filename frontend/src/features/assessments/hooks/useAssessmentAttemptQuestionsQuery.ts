@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { assessmentApi } from "../api/assessment.api";
 
 export function useAssessmentAttemptQuestionsQuery(
@@ -10,6 +10,7 @@ export function useAssessmentAttemptQuestionsQuery(
     queryFn: () => assessmentApi.getAttemptQuestions(attemptId, language),
     enabled: Boolean(attemptId),
     staleTime: 1000 * 60 * 15, // 15 minutes
+    placeholderData: keepPreviousData,
     refetchOnWindowFocus: false,
     retry: false,
   });

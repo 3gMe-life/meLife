@@ -110,6 +110,13 @@ export function CareerDetailView({
 
             <MatchScore score={career.matchPercentage} size="md" showLabel={true} />
 
+            {career.confidence && (
+              <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-[#00BFA5]/20 text-[#00BFA5] border border-[#00BFA5]/30 flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                <span>{career.confidence}</span>
+              </span>
+            )}
+
             <div
               className={`px-3 py-1 rounded-full text-[11px] font-bold border flex items-center gap-1.5 ${growthColor}`}
             >
@@ -143,7 +150,7 @@ export function CareerDetailView({
                   Why This Career Pathway Matches Your Profile
                 </h2>
                 <p className="text-[11px] text-[#728B88] dark:text-[#7D9491]">
-                  Scientifically computed psychometric alignment across Interests, Skills, Aptitudes, and Personality
+                  Scientifically computed psychometric alignment across Interests, Skills, Aptitudes, Traits, and Academic Streams
                 </p>
               </div>
             </div>
@@ -153,13 +160,13 @@ export function CareerDetailView({
                 {career.reasoning.summary}
               </p>
 
-              {/* 4-Pillar Breakdown Visualizer */}
+              {/* Multi-Pillar Breakdown Visualizer */}
               {career.matchBreakdown && (
                 <div className="pt-2 border-t border-[#E3ECEA] dark:border-white/10">
                   <div className="text-[11px] font-black uppercase tracking-wider text-[#728B88] dark:text-[#7D9491] mb-3">
-                    Multi-Dimensional Match Breakdown (4-Pillar Model):
+                    Multi-Dimensional Match Breakdown:
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className={`grid grid-cols-1 sm:grid-cols-2 ${career.matchBreakdown.streamScore !== undefined ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-3`}>
                     {/* Pillar 1: Interest */}
                     <div className="p-3.5 rounded-2xl bg-white dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10">
                       <div className="flex items-center justify-between text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9] mb-1.5">
@@ -178,7 +185,7 @@ export function CareerDetailView({
                         />
                       </div>
                       <span className="text-[10px] text-[#728B88] dark:text-[#7D9491]">
-                        Weight: 30%
+                        Interest Alignment
                       </span>
                     </div>
 
@@ -200,7 +207,7 @@ export function CareerDetailView({
                         />
                       </div>
                       <span className="text-[10px] text-[#728B88] dark:text-[#7D9491]">
-                        Weight: 30%
+                        Skill Behaviour
                       </span>
                     </div>
 
@@ -222,7 +229,7 @@ export function CareerDetailView({
                         />
                       </div>
                       <span className="text-[10px] text-[#728B88] dark:text-[#7D9491]">
-                        Weight: 25%
+                        Demonstrated Tasks
                       </span>
                     </div>
 
@@ -244,9 +251,33 @@ export function CareerDetailView({
                         />
                       </div>
                       <span className="text-[10px] text-[#728B88] dark:text-[#7D9491]">
-                        Weight: 15%
+                        Archetype & Traits
                       </span>
                     </div>
+
+                    {/* Pillar 5: Stream Finder (if assessed) */}
+                    {career.matchBreakdown.streamScore !== undefined && (
+                      <div className="p-3.5 rounded-2xl bg-white dark:bg-white/5 border border-[#00BFA5]/30 bg-[#00BFA5]/5">
+                        <div className="flex items-center justify-between text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9] mb-1.5">
+                          <span className="flex items-center gap-1.5">
+                            <GraduationCap className="w-3.5 h-3.5 text-[#00BFA5]" />
+                            Stream Match
+                          </span>
+                          <span className="font-mono text-[#008F83] dark:text-[#00BFA5]">
+                            {career.matchBreakdown.streamScore}%
+                          </span>
+                        </div>
+                        <div className="w-full bg-[#E3ECEA] dark:bg-white/10 h-2 rounded-full overflow-hidden mb-1">
+                          <div
+                            className="bg-[#00BFA5] h-full rounded-full transition-all duration-500"
+                            style={{ width: `${career.matchBreakdown.streamScore}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] text-[#008F83] dark:text-[#00BFA5] font-semibold">
+                          Academic Stream
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

@@ -7,6 +7,7 @@ import { DashboardShell } from "@/features/dashboard/components/shell/DashboardS
 import { useAssessmentResultQuery } from "@/features/assessments/hooks/useAssessmentResultQuery";
 import { SkillFinderResultView } from "@/features/assessments/components/results/SkillFinderResultView";
 import { StreamFinderResultView } from "@/features/assessments/components/results/StreamFinderResultView";
+import { EngineeringBranchFinderResultView } from "@/features/assessments/components/results/EngineeringBranchFinderResultView";
 
 export default function AssessmentResultDetailPage() {
   const params = useParams();
@@ -68,6 +69,12 @@ export default function AssessmentResultDetailPage() {
                 Go to Assessments
               </button>
             </div>
+          ) : result.assessmentCode === "ENGINEERING_BRANCH_FINDER" ? (
+            <EngineeringBranchFinderResultView
+              result={result}
+              currentLanguage={language}
+              onLanguageChange={setLanguage}
+            />
           ) : result.assessmentCode === "STREAM_FINDER" ? (
             <StreamFinderResultView
               result={result}

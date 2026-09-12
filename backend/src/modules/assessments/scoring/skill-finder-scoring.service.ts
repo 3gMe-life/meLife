@@ -154,22 +154,32 @@ export class SkillFinderScoringService {
     rawResponses: any[],
     versionMetadata?: { versionCode?: string; versionName?: string }
   ): SkillFinderResultDTO {
-    // Index responses by question_number and dimension_code
+    // Index responses by question_number, and partitioned by section_code & dimension_code
     const responsesByQNum: Record<number, any> = {};
-    const responsesByDimension: Record<string, any[]> = {};
-    const responsesBySection: Record<string, any[]> = {};
+    const responsesBySectionAndDim: Record<string, Record<string, any[]>> = {
+      SECTION_A: {},
+      SECTION_B: {},
+      SECTION_C: {},
+      SECTION_D: {},
+      SECTION_E: {},
+    };
 
     for (const r of rawResponses) {
       const qNum = parseInt(r.question_number, 10);
-      responsesByQNum[qNum] = r;
+      if (!isNaN(qNum)) {
+        responsesByQNum[qNum] = r;
+      }
 
+      const secCode = (r.section_code || "SECTION_A").toUpperCase();
       const dimCode = (r.dimension_code || "GENERAL").toUpperCase();
-      if (!responsesByDimension[dimCode]) responsesByDimension[dimCode] = [];
-      responsesByDimension[dimCode].push(r);
 
-      const secCode = (r.section_code || "GENERAL").toUpperCase();
-      if (!responsesBySection[secCode]) responsesBySection[secCode] = [];
-      responsesBySection[secCode].push(r);
+      if (!responsesBySectionAndDim[secCode]) {
+        responsesBySectionAndDim[secCode] = {};
+      }
+      if (!responsesBySectionAndDim[secCode][dimCode]) {
+        responsesBySectionAndDim[secCode][dimCode] = [];
+      }
+      responsesBySectionAndDim[secCode][dimCode].push(r);
     }
 
     // Helper to extract Likert 1-4 points
@@ -207,8 +217,9 @@ export class SkillFinderScoringService {
     // =========================================================================
     // 1. SECTION A: Interest Discovery (Dynamic scale normalization)
     // =========================================================================
+    const secAResponses = responsesBySectionAndDim["SECTION_A"] || {};
     const interestDimensions: DimensionScoreItem[] = INTEREST_DOMAINS.map((dom) => {
-      const items = responsesByDimension[dom.code] || [];
+      const items = secAResponses[dom.code] || [];
       const count = items.length;
       if (count === 0) {
         return {
@@ -252,8 +263,9 @@ export class SkillFinderScoringService {
     // =========================================================================
     // 2. SECTION B: Skill Behaviour (Dynamic scale normalization)
     // =========================================================================
+    const secBResponses = responsesBySectionAndDim["SECTION_B"] || {};
     const skillDimensions: DimensionScoreItem[] = SKILL_DIMENSIONS.map((dim) => {
-      const items = responsesByDimension[dim.code] || [];
+      const items = secBResponses[dim.code] || [];
       const count = items.length;
       if (count === 0) {
         return {
@@ -291,11 +303,17 @@ export class SkillFinderScoringService {
     // =========================================================================
     // 3. SECTION C: Demonstrated Aptitude (Dynamic accuracy calculation)
     // =========================================================================
+    const secCResponses = responsesBySectionAndDim["SECTION_C"] || {};
     let totalEarnedAptitude = 0;
     let totalPossibleAptitude = 0;
 
     const aptitudeDimensions: DimensionScoreItem[] = APTITUDE_DIMENSIONS.map((dim) => {
-      const items = responsesByDimension[dim.code] || [];
+      const items =
+        secCResponses[dim.code] ||
+        (dim.code === "CREATIVE_THINKING_TASKS" ? secCResponses["CREATIVE_THINKING"] : undefined) ||
+        (dim.code === "SITUATIONAL_JUDGMENT" ? secCResponses["SOCIAL_JUDGMENT"] : undefined) ||
+        (dim.code === "PLANNING_ESTIMATION" ? secCResponses["PLANNING"] : undefined) ||
+        [];
       if (items.length === 0) {
         return {
           code: dim.code,
@@ -338,8 +356,12 @@ export class SkillFinderScoringService {
     // =========================================================================
     // 4. SECTION D: Developmental Strengths (Dynamic scale normalization)
     // =========================================================================
+    const secDResponses = responsesBySectionAndDim["SECTION_D"] || {};
     const strengthDimensions: DimensionScoreItem[] = STRENGTH_DIMENSIONS.map((dim) => {
-      const items = responsesByDimension[dim.code] || [];
+      const items =
+        secDResponses[dim.code] ||
+        (dim.code === "INDEPENDENCE" ? secDResponses["LEARNING_INDEPENDENCE"] : undefined) ||
+        [];
       const count = items.length;
       if (count === 0) {
         return {

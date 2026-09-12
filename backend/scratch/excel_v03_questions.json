@@ -1,0 +1,938 @@
+[
+  {
+    "qnum": 1,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Builder (R)",
+    "text": "I enjoy building, assembling or fixing things.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 2,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Explorer (I)",
+    "text": "I like finding out why things happen and how they work.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 3,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Creator (A)",
+    "text": "I enjoy creating drawings, designs, stories, videos or other original work.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 4,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Helper (S)",
+    "text": "I enjoy helping someone who is having difficulty.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 5,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Leader (E)",
+    "text": "I like taking the lead when a group needs to make a decision.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 6,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Organiser (C)",
+    "text": "I enjoy arranging things neatly and keeping information organised.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 7,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Builder (R)",
+    "text": "I would enjoy using tools, equipment or practical materials to make something.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 8,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Explorer (I)",
+    "text": "I like experiments, investigations and discovering answers.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 9,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Creator (A)",
+    "text": "I enjoy imagining new designs, stories, characters or ideas.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 10,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Helper (S)",
+    "text": "I enjoy explaining things so another person can understand.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 11,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Leader (E)",
+    "text": "I enjoy presenting an idea and encouraging others to support it.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 12,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Organiser (C)",
+    "text": "I enjoy making lists, schedules or plans.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 13,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Builder (R)",
+    "text": "I enjoy activities where I can build, repair, assemble or work with real objects.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 14,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Explorer (I)",
+    "text": "I enjoy difficult puzzles and problems that make me think.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 15,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Creator (A)",
+    "text": "I enjoy thinking of new or unusual ways to do things.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 16,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Helper (S)",
+    "text": "I like working with people and helping a team succeed.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 17,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Leader (E)",
+    "text": "I would enjoy starting a small project, club or team activity.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 18,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Organiser (C)",
+    "text": "I like checking information and making sure things are in the right place.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 19,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Builder (R)",
+    "text": "I enjoy practical outdoor activities such as making, growing, caring for or improving things.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 20,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Explorer (I)",
+    "text": "When I do not know an answer, I enjoy searching for information to solve it.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 21,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Creator (A)",
+    "text": "I enjoy expressing ideas through art, design, writing, music, performance or media.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 22,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Helper (S)",
+    "text": "I enjoy listening to people and helping them feel supported.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 23,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Leader (E)",
+    "text": "I enjoy organising people so a group can reach a goal.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 24,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Organiser (C)",
+    "text": "I enjoy following a clear system so a task is completed correctly.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 25,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Builder (R)",
+    "text": "I enjoy taking simple objects apart or examining them to understand how they work.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 26,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Explorer (I)",
+    "text": "I like comparing clues or evidence before deciding on an answer.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 27,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Creator (A)",
+    "text": "I enjoy changing or improving something so it feels more original or expressive.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 28,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Helper (S)",
+    "text": "I would enjoy teaching or guiding a younger student in something I know.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 29,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Leader (E)",
+    "text": "I am interested in making decisions and taking responsibility for a group task.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 30,
+    "section": "A \u2014 Interest Discovery",
+    "domain": "Organiser (C)",
+    "text": "I enjoy sorting records, collections or information into a useful order.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 31,
+    "section": "B \u2014 Skill Behaviour",
+    "domain": "Logical & Problem-Solving",
+    "text": "When I have a difficult problem, I can break it into smaller steps.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 32,
+    "section": "B \u2014 Skill Behaviour",
+    "domain": "Communication",
+    "text": "I can explain an idea clearly so another person understands it.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 33,
+    "section": "B \u2014 Skill Behaviour",
+    "domain": "Creative Thinking",
+    "text": "I can usually think of more than one solution to a problem.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 34,
+    "section": "B \u2014 Skill Behaviour",
+    "domain": "Visual-Spatial Thinking",
+    "text": "I can imagine how something might look before it is built or drawn.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 35,
+    "section": "B \u2014 Skill Behaviour",
+    "domain": "Practical & Technical Skill",
+    "text": "I can follow steps to build, test or assemble a simple object or project.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 36,
+    "section": "B \u2014 Skill Behaviour",
+    "domain": "Social & Teamwork",
+    "text": "I can usually notice when another person is uncomfortable, upset or left out.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 37,
+    "section": "B \u2014 Skill Behaviour",
+    "domain": "Leadership & Initiative",
+    "text": "When a group does not know how to begin, I can help everyone get started.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 38,
+    "section": "B \u2014 Skill Behaviour",
+    "domain": "Self-Management",
+    "text": "I can organise my work when I have several things to finish.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 39,
+    "section": "B \u2014 Skill Behaviour",
+    "domain": "Logical & Problem-Solving",
+    "text": "If my first solution does not work, I can try a different approach.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 40,
+    "section": "B \u2014 Skill Behaviour",
+    "domain": "Communication",
+    "text": "I can tell or write information in a clear order.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 41,
+    "section": "B \u2014 Skill Behaviour",
+    "domain": "Creative Thinking",
+    "text": "I can often think of a new way to improve or use an ordinary idea.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 42,
+    "section": "B \u2014 Skill Behaviour",
+    "domain": "Visual-Spatial Thinking",
+    "text": "Maps, diagrams, shapes and layouts are usually easy for me to understand.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 43,
+    "section": "B \u2014 Skill Behaviour",
+    "domain": "Practical & Technical Skill",
+    "text": "When a simple device does not work, I can think of sensible things to check first.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 44,
+    "section": "B \u2014 Skill Behaviour",
+    "domain": "Social & Teamwork",
+    "text": "I work well with people who have different ideas from mine.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 45,
+    "section": "B \u2014 Skill Behaviour",
+    "domain": "Leadership & Initiative",
+    "text": "I can encourage other people to work toward a shared goal.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 46,
+    "section": "B \u2014 Skill Behaviour",
+    "domain": "Self-Management",
+    "text": "I can keep working even when there are distractions around me.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 47,
+    "section": "B \u2014 Skill Behaviour",
+    "domain": "Logical & Problem-Solving",
+    "text": "Before choosing a solution, I can compare different options and think about what may happen.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 48,
+    "section": "B \u2014 Skill Behaviour",
+    "domain": "Communication",
+    "text": "When I do not understand someone, I can ask questions to make the meaning clearer.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 49,
+    "section": "B \u2014 Skill Behaviour",
+    "domain": "Creative Thinking",
+    "text": "I can connect ideas from different places to create something new.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 50,
+    "section": "B \u2014 Skill Behaviour",
+    "domain": "Visual-Spatial Thinking",
+    "text": "I can mentally picture where parts, shapes or objects would fit together.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 51,
+    "section": "B \u2014 Skill Behaviour",
+    "domain": "Practical & Technical Skill",
+    "text": "I can use simple tools or materials carefully and follow safety instructions.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 52,
+    "section": "B \u2014 Skill Behaviour",
+    "domain": "Social & Teamwork",
+    "text": "I can share tasks fairly and contribute my part when working in a team.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 53,
+    "section": "B \u2014 Skill Behaviour",
+    "domain": "Leadership & Initiative",
+    "text": "If something useful needs to be done, I can suggest a next step instead of waiting for someone else.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 54,
+    "section": "B \u2014 Skill Behaviour",
+    "domain": "Self-Management",
+    "text": "I can plan my time so important school tasks are finished by their deadline.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 55,
+    "section": "C \u2014 Demonstrated Aptitude",
+    "domain": "Pattern & Logic",
+    "text": "What comes next? 2, 5, 11, 23, 47, ?  A.72  B.83  C.95  D.96",
+    "rule": "mcq_text",
+    "pts": "C",
+    "score_notes": 2
+  },
+  {
+    "qnum": 56,
+    "section": "C \u2014 Demonstrated Aptitude",
+    "domain": "Pattern & Logic",
+    "text": "All Rinos are blue. No blue object is yellow. Which must be true?  A.Some Rinos are yellow  B.No Rino is yellow  C.All yellow things are Rinos  D.We cannot know anything about Rinos",
+    "rule": "mcq_text",
+    "pts": "B",
+    "score_notes": 2
+  },
+  {
+    "qnum": 57,
+    "section": "C \u2014 Demonstrated Aptitude",
+    "domain": "Pattern & Logic",
+    "text": "IMAGE QUESTION \u2014 Study the visual sequence and choose the symbol that comes next.",
+    "rule": "mcq_image",
+    "pts": "B",
+    "score_notes": 2
+  },
+  {
+    "qnum": 58,
+    "section": "C \u2014 Demonstrated Aptitude",
+    "domain": "Pattern & Logic",
+    "text": "IMAGE QUESTION \u2014 Study the visual matrix and choose the missing box.",
+    "rule": "mcq_image",
+    "pts": "C",
+    "score_notes": 2
+  },
+  {
+    "qnum": 59,
+    "section": "C \u2014 Demonstrated Aptitude",
+    "domain": "Numerical Reasoning",
+    "text": "A box contains 24 pencils. One-third are red. How many red pencils?  A.6  B.8  C.12  D.16",
+    "rule": "mcq_text",
+    "pts": "B",
+    "score_notes": 2
+  },
+  {
+    "qnum": 60,
+    "section": "C \u2014 Demonstrated Aptitude",
+    "domain": "Numerical Reasoning",
+    "text": "Four notebooks cost \u20b9120. At the same price, how much do seven notebooks cost?  A.\u20b9180  B.\u20b9190  C.\u20b9210  D.\u20b9240",
+    "rule": "mcq_text",
+    "pts": "C",
+    "score_notes": 2
+  },
+  {
+    "qnum": 61,
+    "section": "C \u2014 Demonstrated Aptitude",
+    "domain": "Numerical Reasoning",
+    "text": "Three-fifths of 40 students joined a club. How many students joined?  A.18  B.20  C.24  D.30",
+    "rule": "mcq_text",
+    "pts": "C",
+    "score_notes": 2
+  },
+  {
+    "qnum": 62,
+    "section": "C \u2014 Demonstrated Aptitude",
+    "domain": "Numerical Reasoning",
+    "text": "Six identical stickers cost \u20b990. At the same price, how much do ten stickers cost?  A.\u20b9120  B.\u20b9135  C.\u20b9140  D.\u20b9150",
+    "rule": "mcq_text",
+    "pts": "D",
+    "score_notes": 2
+  },
+  {
+    "qnum": 63,
+    "section": "C \u2014 Demonstrated Aptitude",
+    "domain": "Verbal Reasoning",
+    "text": "BOOK is related to READING. FORK is related to:  A.Drawing  B.Eating  C.Running  D.Writing",
+    "rule": "mcq_text",
+    "pts": "B",
+    "score_notes": 2
+  },
+  {
+    "qnum": 64,
+    "section": "C \u2014 Demonstrated Aptitude",
+    "domain": "Verbal Reasoning",
+    "text": "Arun said: 'The football field is wet because it rained heavily during the night.' Which statement is supported?  A.Arun played during rain  B.Heavy rain happened during the night  C.The field is always wet  D.The match was cancelled",
+    "rule": "mcq_text",
+    "pts": "B",
+    "score_notes": 2
+  },
+  {
+    "qnum": 65,
+    "section": "C \u2014 Demonstrated Aptitude",
+    "domain": "Verbal Reasoning",
+    "text": "GLOVE is related to HAND. SHOE is related to:  A.Head  B.Arm  C.Foot  D.Knee",
+    "rule": "mcq_text",
+    "pts": "C",
+    "score_notes": 2
+  },
+  {
+    "qnum": 66,
+    "section": "C \u2014 Demonstrated Aptitude",
+    "domain": "Verbal Reasoning",
+    "text": "Maya finished her library book before Friday because she wanted to return it on time. Which is best supported?  A.Maya dislikes reading  B.Maya lost the book  C.Maya paid attention to the return deadline  D.The library closes on Friday",
+    "rule": "mcq_text",
+    "pts": "C",
+    "score_notes": 2
+  },
+  {
+    "qnum": 67,
+    "section": "C \u2014 Demonstrated Aptitude",
+    "domain": "Spatial Reasoning",
+    "text": "You are facing North. Turn right, then left, then left again. Which direction are you facing?  A.North  B.South  C.East  D.West",
+    "rule": "mcq_text",
+    "pts": "D",
+    "score_notes": 2
+  },
+  {
+    "qnum": 68,
+    "section": "C \u2014 Demonstrated Aptitude",
+    "domain": "Spatial Reasoning",
+    "text": "IMAGE QUESTION \u2014 Which option shows the same marked figure after rotation only, not a mirror image?",
+    "rule": "mcq_image",
+    "pts": "D",
+    "score_notes": 2
+  },
+  {
+    "qnum": 69,
+    "section": "C \u2014 Demonstrated Aptitude",
+    "domain": "Spatial Reasoning",
+    "text": "IMAGE QUESTION \u2014 A paper is folded and punched. Which hole pattern appears after opening?",
+    "rule": "mcq_image",
+    "pts": "B",
+    "score_notes": 2
+  },
+  {
+    "qnum": 70,
+    "section": "C \u2014 Demonstrated Aptitude",
+    "domain": "Spatial Reasoning",
+    "text": "A robot starts at the centre of a grid, moves 2 squares East and then 1 square North. Where is it compared with the start?  A.South-West  B.North-West  C.North-East  D.South-East",
+    "rule": "mcq_text",
+    "pts": "C",
+    "score_notes": 2
+  },
+  {
+    "qnum": 71,
+    "section": "C \u2014 Demonstrated Aptitude",
+    "domain": "Practical Problem-Solving",
+    "text": "A battery-powered torch suddenly stops working. What should you check first?  A.Replace the bulb immediately  B.Check the batteries and their placement  C.Press the switch repeatedly  D.Clean the outside",
+    "rule": "mcq_text",
+    "pts": "B",
+    "score_notes": 2
+  },
+  {
+    "qnum": 72,
+    "section": "C \u2014 Demonstrated Aptitude",
+    "domain": "Practical Problem-Solving",
+    "text": "A bicycle chain keeps slipping off. What is the best first step?  A.Paint the chain  B.Check whether the chain sits correctly on the gears and whether it is too loose  C.Remove the brakes  D.Add water to the chain",
+    "rule": "mcq_text",
+    "pts": "B",
+    "score_notes": 2
+  },
+  {
+    "qnum": 73,
+    "section": "C \u2014 Demonstrated Aptitude",
+    "domain": "Creative Thinking",
+    "text": "60-second challenge: Write as many different and unusual uses for an empty paper cup as you can. Evaluator scores 0\u20134 in column F using the creativity rubric.",
+    "rule": "open_scored",
+    "pts": "Evaluator 0\u20134 rubric",
+    "score_notes": 4
+  },
+  {
+    "qnum": 74,
+    "section": "C \u2014 Demonstrated Aptitude",
+    "domain": "Creative Thinking",
+    "text": "60-second challenge: Think of different useful things you could create from an empty cardboard box. Evaluator scores 0\u20134 in column F using the creativity rubric.",
+    "rule": "open_scored",
+    "pts": "Evaluator 0\u20134 rubric",
+    "score_notes": 4
+  },
+  {
+    "qnum": 75,
+    "section": "C \u2014 Demonstrated Aptitude",
+    "domain": "Social Judgment",
+    "text": "Two group members strongly disagree and both want their idea chosen. What is the best first action?  A.Ask everyone to vote immediately  B.Let both explain their reasons and compare them with the project goal  C.Ask one person to give up the idea  D.Use parts of both ideas without discussing them",
+    "rule": "mcq_text",
+    "pts": "B",
+    "score_notes": 2
+  },
+  {
+    "qnum": 76,
+    "section": "C \u2014 Demonstrated Aptitude",
+    "domain": "Social Judgment",
+    "text": "A new student is quiet and is being left out of a group activity. What is the best first response?  A.Ignore it because the student may prefer being alone  B.Tell the teacher the group cannot work with the student  C.Invite the student to join and ask what part they would like to do  D.Give the student all the easiest work",
+    "rule": "mcq_text",
+    "pts": "C",
+    "score_notes": 2
+  },
+  {
+    "qnum": 77,
+    "section": "C \u2014 Demonstrated Aptitude",
+    "domain": "Planning",
+    "text": "You have homework due tomorrow, sports practice tonight and a project due next week. What is the best approach?  A.Start only the easiest task  B.Plan by urgency and available time  C.Leave everything until tomorrow  D.Work only on the next-week project",
+    "rule": "mcq_text",
+    "pts": "B",
+    "score_notes": 2
+  },
+  {
+    "qnum": 78,
+    "section": "C \u2014 Demonstrated Aptitude",
+    "domain": "Planning",
+    "text": "You have 60 minutes to study: a 20-minute revision due tomorrow, a 25-minute assignment due in two days and optional reading. What is the best plan?  A.Do optional reading first  B.Spend all 60 minutes on the assignment  C.Finish the urgent revision, then work on the assignment with the remaining time  D.Wait until later because there is not enough time",
+    "rule": "mcq_text",
+    "pts": "C",
+    "score_notes": 2
+  },
+  {
+    "qnum": 79,
+    "section": "D \u2014 Developmental Strengths",
+    "domain": "Curiosity",
+    "text": "When something interests me, I want to know more about it.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 80,
+    "section": "D \u2014 Developmental Strengths",
+    "domain": "Persistence",
+    "text": "When something is difficult, I usually keep trying.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 81,
+    "section": "D \u2014 Developmental Strengths",
+    "domain": "Adaptability",
+    "text": "If one method does not work, I can change my approach.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 82,
+    "section": "D \u2014 Developmental Strengths",
+    "domain": "Initiative",
+    "text": "If I see something useful that needs to be done, I can begin without always waiting to be told.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 83,
+    "section": "D \u2014 Developmental Strengths",
+    "domain": "Collaboration",
+    "text": "I listen to other people's ideas even when they are different from mine.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 84,
+    "section": "D \u2014 Developmental Strengths",
+    "domain": "Attention to Detail",
+    "text": "I usually check my work before saying it is finished.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 85,
+    "section": "D \u2014 Developmental Strengths",
+    "domain": "Learning Independence",
+    "text": "I can learn some new things by exploring examples or resources on my own.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 86,
+    "section": "D \u2014 Developmental Strengths",
+    "domain": "Curiosity",
+    "text": "I often ask 'why?' or 'how?' because I want to understand things better.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 87,
+    "section": "D \u2014 Developmental Strengths",
+    "domain": "Persistence",
+    "text": "After making a mistake or failing at something, I usually try again.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 88,
+    "section": "D \u2014 Developmental Strengths",
+    "domain": "Adaptability",
+    "text": "I can adjust when rules, plans or situations unexpectedly change.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 89,
+    "section": "D \u2014 Developmental Strengths",
+    "domain": "Initiative",
+    "text": "I am comfortable suggesting an idea when a group needs one.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 90,
+    "section": "D \u2014 Developmental Strengths",
+    "domain": "Collaboration",
+    "text": "I try to help my teammates succeed, not only myself.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 91,
+    "section": "D \u2014 Developmental Strengths",
+    "domain": "Attention to Detail",
+    "text": "I often notice small mistakes or details that other people miss.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 92,
+    "section": "D \u2014 Developmental Strengths",
+    "domain": "Learning Independence",
+    "text": "When I do not understand something, I try books, examples, videos or other resources before giving up.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 93,
+    "section": "D \u2014 Developmental Strengths",
+    "domain": "Curiosity",
+    "text": "I enjoy asking questions that help me understand a topic more deeply.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 94,
+    "section": "D \u2014 Developmental Strengths",
+    "domain": "Persistence",
+    "text": "If a task takes longer than expected, I can keep working until I make progress.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 95,
+    "section": "D \u2014 Developmental Strengths",
+    "domain": "Adaptability",
+    "text": "When I receive useful feedback, I can change what I am doing and try again.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 96,
+    "section": "D \u2014 Developmental Strengths",
+    "domain": "Initiative",
+    "text": "When I notice a problem, I can suggest a sensible action instead of only waiting for others.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 97,
+    "section": "D \u2014 Developmental Strengths",
+    "domain": "Collaboration",
+    "text": "When working in a group, I can change my own idea if another idea works better.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 98,
+    "section": "D \u2014 Developmental Strengths",
+    "domain": "Attention to Detail",
+    "text": "Before submitting work, I can check important instructions and small details.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 99,
+    "section": "D \u2014 Developmental Strengths",
+    "domain": "Learning Independence",
+    "text": "If I am curious about something, I can find a suitable way to learn more about it.",
+    "rule": "likert_1_4",
+    "pts": "Use response 1\u20134",
+    "score_notes": null
+  },
+  {
+    "qnum": 100,
+    "section": "E \u2014 Response Quality",
+    "domain": "Consistency \u2014 Leadership",
+    "text": "When a team is unsure what to do next, I am comfortable helping the group choose a direction.",
+    "rule": "likert_1_4",
+    "pts": "Compare with Q53",
+    "score_notes": null
+  },
+  {
+    "qnum": 101,
+    "section": "E \u2014 Response Quality",
+    "domain": "Consistency \u2014 Persistence",
+    "text": "After a setback, I usually make another attempt instead of stopping immediately.",
+    "rule": "likert_1_4",
+    "pts": "Compare with Q80",
+    "score_notes": null
+  },
+  {
+    "qnum": 102,
+    "section": "E \u2014 Response Quality",
+    "domain": "Consistency \u2014 Explorer",
+    "text": "When something surprises me, I usually want to investigate what caused it.",
+    "rule": "likert_1_4",
+    "pts": "Compare with Q2",
+    "score_notes": null
+  },
+  {
+    "qnum": 103,
+    "section": "E \u2014 Response Quality",
+    "domain": "Consistency \u2014 Planning",
+    "text": "Before starting several tasks, I usually decide what needs to be done first.",
+    "rule": "likert_1_4",
+    "pts": "Compare with Q38",
+    "score_notes": null
+  },
+  {
+    "qnum": 104,
+    "section": "E \u2014 Response Quality",
+    "domain": "Attention Check",
+    "text": "For this question only, please choose 'A little like me'.",
+    "rule": "likert_1_4",
+    "pts": "Attention check must equal 2",
+    "score_notes": null
+  }
+]

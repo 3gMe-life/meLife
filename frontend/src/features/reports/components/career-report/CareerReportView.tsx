@@ -1,18 +1,38 @@
 "use client";
 
 import React, { useState } from "react";
+import dynamic from "next/dynamic";
 import { CareerReportDTO } from "../../types/career-report.types";
 import { CoverSection } from "./CoverSection";
 import { ExecutiveSummarySection } from "./ExecutiveSummarySection";
 import { PsychometricProfileSection } from "./PsychometricProfileSection";
 import { StrengthAnalysisSection } from "./StrengthAnalysisSection";
 import { CareerMatchesSection } from "./CareerMatchesSection";
-import { CareerDeepDiveSection } from "./CareerDeepDiveSection";
-import { AlternativePathwaysSection } from "./AlternativePathwaysSection";
-import { DevelopmentPlanSection } from "./DevelopmentPlanSection";
-import { ParentGuidanceSection } from "./ParentGuidanceSection";
-import { ClosingSummarySection } from "./ClosingSummarySection";
-import { CounsellorInsightsSection } from "./CounsellorInsightsSection";
+
+const CareerDeepDiveSection = dynamic(
+  () => import("./CareerDeepDiveSection").then((m) => m.CareerDeepDiveSection),
+  { ssr: true }
+);
+const AlternativePathwaysSection = dynamic(
+  () => import("./AlternativePathwaysSection").then((m) => m.AlternativePathwaysSection),
+  { ssr: true }
+);
+const DevelopmentPlanSection = dynamic(
+  () => import("./DevelopmentPlanSection").then((m) => m.DevelopmentPlanSection),
+  { ssr: true }
+);
+const ParentGuidanceSection = dynamic(
+  () => import("./ParentGuidanceSection").then((m) => m.ParentGuidanceSection),
+  { ssr: true }
+);
+const ClosingSummarySection = dynamic(
+  () => import("./ClosingSummarySection").then((m) => m.ClosingSummarySection),
+  { ssr: true }
+);
+const CounsellorInsightsSection = dynamic(
+  () => import("./CounsellorInsightsSection").then((m) => m.CounsellorInsightsSection),
+  { ssr: true }
+);
 import {
   Download,
   Languages,

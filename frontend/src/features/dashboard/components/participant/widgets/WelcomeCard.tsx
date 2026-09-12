@@ -3,14 +3,13 @@
 import React from "react";
 import Link from "next/link";
 import {
-  Sparkles,
   GraduationCap,
   Play,
   ArrowRight,
   BookOpen,
   KeyRound,
   ShieldCheck,
-  RotateCcw,
+  Sparkles,
 } from "lucide-react";
 import type { UserProfile } from "@/features/auth/types/auth.types";
 import type { ParticipantAssessmentItem } from "@/features/assessments/types/assessment.types";
@@ -50,7 +49,7 @@ export function WelcomeCard({
     if (!s) return "Student Profile";
     return s
       .replace("grade_", "Class ")
-      .replace("college", "College / University")
+      .replace("college", "Higher Ed")
       .replace("_", " ")
       .toUpperCase();
   };
@@ -58,34 +57,38 @@ export function WelcomeCard({
   const displayName = user.firstName || "Student";
 
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-white via-[#F7FAF9] to-[#EBF2F0] dark:from-[#172B2A] dark:via-[#142827] dark:to-[#0D1C1B] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-8 shadow-xs hover:shadow-md transition-all duration-300">
-      {/* Background Soft Ambient Light Blurs */}
-      <div className="absolute -top-16 -right-16 w-80 h-80 rounded-full bg-gradient-to-br from-[#00BFA5]/15 dark:from-[#00BFA5]/25 via-[#00B8D4]/10 dark:via-[#00B8D4]/15 to-transparent blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-16 left-1/4 w-64 h-64 rounded-full bg-gradient-to-tr from-[#00C896]/10 dark:from-[#00C896]/15 to-transparent blur-2xl pointer-events-none" />
+    <section
+      aria-label="Welcome and assessment overview"
+      className="relative overflow-hidden rounded-3xl bg-white dark:bg-[#172B2A]/90 border border-[#E3ECEA] dark:border-white/10 p-5 sm:p-6 lg:p-7 shadow-xs transition-all duration-300"
+    >
+      {/* Subtle Ambient Light Accents */}
+      <div className="absolute top-0 right-0 w-72 h-72 rounded-full bg-gradient-to-br from-[#00BFA5]/10 via-[#00B8D4]/5 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 left-1/3 w-64 h-64 rounded-full bg-gradient-to-tr from-[#00C896]/8 to-transparent blur-2xl pointer-events-none" />
 
       <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-        {/* Left Info Column */}
-        <div className="space-y-3 max-w-2xl">
-          {/* Metadata Badges */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5] border border-[#00BFA5]/30 shadow-2xs">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>3G MeLife Student Portal</span>
+        {/* Left: Personalized Greeting & Context */}
+        <div className="space-y-2 flex-1 min-w-0">
+          {/* Eyebrow Label & Badges */}
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5]">
+              Your Dashboard
             </span>
 
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/80 dark:bg-white/5 text-[#526866] dark:text-[#9FB3B0] border border-[#E3ECEA] dark:border-white/10">
-              <GraduationCap className="w-3.5 h-3.5 text-[#00B8D4]" />
-              <span>{formatStage(educationStage)}</span>
-            </span>
+            {educationStage && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#EBF2F0] dark:bg-white/8 text-[#526866] dark:text-[#9FB3B0] border border-[#E3ECEA] dark:border-white/10">
+                <GraduationCap className="w-3.5 h-3.5 text-[#00B8D4]" />
+                <span>{formatStage(educationStage)}</span>
+              </span>
+            )}
 
             {derivedAge !== null && derivedAge !== undefined && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/80 dark:bg-white/5 text-[#008F83] dark:text-[#00BFA5] border border-[#E3ECEA] dark:border-white/10">
-                Age: {derivedAge} yrs
+              <span className="text-xs text-[#728B88] dark:text-[#7D9491] font-medium">
+                • Age {derivedAge}
               </span>
             )}
 
             {completedCount > 0 && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 <span>{completedCount} Evaluated</span>
               </span>
@@ -93,73 +96,181 @@ export function WelcomeCard({
           </div>
 
           {/* Heading */}
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#172B2A] dark:text-[#F7FAF9] tracking-tight leading-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#172B2A] dark:text-[#F7FAF9] tracking-tight leading-tight">
             {getGreeting()}, {displayName}! 👋
           </h1>
 
-          {/* Description */}
-          <p className="text-xs sm:text-sm text-[#526866] dark:text-[#9FB3B0] leading-relaxed">
+          {/* Short Supporting Sentence */}
+          <p className="text-xs sm:text-sm text-[#526866] dark:text-[#9FB3B0] leading-relaxed max-w-xl">
             {completedCount > 0 ? (
               <>
-                Your multidimensional career discovery is <strong className="text-[#172B2A] dark:text-[#F7FAF9] font-bold">{overallProgressPercent}% calibrated</strong>. Review your strengths, explore aligned career pathways, or generate your official guidance report.
+                Explore your strengths and plan your next step. Your discovery is{" "}
+                <strong className="text-[#172B2A] dark:text-[#F7FAF9] font-bold">
+                  {overallProgressPercent}% calibrated
+                </strong>.
               </>
             ) : isProfileIncomplete ? (
-              <>
-                Please complete your student profile calibration to unlock your customized psychometric assessment battery and career matches.
-              </>
+              "Complete your calibration to unlock your customized assessment battery."
             ) : (
-              <>
-                Discover your natural cognitive strengths, exploratory interests, and durable learning habits to guide your future academic roadmap.
-              </>
+              "Explore your strengths and plan your next step."
             )}
           </p>
         </div>
 
-        {/* Action CTAs */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
-          <button
-            type="button"
-            onClick={onOpenVoucherModal}
-            className="px-4 py-3 rounded-2xl bg-white dark:bg-white/5 hover:bg-[#EBF2F0] dark:hover:bg-white/10 border border-[#E3ECEA] dark:border-white/15 text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-2xs hover:shadow-xs active:scale-98"
-          >
-            <KeyRound className="w-4 h-4 text-[#00B8D4]" />
-            <span>Redeem Code</span>
-          </button>
-
+        {/* Right: Compact Assessment Panel */}
+        <div className="rounded-2xl bg-[#F7FAF9] dark:bg-white/[0.04] border border-[#E3ECEA] dark:border-white/10 p-4 sm:p-4.5 flex flex-col justify-between gap-3 w-full lg:w-80 shrink-0 shadow-2xs">
           {firstPendingAssessment ? (
-            <Link
-              href={`/participant/assessments/${firstPendingAssessment.code || firstPendingAssessment.id}`}
-              className="px-5 py-3 rounded-2xl bg-gradient-to-r from-[#00B8D4] via-[#00BFA5] to-[#00C896] hover:opacity-95 text-[#172B2A] text-xs font-black transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-[#00BFA5]/25 active:scale-98"
-            >
-              <Play className="w-4 h-4 fill-current" />
-              <span>
-                {firstPendingAssessment.status === "IN_PROGRESS"
-                  ? `Resume (${firstPendingAssessment.progressPercentage}%)`
-                  : "Start Assessment"}
-              </span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+            <>
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md flex items-center gap-1 ${
+                    firstPendingAssessment.status === "IN_PROGRESS"
+                      ? "bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5] border border-[#00BFA5]/30"
+                      : firstPendingAssessment.isRecommended
+                      ? "bg-gradient-to-r from-[#00BFA5]/25 to-[#00B8D4]/25 text-[#008F83] dark:text-[#00BFA5] border border-[#00BFA5]/40"
+                      : "bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5] border border-[#00BFA5]/30"
+                  }`}>
+                    {firstPendingAssessment.status === "IN_PROGRESS" ? (
+                      <span>In Progress</span>
+                    ) : firstPendingAssessment.isRecommended ? (
+                      <>
+                        <Sparkles className="w-2.5 h-2.5 fill-current text-[#00BFA5]" />
+                        <span>Recommended</span>
+                      </>
+                    ) : (
+                      <span>Next Module</span>
+                    )}
+                  </span>
+                  <span className="text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9]">
+                    {firstPendingAssessment.progressPercentage}%
+                  </span>
+                </div>
+                <h3 className="text-sm font-bold text-[#172B2A] dark:text-[#F7FAF9] truncate">
+                  {firstPendingAssessment.name}
+                </h3>
+                {firstPendingAssessment.recommendationReason && firstPendingAssessment.status !== "IN_PROGRESS" && (
+                  <p className="text-[11px] text-[#526866] dark:text-[#9FB3B0] truncate mt-0.5">
+                    {firstPendingAssessment.recommendationReason}
+                  </p>
+                )}
+                {/* Progress Bar */}
+                <div className="w-full bg-[#E3ECEA] dark:bg-white/10 h-1.5 rounded-full overflow-hidden mt-2">
+                  <div
+                    className="bg-gradient-to-r from-[#00B8D4] via-[#00BFA5] to-[#00C896] h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.max(4, firstPendingAssessment.progressPercentage)}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <Link
+                  href={`/participant/assessments/${firstPendingAssessment.code || firstPendingAssessment.id}`}
+                  className="flex-1 py-2.5 px-3.5 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5 shadow-sm shadow-[#00BFA5]/20 active:scale-[0.98]"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>
+                    {firstPendingAssessment.status === "IN_PROGRESS"
+                      ? `Resume (${firstPendingAssessment.progressPercentage}%)`
+                      : firstPendingAssessment.isRecommended
+                      ? "Start recommended"
+                      : "Start assessment"}
+                  </span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+                <button
+                  type="button"
+                  onClick={onOpenVoucherModal}
+                  className="p-2.5 rounded-xl bg-white dark:bg-white/5 hover:bg-[#EBF2F0] dark:hover:bg-white/10 border border-[#E3ECEA] dark:border-white/10 text-[#526866] hover:text-[#172B2A] dark:text-[#9FB3B0] dark:hover:text-white transition-colors cursor-pointer"
+                  title="Redeem Voucher Code"
+                  aria-label="Redeem Voucher Code"
+                >
+                  <KeyRound className="w-4 h-4 text-[#00B8D4]" />
+                </button>
+              </div>
+            </>
           ) : isProfileIncomplete ? (
-            <Link
-              href="/participant/onboarding"
-              className="px-5 py-3 rounded-2xl bg-gradient-to-r from-[#00B8D4] via-[#00BFA5] to-[#00C896] hover:opacity-95 text-[#172B2A] text-xs font-black transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-[#00BFA5]/25 active:scale-98"
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>Complete Setup</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+            <>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+                  Setup Required
+                </span>
+                <h3 className="text-sm font-bold text-[#172B2A] dark:text-[#F7FAF9] mt-1.5 truncate">
+                  Student Calibration
+                </h3>
+                <p className="text-[11px] text-[#526866] dark:text-[#9FB3B0] mt-0.5 line-clamp-2">
+                  Configure your grade & age calibration to access modules.
+                </p>
+              </div>
+              <Link
+                href="/participant/onboarding"
+                className="w-full py-2.5 px-3.5 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5 shadow-sm shadow-[#00BFA5]/20 active:scale-[0.98]"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Complete setup</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </>
+          ) : completedCount > 0 ? (
+            <>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                  Evaluated
+                </span>
+                <h3 className="text-sm font-bold text-[#172B2A] dark:text-[#F7FAF9] mt-1.5 truncate">
+                  Psychometric Profile Active
+                </h3>
+                <p className="text-[11px] text-[#526866] dark:text-[#9FB3B0] mt-0.5 line-clamp-2">
+                  Review your strengths and explore matched career pathways.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <Link
+                  href="/participant/results"
+                  className="flex-1 py-2.5 px-3.5 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5 shadow-sm shadow-[#00BFA5]/20 active:scale-[0.98]"
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>View results</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+                <button
+                  type="button"
+                  onClick={onOpenVoucherModal}
+                  className="p-2.5 rounded-xl bg-white dark:bg-white/5 hover:bg-[#EBF2F0] dark:hover:bg-white/10 border border-[#E3ECEA] dark:border-white/10 text-[#526866] hover:text-[#172B2A] dark:text-[#9FB3B0] dark:hover:text-white transition-colors cursor-pointer"
+                  title="Redeem Voucher Code"
+                  aria-label="Redeem Voucher Code"
+                >
+                  <KeyRound className="w-4 h-4 text-[#00B8D4]" />
+                </button>
+              </div>
+            </>
           ) : (
-            <Link
-              href="/participant/results"
-              className="px-5 py-3 rounded-2xl bg-gradient-to-r from-[#00B8D4] via-[#00BFA5] to-[#00C896] hover:opacity-95 text-[#172B2A] text-xs font-black transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-[#00BFA5]/25 active:scale-98"
-            >
-              <BookOpen className="w-4 h-4" />
-              <span>View My Results</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+            <>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5] border border-[#00BFA5]/30">
+                  Access Code
+                </span>
+                <h3 className="text-sm font-bold text-[#172B2A] dark:text-[#F7FAF9] mt-1.5 truncate">
+                  Unlock Modules
+                </h3>
+                <p className="text-[11px] text-[#526866] dark:text-[#9FB3B0] mt-0.5 line-clamp-2">
+                  Redeem your school or organization voucher to begin.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onOpenVoucherModal}
+                className="w-full py-2.5 px-3.5 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5 shadow-sm shadow-[#00BFA5]/20 active:scale-[0.98] cursor-pointer"
+              >
+                <KeyRound className="w-3.5 h-3.5" />
+                <span>Redeem Code</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </>
           )}
         </div>
       </div>
-    </div>
+    </section>
   );
 }

@@ -55,7 +55,11 @@ export class DevelopmentScoringEngine {
     responsesByDimension: Record<string, RawResponseItem[]>
   ): DevelopmentalStrengthsResult {
     const dimensions: ScoredDimensionItem[] = STRENGTH_DOMAINS.map((domain) => {
-      const items = responsesByDimension[domain.code] || [];
+      // Look up responses by canonical domain code or catalog alias
+      const items =
+        responsesByDimension[domain.code] ||
+        (domain.code === "INDEPENDENCE" ? responsesByDimension["LEARNING_INDEPENDENCE"] : undefined) ||
+        [];
       const count = items.length;
 
       if (count === 0) {

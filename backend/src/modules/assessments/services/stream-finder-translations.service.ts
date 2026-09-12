@@ -27,22 +27,6 @@ export class StreamFinderTranslationsService {
     }
     const assessmentId = assessRes.rows[0].id;
 
-    // Fast check: verify if all question translations already exist for STREAM_FINDER
-    const countRes = await db.query(
-      `SELECT COUNT(*) as count
-       FROM question_translations qt
-       JOIN assessment_questions q ON qt.question_id = q.id
-       WHERE q.assessment_id = $1 AND qt.language_code IN ('ml', 'hi', 'ta', 'kn', 'ar')`,
-      [assessmentId]
-    );
-    const existingCount = parseInt(countRes.rows[0]?.count, 10) || 0;
-    if (existingCount >= STREAM_FINDER_QUESTION_TRANSLATIONS.length) {
-      logger.info(
-        `✨ Stream Finder multilingual translations already seeded (${existingCount} items).`
-      );
-      return;
-    }
-
     logger.info("⏳ Seeding Stream Finder multilingual translations (ml, hi, ta, kn, ar)...");
 
     // 2. Batch upsert Section Translations

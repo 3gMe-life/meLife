@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -17,18 +17,15 @@ import {
   getRunnerTranslation,
 } from "../../config/assessment-i18n.config";
 import {
-  Sparkles,
   Clock,
-  BookOpen,
   CheckCircle2,
-  AlertCircle,
   ArrowRight,
   ArrowLeft,
   LayoutGrid,
-  ShieldCheck,
   Send,
   X,
   Play,
+  Check,
 } from "lucide-react";
 
 interface AssessmentRunnerProps {
@@ -125,19 +122,38 @@ export function AssessmentRunner({ attemptData }: AssessmentRunnerProps) {
   const [showPalette, setShowPalette] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
-  const [secondsElapsed, setSecondsElapsed] = useState(0);
+
+  // Authoritative elapsed time calculation from attempt startedAt timestamp
+  const calculateElapsedSeconds = useCallback((startedAt?: string | null) => {
+    if (!startedAt) return 0;
+    const started = new Date(startedAt).getTime();
+    if (isNaN(started)) return 0;
+    return Math.max(0, Math.floor((Date.now() - started) / 1000));
+  }, []);
+
+  const [secondsElapsed, setSecondsElapsed] = useState(() =>
+    calculateElapsedSeconds(activeAttemptData.startedAt || attemptData.startedAt)
+  );
 
   const saveMutation = useSaveAssessmentResponseMutation(attemptId);
   const submitMutation = useSubmitAssessmentMutation(attemptId);
 
-  // Timer: continuous and unbroken across language changes
+  // Timer: synchronized with authoritative backend startedAt, continuous across refresh/language changes
   useEffect(() => {
     if (showIntro) return;
+
+    const authoritativeStartedAt = activeAttemptData.startedAt || attemptData.startedAt;
+    const authoritativeElapsed = calculateElapsedSeconds(authoritativeStartedAt);
+    if (authoritativeElapsed > 0) {
+      setSecondsElapsed((prev) => Math.max(prev, authoritativeElapsed));
+    }
+
     const interval = setInterval(() => {
       setSecondsElapsed((prev) => prev + 1);
     }, 1000);
+
     return () => clearInterval(interval);
-  }, [showIntro]);
+  }, [showIntro, activeAttemptData.startedAt, attemptData.startedAt, calculateElapsedSeconds]);
 
   const formatTimer = (totalSeconds: number) => {
     const mins = Math.floor(totalSeconds / 60);
@@ -169,70 +185,99 @@ export function AssessmentRunner({ attemptData }: AssessmentRunnerProps) {
 
   const answeredCount = answeredIndices.size;
   const totalQuestions = questions.length;
-  const progressPercentage = Math.round((answeredCount / totalQuestions) * 100);
+  const progressPercentage = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
 
-  // Calculate current section progress
-  const currentSectionInfo = useMemo(() => {
-    if (!currentQuestion) return null;
-    const sectionQuestions = questions.filter(
-      (q) => q.sectionCode === currentQuestion.sectionCode
-    );
-    const sectionAnswered = sectionQuestions.filter((q) => {
-      const val = q.currentResponse?.responseValue;
-      return val !== undefined && val !== null && val.trim() !== "";
-    }).length;
+  const [isAdvancing, setIsAdvancing] = useState(false);
+  const isAdvancingRef = useRef(false);
+  isAdvancingRef.current = isAdvancing;
+  const lastNavigatedAtRef = useRef<number>(0);
 
-    return {
-      name: currentQuestion.sectionName,
-      code: currentQuestion.sectionCode,
-      total: sectionQuestions.length,
-      answered: sectionAnswered,
+  const currentQuestionRef = useRef(currentQuestion);
+  currentQuestionRef.current = currentQuestion;
+  const currentIndexRef = useRef(currentIndex);
+  currentIndexRef.current = currentIndex;
+  const totalQuestionsRef = useRef(totalQuestions);
+  totalQuestionsRef.current = totalQuestions;
+  const saveMutationRef = useRef(saveMutation);
+  saveMutationRef.current = saveMutation;
+  const autoAdvanceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (autoAdvanceTimerRef.current) {
+        clearTimeout(autoAdvanceTimerRef.current);
+      }
     };
-  }, [currentQuestion, questions]);
+  }, []);
 
-  const handleAnswer = (responseValue: string, selectedOptionId?: string) => {
-    if (!currentQuestion) return;
+  const handleAnswer = useCallback((responseValue: string, selectedOptionId?: string) => {
+    if (isAdvancingRef.current) return;
+    if (Date.now() - lastNavigatedAtRef.current < 250) return;
 
-    // Optimistically update local state immediately
+    const q = currentQuestionRef.current;
+    if (!q) return;
+
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+
     setLocalResponses((prev) => ({
       ...prev,
-      [currentQuestion.id]: {
+      [q.id]: {
         selectedOptionId,
         responseValue,
       },
     }));
 
-    saveMutation.mutate({
-      questionId: currentQuestion.id,
+    saveMutationRef.current.mutate({
+      questionId: q.id,
       selectedOptionId,
       responseValue,
     });
 
-    // Auto advance to next question after a brief delay for Likert & MCQ
-    if (
-      currentQuestion.questionType === "likert_1_4" ||
-      currentQuestion.questionType === "mcq_text" ||
-      currentQuestion.questionType === "mcq_image"
-    ) {
-      if (currentIndex < totalQuestions - 1) {
-        setTimeout(() => {
-          setCurrentIndex((prev) => Math.min(prev + 1, totalQuestions - 1));
-        }, 220);
+    // Auto-advance for choice-based items with smooth confirmation delay
+    if (q.questionType !== "open_scored") {
+      if (currentIndexRef.current < totalQuestionsRef.current - 1) {
+        setIsAdvancing(true);
+        isAdvancingRef.current = true;
+
+        autoAdvanceTimerRef.current = setTimeout(() => {
+          setCurrentIndex((prev) => Math.min(prev + 1, totalQuestionsRef.current - 1));
+          setIsAdvancing(false);
+          isAdvancingRef.current = false;
+          lastNavigatedAtRef.current = Date.now();
+          autoAdvanceTimerRef.current = null;
+        }, 280);
       }
     }
-  };
+  }, []);
 
-  const handlePrev = () => {
+  const handlePrev = useCallback(() => {
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+    setIsAdvancing(false);
+    isAdvancingRef.current = false;
+    lastNavigatedAtRef.current = Date.now();
     setCurrentIndex((prev) => Math.max(0, prev - 1));
-  };
+  }, []);
 
-  const handleNext = () => {
-    if (currentIndex < totalQuestions - 1) {
+  const handleNext = useCallback(() => {
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+    setIsAdvancing(false);
+    isAdvancingRef.current = false;
+    lastNavigatedAtRef.current = Date.now();
+    if (currentIndexRef.current < totalQuestionsRef.current - 1) {
       setCurrentIndex((prev) => prev + 1);
     } else {
       setShowSubmitModal(true);
     }
-  };
+  }, []);
 
   const handleSubmit = async () => {
     try {
@@ -249,32 +294,31 @@ export function AssessmentRunner({ attemptData }: AssessmentRunnerProps) {
   if (showIntro) {
     return (
       <div className="min-h-screen bg-[#F7FAF9] dark:bg-[#0D1C1B] flex flex-col items-center justify-center p-4 sm:p-6 selection:bg-[#00BFA5]/20">
-        <div className="max-w-2xl w-full bg-white dark:bg-[#172B2A] rounded-3xl border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-10 shadow-xl space-y-8 animate-in fade-in zoom-in-95 duration-200">
-          {/* Header Badge & Language Switcher */}
+        <div className="max-w-2xl w-full bg-white dark:bg-[#172B2A] rounded-3xl border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-10 shadow-xl space-y-8 animate-in fade-in duration-200">
+          {/* Header & Language Switcher */}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5] border border-[#00BFA5]/30">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>{attemptData.versionName || "Skill Finder — Student Edition"}</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5]">
+              {attemptData.versionName || attemptData.assessmentName}
             </span>
             <div className="flex items-center gap-3 text-xs font-semibold text-[#526866] dark:text-[#9FB3B0]">
               <AssessmentLanguageSwitcher
                 currentLanguage={language}
                 onLanguageChange={handleLanguageChange}
                 supportedLanguages={attemptData.supportedLanguages || SUPPORTED_LANGUAGES}
+                isFetching={isLanguageFetching}
               />
-              <span className="flex items-center gap-1">
-                <Clock className="w-4 h-4 text-[#00B8D4]" />
-                <span>~{attemptData.durationMinutes || 30} mins</span>
+              <span className="flex items-center gap-1 font-mono">
+                <Clock className="w-3.5 h-3.5 text-[#00B8D4]" />
+                <span>~{attemptData.durationMinutes || 30}m</span>
               </span>
-              <span className="flex items-center gap-1">
-                <BookOpen className="w-4 h-4 text-[#00BFA5]" />
-                <span>{totalQuestions} {getRunnerTranslation("question", language)}</span>
+              <span className="font-mono">
+                {totalQuestions} {getRunnerTranslation("question", language)}
               </span>
             </div>
           </div>
 
           {/* Title & Overview */}
-          <div className="space-y-3" dir={isRtl ? "rtl" : "ltr"}>
+          <div className="space-y-2.5" dir={isRtl ? "rtl" : "ltr"}>
             <h1 className="text-2xl sm:text-3xl font-black text-[#172B2A] dark:text-[#F7FAF9] tracking-tight">
               {getRunnerTranslation("welcomeTitle", language)}
             </h1>
@@ -284,11 +328,11 @@ export function AssessmentRunner({ attemptData }: AssessmentRunnerProps) {
           </div>
 
           {/* Key Guidelines */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2" dir={isRtl ? "rtl" : "ltr"}>
-            <div className="p-4 rounded-2xl bg-[#EBF2F0]/60 dark:bg-white/5 border border-[#E3ECEA] dark:border-white/5 space-y-1.5">
-              <div className="w-8 h-8 rounded-xl bg-[#00BFA5]/20 text-[#008F83] dark:text-[#00BFA5] flex items-center justify-center font-bold text-xs">
-                1
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1" dir={isRtl ? "rtl" : "ltr"}>
+            <div className="p-4 rounded-2xl bg-[#F7FAF9] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/5 space-y-1.5">
+              <span className="font-mono text-xs font-bold text-[#008F83] dark:text-[#00BFA5]">
+                01
+              </span>
               <h4 className="text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9]">
                 {getRunnerTranslation("inst1Title", language)}
               </h4>
@@ -297,10 +341,10 @@ export function AssessmentRunner({ attemptData }: AssessmentRunnerProps) {
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-[#EBF2F0]/60 dark:bg-white/5 border border-[#E3ECEA] dark:border-white/5 space-y-1.5">
-              <div className="w-8 h-8 rounded-xl bg-[#00B8D4]/20 text-[#00B8D4] flex items-center justify-center font-bold text-xs">
-                2
-              </div>
+            <div className="p-4 rounded-2xl bg-[#F7FAF9] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/5 space-y-1.5">
+              <span className="font-mono text-xs font-bold text-[#00B8D4]">
+                02
+              </span>
               <h4 className="text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9]">
                 {getRunnerTranslation("inst2Title", language)}
               </h4>
@@ -309,10 +353,10 @@ export function AssessmentRunner({ attemptData }: AssessmentRunnerProps) {
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-[#EBF2F0]/60 dark:bg-white/5 border border-[#E3ECEA] dark:border-white/5 space-y-1.5">
-              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs">
-                3
-              </div>
+            <div className="p-4 rounded-2xl bg-[#F7FAF9] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/5 space-y-1.5">
+              <span className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                03
+              </span>
               <h4 className="text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9]">
                 {getRunnerTranslation("inst3Title", language)}
               </h4>
@@ -334,7 +378,7 @@ export function AssessmentRunner({ attemptData }: AssessmentRunnerProps) {
             <button
               type="button"
               onClick={() => setShowIntro(false)}
-              className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white font-black text-sm transition-all duration-200 shadow-lg shadow-[#00BFA5]/25 flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full sm:w-auto px-7 py-3 rounded-2xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white font-black text-sm transition-all duration-180 shadow-md shadow-[#00BFA5]/20 flex items-center justify-center gap-2 cursor-pointer"
             >
               <Play className="w-4 h-4 fill-current" />
               <span>{getRunnerTranslation("beginAssessment", language)}</span>
@@ -347,77 +391,69 @@ export function AssessmentRunner({ attemptData }: AssessmentRunnerProps) {
   }
 
   // =========================================================================
-  // 2. ACTIVE ASSESSMENT RUNNER
+  // 2. ACTIVE FOCUSED ASSESSMENT CANVAS
   // =========================================================================
   return (
     <div className="min-h-screen bg-[#F7FAF9] dark:bg-[#0D1C1B] flex flex-col justify-between selection:bg-[#00BFA5]/20">
-      {/* 1. TOP RUNNER HEADER */}
-      <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#172B2A]/95 backdrop-blur-md border-b border-[#E3ECEA] dark:border-white/10 shadow-xs">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
-          {/* Left: Exit & Section Title */}
+      {/* 1. TOP HEADER */}
+      <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#172B2A]/95 backdrop-blur-md border-b border-[#E3ECEA] dark:border-white/10">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+          {/* Left: Close Trigger & Clean Typographic Stack */}
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowExitModal(true)}
-              className="p-2 rounded-xl text-[#526866] dark:text-[#9FB3B0] hover:text-[#172B2A] dark:hover:text-white hover:bg-[#EBF2F0] dark:hover:bg-white/5 transition-colors cursor-pointer"
+              className="p-1.5 -ml-1.5 rounded-lg text-[#728B88] dark:text-[#7D9491] hover:text-[#172B2A] dark:hover:text-white hover:bg-[#EBF2F0] dark:hover:bg-white/5 transition-colors cursor-pointer"
               title={getRunnerTranslation("exitModalTitle", language)}
+              aria-label="Exit assessment"
             >
               <X className="w-5 h-5" />
             </button>
-            <div>
+            <div className="space-y-0.5">
               <div className="flex items-center gap-2">
-                <h1 className="text-xs sm:text-sm font-black text-[#172B2A] dark:text-[#F7FAF9] line-clamp-1">
+                <h1 className="text-xs sm:text-sm font-bold text-[#172B2A] dark:text-[#F7FAF9] line-clamp-1 tracking-tight">
                   {attemptData.versionName || attemptData.assessmentName}
                 </h1>
-                <span className="hidden sm:inline-flex text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5]">
-                  {currentSectionInfo?.name}
-                </span>
               </div>
-              <div className="flex items-center gap-2 text-xs text-[#526866] dark:text-[#9FB3B0]">
+              <div className="flex items-center gap-2 text-[11px] text-[#728B88] dark:text-[#7D9491]">
                 <span className="font-semibold text-[#008F83] dark:text-[#00BFA5]">
                   {getRunnerTranslation("question", language)} {currentIndex + 1}{" "}
                   {getRunnerTranslation("of", language)} {totalQuestions}
                 </span>
-                {currentSectionInfo && (
-                  <>
-                    <span>•</span>
-                    <span className="hidden md:inline">
-                      {currentSectionInfo.answered}/{currentSectionInfo.total}{" "}
-                      {getRunnerTranslation("answered", language)}
-                    </span>
-                  </>
-                )}
+                <span>•</span>
+                <span>{attemptData.versionName ? "Standard Form" : "Psychometric Assessment"}</span>
               </div>
             </div>
           </div>
 
-          {/* Right: Language Switcher, Timer, Save Status, Palette Toggle */}
-          <div className="flex items-center gap-2.5 sm:gap-4">
-            {/* Language Switcher Dropdown */}
+          {/* Right: Language, Auto-save, Monospace Timer, Overview Drawer */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Language Switcher */}
             <AssessmentLanguageSwitcher
               currentLanguage={language}
               onLanguageChange={handleLanguageChange}
               supportedLanguages={
                 attemptData.supportedLanguages || SUPPORTED_LANGUAGES
               }
+              isFetching={isLanguageFetching}
             />
 
-            {/* Auto-save Pill */}
-            <div className="hidden sm:flex items-center gap-1.5 text-xs text-[#526866] dark:text-[#9FB3B0]">
+            {/* Auto-save Status */}
+            <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-medium text-[#728B88] dark:text-[#7D9491] pl-1">
               {saveMutation.isPending ? (
                 <>
-                  <div className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
                   <span>{getRunnerTranslation("saving", language)}</span>
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  <Check className="w-3.5 h-3.5 text-[#00BFA5]" />
                   <span>{getRunnerTranslation("saved", language)}</span>
                 </>
               )}
             </div>
 
             {/* Timer */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#EBF2F0] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 text-xs font-semibold text-[#172B2A] dark:text-[#F7FAF9]">
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#F7FAF9] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 text-xs font-semibold text-[#172B2A] dark:text-[#F7FAF9]">
               <Clock className="w-3.5 h-3.5 text-[#00B8D4]" />
               <span className="font-mono">{formatTimer(secondsElapsed)}</span>
             </div>
@@ -425,21 +461,21 @@ export function AssessmentRunner({ attemptData }: AssessmentRunnerProps) {
             {/* Question Overview Button */}
             <button
               onClick={() => setShowPalette(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5] border border-[#00BFA5]/30 hover:bg-[#00BFA5]/25 transition-colors text-xs font-bold cursor-pointer"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-white dark:bg-[#172B2A] hover:bg-[#EBF2F0] dark:hover:bg-white/10 border border-[#E3ECEA] dark:border-white/10 text-xs font-semibold text-[#172B2A] dark:text-[#F7FAF9] transition-colors cursor-pointer"
             >
-              <LayoutGrid className="w-4 h-4" />
+              <LayoutGrid className="w-3.5 h-3.5 text-[#008F83] dark:text-[#00BFA5]" />
               <span className="hidden sm:inline">
                 {getRunnerTranslation("overview", language)}
               </span>
-              <span className="sm:hidden">
+              <span className="sm:hidden font-mono text-[11px]">
                 {answeredCount}/{totalQuestions}
               </span>
             </button>
           </div>
         </div>
 
-        {/* Global Progress Bar */}
-        <div className="w-full bg-[#E3ECEA] dark:bg-white/10 h-1.5 relative overflow-hidden">
+        {/* Global Progress Bar: Subtle & Refined */}
+        <div className="w-full bg-[#E3ECEA]/80 dark:bg-white/10 h-1 relative overflow-hidden">
           <div
             className="bg-[#00BFA5] h-full transition-all duration-300 ease-out"
             style={{ width: `${progressPercentage}%` }}
@@ -449,59 +485,64 @@ export function AssessmentRunner({ attemptData }: AssessmentRunnerProps) {
 
       {/* 2. MAIN QUESTION CANVAS */}
       <main
-        className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-10 flex flex-col justify-center"
+        className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-10 flex flex-col justify-center"
         dir={isRtl ? "rtl" : "ltr"}
       >
         {currentQuestion && (
           <QuestionRenderer
+            key={currentQuestion.id}
             question={currentQuestion}
             currentResponse={currentQuestion.currentResponse}
             onAnswer={handleAnswer}
-            disabled={submitMutation.isPending}
+            disabled={isAdvancing || submitMutation.isPending}
           />
         )}
       </main>
 
-      {/* 3. BOTTOM RUNNER FOOTER CONTROLS */}
-      <footer className="sticky bottom-0 z-40 bg-white/95 dark:bg-[#172B2A]/95 backdrop-blur-md border-t border-[#E3ECEA] dark:border-white/10 py-3.5 sm:py-4">
+      {/* 3. BOTTOM NAVIGATION BAR */}
+      <footer className="sticky bottom-0 z-40 bg-white/95 dark:bg-[#172B2A]/95 backdrop-blur-md border-t border-[#E3ECEA] dark:border-white/10 py-3 sm:py-3.5">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-4">
+          {/* Previous Action */}
           <button
             onClick={handlePrev}
             disabled={currentIndex === 0 || submitMutation.isPending}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
               currentIndex === 0
-                ? "opacity-30 pointer-events-none text-[#526866] dark:text-[#9FB3B0]"
-                : "bg-[#EBF2F0] hover:bg-[#E3ECEA] dark:bg-white/5 dark:hover:bg-white/10 text-[#172B2A] dark:text-[#F7FAF9]"
+                ? "opacity-30 pointer-events-none text-[#728B88] dark:text-[#7D9491]"
+                : "bg-transparent hover:bg-[#EBF2F0] dark:hover:bg-white/5 text-[#172B2A] dark:text-[#F7FAF9] border border-[#E3ECEA] dark:border-white/10"
             }`}
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-3.5 h-3.5" />
             <span>{getRunnerTranslation("previous", language)}</span>
           </button>
 
-          <div className="text-center">
-            <span className="text-xs font-semibold text-[#526866] dark:text-[#9FB3B0]">
-              {answeredCount} {getRunnerTranslation("of", language)} {totalQuestions}{" "}
-              {getRunnerTranslation("answered", language)} ({progressPercentage}%)
-            </span>
+          {/* Center Progress Readout */}
+          <div className="text-center font-mono text-xs text-[#728B88] dark:text-[#7D9491]">
+            <span className="font-semibold text-[#172B2A] dark:text-[#F7FAF9]">
+              {answeredCount}
+            </span>{" "}
+            {getRunnerTranslation("of", language)} {totalQuestions}{" "}
+            {getRunnerTranslation("answered", language)} ({progressPercentage}%)
           </div>
 
+          {/* Next / Submit Action */}
           {currentIndex === totalQuestions - 1 ? (
             <button
               onClick={() => setShowSubmitModal(true)}
               disabled={submitMutation.isPending}
-              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition-all shadow-md shadow-emerald-600/25 flex items-center gap-1.5 cursor-pointer"
+              className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition-all shadow-sm shadow-emerald-600/20 flex items-center gap-1.5 cursor-pointer"
             >
               <span>{getRunnerTranslation("reviewAndSubmit", language)}</span>
-              <Send className="w-4 h-4" />
+              <Send className="w-3.5 h-3.5" />
             </button>
           ) : (
             <button
               onClick={handleNext}
               disabled={submitMutation.isPending}
-              className="px-5 py-2.5 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white text-xs font-black transition-all shadow-md shadow-[#00BFA5]/25 flex items-center gap-1.5 cursor-pointer"
+              className="px-5 py-2 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white text-xs font-black transition-all shadow-sm shadow-[#00BFA5]/20 flex items-center gap-1.5 cursor-pointer"
             >
               <span>{getRunnerTranslation("next", language)}</span>
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
@@ -509,7 +550,7 @@ export function AssessmentRunner({ attemptData }: AssessmentRunnerProps) {
 
       {/* 4. QUESTION PALETTE OVERVIEW DRAWER */}
       {showPalette && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 bg-[#0D1C1B]/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div className="bg-white dark:bg-[#172B2A] rounded-3xl border border-[#E3ECEA] dark:border-white/10 max-w-2xl w-full p-6 space-y-6 shadow-2xl max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between border-b border-[#E3ECEA] dark:border-white/10 pb-4">
               <div>
@@ -544,7 +585,7 @@ export function AssessmentRunner({ attemptData }: AssessmentRunnerProps) {
                       <span className="font-bold text-[#172B2A] dark:text-[#F7FAF9]">
                         {sec.name}
                       </span>
-                      <span className="text-[11px] text-[#526866] dark:text-[#9FB3B0]">
+                      <span className="text-[11px] font-mono text-[#526866] dark:text-[#9FB3B0]">
                         {
                           sectionQs.filter((q) =>
                             answeredIndices.has(questions.indexOf(q))
@@ -568,15 +609,15 @@ export function AssessmentRunner({ attemptData }: AssessmentRunnerProps) {
                               setCurrentIndex(globalIdx);
                               setShowPalette(false);
                             }}
-                            className={`h-9 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
+                            className={`h-9 rounded-xl font-mono text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
                               isCurrent
                                 ? "bg-[#172B2A] text-white dark:bg-white dark:text-[#172B2A] ring-2 ring-[#00BFA5]"
                                 : isAnswered
                                 ? "bg-[#00BFA5] text-[#172B2A] shadow-xs"
-                                : "bg-[#EBF2F0] dark:bg-white/5 text-[#526866] dark:text-[#9FB3B0] hover:bg-[#E3ECEA] dark:hover:bg-white/10"
+                                : "bg-[#F7FAF9] dark:bg-white/5 text-[#526866] dark:text-[#9FB3B0] hover:bg-[#E3ECEA] dark:hover:bg-white/10"
                             }`}
                           >
-                            {globalIdx + 1}
+                            {String(globalIdx + 1).padStart(2, "0")}
                           </button>
                         );
                       })}
@@ -593,13 +634,13 @@ export function AssessmentRunner({ attemptData }: AssessmentRunnerProps) {
                   <span>{getRunnerTranslation("answered", language)}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded-md bg-[#EBF2F0] dark:bg-white/10" />
+                  <div className="w-3 h-3 rounded-md bg-[#F7FAF9] dark:bg-white/10 border border-[#E3ECEA] dark:border-white/10" />
                   <span>{getRunnerTranslation("unanswered", language)}</span>
                 </div>
               </div>
               <button
                 onClick={() => setShowPalette(false)}
-                className="px-5 py-2 rounded-xl bg-[#EBF2F0] dark:bg-white/5 text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9] hover:bg-[#E3ECEA] dark:hover:bg-white/10 cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-[#EBF2F0] dark:bg-white/5 text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9] hover:bg-[#E3ECEA] dark:hover:bg-white/10 cursor-pointer"
               >
                 {getRunnerTranslation("close", language)}
               </button>
@@ -610,10 +651,10 @@ export function AssessmentRunner({ attemptData }: AssessmentRunnerProps) {
 
       {/* 5. PAUSE & EXIT MODAL */}
       {showExitModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 bg-[#0D1C1B]/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div className="bg-white dark:bg-[#172B2A] rounded-3xl border border-[#E3ECEA] dark:border-white/10 max-w-md w-full p-6 sm:p-8 space-y-6 shadow-2xl text-center">
-            <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
-              <Clock className="w-7 h-7" />
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+              <Clock className="w-6 h-6" />
             </div>
             <div className="space-y-2">
               <h3 className="text-lg font-bold text-[#172B2A] dark:text-[#F7FAF9]">
@@ -623,16 +664,18 @@ export function AssessmentRunner({ attemptData }: AssessmentRunnerProps) {
                 {getRunnerTranslation("exitModalDesc", language)}
               </p>
             </div>
-            <div className="flex flex-col gap-2.5 pt-2">
+            <div className="flex items-center justify-center gap-3 pt-2">
               <button
+                type="button"
                 onClick={() => setShowExitModal(false)}
-                className="w-full py-3 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white font-bold text-xs transition-colors cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl border border-[#E3ECEA] dark:border-white/10 text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9] hover:bg-[#EBF2F0] dark:hover:bg-white/5 cursor-pointer transition-colors"
               >
                 {getRunnerTranslation("continueAssessment", language)}
               </button>
               <button
+                type="button"
                 onClick={() => router.push("/participant/assessments")}
-                className="w-full py-3 rounded-xl bg-[#EBF2F0] dark:bg-white/5 hover:bg-[#E3ECEA] dark:hover:bg-white/10 text-[#172B2A] dark:text-[#F7FAF9] font-bold text-xs transition-colors cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-black shadow-md shadow-amber-600/20 cursor-pointer transition-colors"
               >
                 {getRunnerTranslation("exitToPortal", language)}
               </button>
@@ -643,62 +686,43 @@ export function AssessmentRunner({ attemptData }: AssessmentRunnerProps) {
 
       {/* 6. SUBMISSION CONFIRMATION MODAL */}
       {showSubmitModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 bg-[#0D1C1B]/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div className="bg-white dark:bg-[#172B2A] rounded-3xl border border-[#E3ECEA] dark:border-white/10 max-w-md w-full p-6 sm:p-8 space-y-6 shadow-2xl text-center">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
-              <ShieldCheck className="w-7 h-7" />
+            <div className="w-12 h-12 rounded-2xl bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5] flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-6 h-6" />
             </div>
-
             <div className="space-y-2">
               <h3 className="text-lg font-bold text-[#172B2A] dark:text-[#F7FAF9]">
                 {getRunnerTranslation("submitModalTitle", language)}
               </h3>
               <p className="text-xs text-[#526866] dark:text-[#9FB3B0] leading-relaxed">
-                {getRunnerTranslation("submitModalDesc", language)}
+                {answeredCount < totalQuestions
+                  ? `${getRunnerTranslation("unansweredNotice", language)} (${answeredCount}/${totalQuestions} answered)`
+                  : getRunnerTranslation("allAnsweredReady", language)}
               </p>
             </div>
-
-            <div className="p-4 rounded-2xl bg-[#EBF2F0]/60 dark:bg-white/5 border border-[#E3ECEA] dark:border-white/5 text-xs text-left space-y-1.5">
-              <div className="flex justify-between font-bold text-[#172B2A] dark:text-[#F7FAF9]">
-                <span>{getRunnerTranslation("answered", language)}:</span>
-                <span className="text-[#008F83] dark:text-[#00BFA5]">
-                  {answeredCount} / {totalQuestions}
-                </span>
-              </div>
-              <div className="flex justify-between text-[#526866] dark:text-[#9FB3B0]">
-                <span>{getRunnerTranslation("unanswered", language)}:</span>
-                <span>{totalQuestions - answeredCount}</span>
-              </div>
-            </div>
-
-            {totalQuestions - answeredCount > 0 && (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 text-amber-800 dark:text-amber-300 text-xs text-left">
-                <AlertCircle className="w-4 h-4 shrink-0 text-amber-500" />
-                <span>{getRunnerTranslation("unansweredNotice", language)}</span>
-              </div>
-            )}
-
-            <div className="flex flex-col gap-2.5 pt-2">
+            <div className="flex items-center justify-center gap-3 pt-2">
               <button
-                onClick={handleSubmit}
-                disabled={submitMutation.isPending}
-                className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                {submitMutation.isPending ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <Send className="w-4 h-4" />
-                    <span>{getRunnerTranslation("submitNow", language)}</span>
-                  </>
-                )}
-              </button>
-              <button
+                type="button"
                 onClick={() => setShowSubmitModal(false)}
-                disabled={submitMutation.isPending}
-                className="w-full py-3 rounded-xl bg-[#EBF2F0] dark:bg-white/5 hover:bg-[#E3ECEA] dark:hover:bg-white/10 text-[#172B2A] dark:text-[#F7FAF9] font-bold text-xs transition-colors cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl border border-[#E3ECEA] dark:border-white/10 text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9] hover:bg-[#EBF2F0] dark:hover:bg-white/5 cursor-pointer transition-colors"
               >
                 {getRunnerTranslation("keepReviewing", language)}
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={submitMutation.isPending}
+                className="flex-1 py-2.5 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white text-xs font-black shadow-md shadow-[#00BFA5]/25 flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+              >
+                {submitMutation.isPending ? (
+                  <span>Submitting...</span>
+                ) : (
+                  <>
+                    <span>{getRunnerTranslation("submitNow", language)}</span>
+                    <Send className="w-3.5 h-3.5" />
+                  </>
+                )}
               </button>
             </div>
           </div>

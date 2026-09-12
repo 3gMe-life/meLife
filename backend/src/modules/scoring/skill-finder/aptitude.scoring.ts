@@ -89,7 +89,13 @@ export class AptitudeScoringEngine {
     let totalPossible = 0;
 
     const dimensions: ScoredDimensionItem[] = APTITUDE_DOMAINS.map((domain) => {
-      const items = responsesByDimension[domain.code] || [];
+      // Look up responses by canonical domain code or catalog alias
+      const items =
+        responsesByDimension[domain.code] ||
+        (domain.code === "CREATIVE_THINKING_TASKS" ? responsesByDimension["CREATIVE_THINKING"] : undefined) ||
+        (domain.code === "SITUATIONAL_JUDGMENT" ? responsesByDimension["SOCIAL_JUDGMENT"] : undefined) ||
+        (domain.code === "PLANNING_ESTIMATION" ? responsesByDimension["PLANNING"] : undefined) ||
+        [];
       if (items.length === 0) {
         return {
           code: domain.code,

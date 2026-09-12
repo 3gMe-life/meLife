@@ -262,16 +262,16 @@ export const CounsellorProfileView: React.FC<CounsellorProfileViewProps> = ({
             </p>
 
             <div className="mt-4 space-y-2">
-              {counsellor.availability.map((slot, idx) => (
+              {counsellor.availability?.map((slot, idx) => (
                 <div
                   key={idx}
                   className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/70 px-3.5 py-2.5 text-xs dark:border-slate-800 dark:bg-slate-850"
                 >
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    {slot.day}
+                    {slot?.day}
                   </span>
                   <span className="text-slate-500 dark:text-slate-400">
-                    {slot.startTime} - {slot.endTime}
+                    {slot?.startTime} - {slot?.endTime}
                   </span>
                 </div>
               ))}

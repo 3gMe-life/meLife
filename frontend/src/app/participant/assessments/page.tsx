@@ -11,20 +11,24 @@ import { KeyRound, BookOpen, AlertCircle, ArrowRight } from "lucide-react";
 
 export default function ParticipantAssessmentsPage() {
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
-  const [filter, setFilter] = useState<"ALL" | "COMPLETED" | "PENDING">("ALL");
+  const [filter, setFilter] = useState<"ALL" | "AVAILABLE" | "IN_PROGRESS" | "COMPLETED" | "LOCKED">("ALL");
 
   const { data: assessmentData, isLoading, isError } = useParticipantAssessmentsQuery();
 
   const assessmentsResult = assessmentData;
   const isProfileIncomplete = assessmentsResult?.state === "PROFILE_INCOMPLETE";
   const allAssessments = assessmentsResult?.assessments || [];
-  const completedCount = assessmentsResult?.completedCount || 0;
-  const totalCount = assessmentsResult?.totalAvailable || 0;
-  const pendingCount = totalCount - completedCount;
+  const completedCount = allAssessments.filter((a) => a.status === "COMPLETED").length;
+  const inProgressCount = allAssessments.filter((a) => a.status === "IN_PROGRESS").length;
+  const availableCount = allAssessments.filter((a) => a.status === "AVAILABLE").length;
+  const lockedCount = allAssessments.filter((a) => a.status === "LOCKED").length;
+  const totalCount = allAssessments.length;
 
   const filteredAssessments = allAssessments.filter((a) => {
     if (filter === "COMPLETED") return a.status === "COMPLETED";
-    if (filter === "PENDING") return a.status !== "COMPLETED";
+    if (filter === "IN_PROGRESS") return a.status === "IN_PROGRESS";
+    if (filter === "AVAILABLE") return a.status === "AVAILABLE";
+    if (filter === "LOCKED") return a.status === "LOCKED";
     return true;
   });
 
@@ -39,7 +43,7 @@ export default function ParticipantAssessmentsPage() {
         <PageHeader
           title="Psychometric Assessments"
           subtitle="Complete your validated assessments calibrated to your age and educational profile to generate your multi-dimensional career pathway."
-          badge={totalCount > 0 ? `${totalCount} Calibrated Module${totalCount > 1 ? "s" : ""}` : "Assessment Battery"}
+          badge={totalCount > 0 ? `${totalCount} Assessment Module${totalCount > 1 ? "s" : ""}` : "Assessment Battery"}
           actionElement={
             <button
               type="button"
@@ -77,9 +81,21 @@ export default function ParticipantAssessmentsPage() {
         )}
 
         {/* Filter Pills */}
-        <div className="flex items-center gap-2">
-          {(["ALL", "PENDING", "COMPLETED"] as const).map((f) => {
-            const count = f === "ALL" ? totalCount : f === "PENDING" ? pendingCount : completedCount;
+        <div className="flex flex-wrap items-center gap-2">
+          {(["ALL", "AVAILABLE", "IN_PROGRESS", "COMPLETED", "LOCKED"] as const).map((f) => {
+            const count =
+              f === "ALL"
+                ? totalCount
+                : f === "AVAILABLE"
+                ? availableCount
+                : f === "IN_PROGRESS"
+                ? inProgressCount
+                : f === "COMPLETED"
+                ? completedCount
+                : lockedCount;
+
+            if (f === "LOCKED" && lockedCount === 0) return null;
+
             return (
               <button
                 key={f}
@@ -87,11 +103,21 @@ export default function ParticipantAssessmentsPage() {
                 onClick={() => setFilter(f)}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
                   filter === f
-                    ? "bg-[#00BFA5] text-[#172B2A] font-bold shadow-sm shadow-[#00BFA5]/20"
+                    ? f === "LOCKED"
+                      ? "bg-amber-500/20 text-amber-900 dark:text-amber-200 font-bold border border-amber-500/40"
+                      : "bg-[#00BFA5] text-[#172B2A] font-bold shadow-sm shadow-[#00BFA5]/20"
                     : "bg-white dark:bg-white/5 hover:bg-[#EBF2F0] dark:hover:bg-white/10 text-[#526866] dark:text-[#9FB3B0] border border-[#E3ECEA] dark:border-white/10"
                 }`}
               >
-                {f === "ALL" ? `All Assessments (${count})` : f === "PENDING" ? `Pending (${count})` : `Completed (${count})`}
+                {f === "ALL"
+                  ? `All (${count})`
+                  : f === "AVAILABLE"
+                  ? `Available (${count})`
+                  : f === "IN_PROGRESS"
+                  ? `In Progress (${count})`
+                  : f === "COMPLETED"
+                  ? `Completed (${count})`
+                  : `Locked (${count})`}
               </button>
             );
           })}

@@ -5,6 +5,7 @@ import "@/styles/globals.css";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { Toaster } from "@/components/ui/toast";
+import { GlobalErrorGuard } from "@/components/common/GlobalErrorGuard";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,6 +38,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col transition-colors duration-200">
+        <GlobalErrorGuard />
         {/* Load Google Identity Services Script Once Globally */}
         <Script
           src="https://accounts.google.com/gsi/client"

@@ -12,10 +12,12 @@ export interface LearningMilestone {
 }
 
 export interface CareerRelatedDimensions {
-  riasec?: Record<string, number>; // e.g. { R: 0.8, I: 0.9, A: 0.5, S: 0.3, E: 0.4, C: 0.6 }
-  skills?: Record<string, number>; // e.g. { "analytical_inquiry": 0.8, "technical_curiosity": 0.9, ... }
-  aptitude?: Record<string, number>; // e.g. { "spatial_reasoning": 0.85, "deductive_logic": 0.8, ... }
-  archetypes?: string[]; // e.g. ["Practical Explorer", "Analytical Systems Thinker"]
+  riasec?: Record<string, number>; // e.g. { I: 0.9, R: 0.8, C: 0.6, A: 0.4, E: 0.3, S: 0.2 } or { explorer: 0.9, builder: 0.8, ... }
+  skills?: Record<string, number>; // e.g. { logical_problem_solving: 0.9, visual_spatial: 0.8, ... }
+  aptitude?: Record<string, number>; // e.g. { pattern_logic: 0.9, numerical_reasoning: 0.85, ... }
+  development?: Record<string, number>; // e.g. { curiosity: 0.9, persistence: 0.85, ... }
+  streams?: Record<string, number>; // e.g. { science: 0.95, applied_technical: 0.85, commerce: 0.4, humanities: 0.3 }
+  archetypes?: string[]; // e.g. ["Analytical Systems Thinker", "Practical Explorer"]
 }
 
 export interface CareerEntity {
@@ -50,6 +52,7 @@ export interface MatchPillarBreakdown {
   skillScore: number;
   aptitudeScore: number;
   personalityScore: number;
+  streamScore?: number;
 }
 
 export interface CareerMatchDTO {
@@ -66,6 +69,8 @@ export interface CareerMatchDTO {
   strengthAlignment?: string[];
   developmentAreas?: string[];
   matchBreakdown?: MatchPillarBreakdown;
+  confidence?: "High Confidence" | "Moderate Confidence" | "Baseline Confidence" | "Exploratory";
+  assessmentCoverage?: string;
 }
 
 export interface CareerDetailDTO extends CareerMatchDTO {

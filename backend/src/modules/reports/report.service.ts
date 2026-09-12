@@ -4,6 +4,7 @@ import { UserRole } from "../users/user.types";
 import { reportRepository } from "./report.repository";
 import { assessmentContentRepository } from "../assessments/assessment-content.repository";
 import { skillFinderReportTemplate } from "./templates/skill-finder.template";
+import { engineeringBranchFinderReportTemplate } from "./templates/engineering-branch-finder.template";
 import { reportPdfGenerator } from "./generators/report-pdf.generator";
 import {
   SkillFinderReportDTO,
@@ -20,7 +21,7 @@ export class ReportService {
     requestingUserRole: UserRole,
     languageCode = "en",
     forceRegenerate = false
-  ): Promise<{ report: AssessmentReportEntity; reportData: SkillFinderReportDTO }> {
+  ): Promise<{ report: AssessmentReportEntity; reportData: any }> {
     const lang = (languageCode || "en").toLowerCase().trim();
 
     // 1. Fetch assessment result entity
@@ -82,24 +83,41 @@ export class ReportService {
 
     // 6. Synthesize Report via Template Engine
     const reportId = crypto.randomUUID();
-    const reportDto = await skillFinderReportTemplate.generateReport({
-      reportId,
-      result: resultData,
-      studentProfile: safeProfile,
-      languageCode: lang,
-    });
+    let reportDto: any;
+    let templateVer = skillFinderReportTemplate.templateVersion;
+    let reportTitle = `${safeProfile.name} - Skill Finder Report`;
+    let archetype: string | null = null;
 
+    if (resultEntity.assessment_code === "ENGINEERING_BRANCH_FINDER") {
+      reportDto = await engineeringBranchFinderReportTemplate.generateReport({
+        reportId,
+        result: resultData,
+        studentProfile: safeProfile,
+        languageCode: lang,
+      });
+      templateVer = engineeringBranchFinderReportTemplate.templateVersion;
+      reportTitle = `${safeProfile.name} - Engineering Branch Finder Exploration Report`;
+      archetype = reportDto.explorationFocus?.primaryBranchName || null;
+    } else {
+      reportDto = await skillFinderReportTemplate.generateReport({
+        reportId,
+        result: resultData,
+        studentProfile: safeProfile,
+        languageCode: lang,
+      });
+      archetype = reportDto.executiveSummary?.archetypeTitle || null;
+    }
 
     // 7. Persist Report in PostgreSQL
     const savedEntity = await reportRepository.saveReport({
       resultId: resultEntity.id,
       participantId: resultEntity.participant_id,
       assessmentCode: resultEntity.assessment_code,
-      templateVersion: skillFinderReportTemplate.templateVersion,
+      templateVersion: templateVer,
       languageCode: lang,
       status: "COMPLETED",
-      reportTitle: `${safeProfile.name} - Skill Finder Report`,
-      profileArchetype: reportDto.executiveSummary?.archetypeTitle || null,
+      reportTitle,
+      profileArchetype: archetype,
       reportData: reportDto,
     });
 

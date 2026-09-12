@@ -118,7 +118,7 @@ export class ProfileVectorService {
     const verbal_reasoning = this.findScore(aptDims, ["VERBAL_REASONING", "VERBAL"]);
     const spatial_reasoning = this.findScore(aptDims, ["SPATIAL_REASONING", "SPATIAL"]);
     const practical_troubleshooting = this.findScore(aptDims, ["PRACTICAL_PROBLEM_SOLVING", "PRACTICAL", "TROUBLESHOOTING"]);
-    const creative_performance = this.findScore(aptDims, ["CREATIVE_THINKING_TASKS", "CREATIVE_PERFORMANCE", "CREATIVE"]);
+    const creative_performance = this.findScore(aptDims, ["CREATIVE_THINKING_TASKS", "CREATIVE_PERFORMANCE", "CREATIVE_THINKING", "CREATIVE"]);
     const social_judgment = this.findScore(aptDims, ["SITUATIONAL_JUDGMENT", "SOCIAL_JUDGMENT", "SOCIAL"]);
     const planning_estimation = this.findScore(aptDims, ["PLANNING_ESTIMATION", "PLANNING"]);
 

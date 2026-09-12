@@ -9,6 +9,10 @@ import {
   streamFinderScoringService,
   type StreamFinderResultDTO,
 } from "../assessments/scoring/stream-finder-scoring.service";
+import {
+  engineeringBranchFinderScoringService,
+  type EngineeringBranchFinderResultDTO,
+} from "../assessments/scoring/engineering-branch-finder-scoring.service";
 import { interestScoringEngine } from "./skill-finder/interest.scoring";
 import { skillBehaviourScoringEngine } from "./skill-finder/skill-behaviour.scoring";
 import { aptitudeScoringEngine } from "./skill-finder/aptitude.scoring";
@@ -34,8 +38,14 @@ export class ScoringService {
   ): SkillFinderFullResultDTO {
     const languageCode = options?.languageCode || "en";
 
-    // Index responses by dimension_code and question_number
-    const responsesByDimension: Record<string, RawResponseItem[]> = {};
+    // Partition raw responses by Section AND Dimension to strictly isolate scoring domains
+    const responsesBySectionAndDim: Record<string, Record<string, RawResponseItem[]>> = {
+      SECTION_A: {},
+      SECTION_B: {},
+      SECTION_C: {},
+      SECTION_D: {},
+      SECTION_E: {},
+    };
     const responsesByQNum: Record<number, RawResponseItem> = {};
 
     for (const r of rawResponses) {
@@ -44,24 +54,29 @@ export class ScoringService {
         responsesByQNum[qNum] = r;
       }
 
+      const secCode = (r.section_code || "SECTION_A").toUpperCase();
       const dimCode = (r.dimension_code || "GENERAL").toUpperCase();
-      if (!responsesByDimension[dimCode]) {
-        responsesByDimension[dimCode] = [];
+
+      if (!responsesBySectionAndDim[secCode]) {
+        responsesBySectionAndDim[secCode] = {};
       }
-      responsesByDimension[dimCode].push(r);
+      if (!responsesBySectionAndDim[secCode][dimCode]) {
+        responsesBySectionAndDim[secCode][dimCode] = [];
+      }
+      responsesBySectionAndDim[secCode][dimCode].push(r);
     }
 
     // 1. SECTION A: Interest Discovery (RIASEC)
-    const interestResult = interestScoringEngine.calculate(responsesByDimension);
+    const interestResult = interestScoringEngine.calculate(responsesBySectionAndDim["SECTION_A"] || {});
 
     // 2. SECTION B: Skill Behaviour
-    const skillResult = skillBehaviourScoringEngine.calculate(responsesByDimension);
+    const skillResult = skillBehaviourScoringEngine.calculate(responsesBySectionAndDim["SECTION_B"] || {});
 
     // 3. SECTION C: Demonstrated Aptitude
-    const aptitudeResult = aptitudeScoringEngine.calculate(responsesByDimension);
+    const aptitudeResult = aptitudeScoringEngine.calculate(responsesBySectionAndDim["SECTION_C"] || {});
 
     // 4. SECTION D: Developmental Strengths & SECTION E: Response Quality
-    const developmentalStrengths = developmentScoringEngine.calculateStrengths(responsesByDimension);
+    const developmentalStrengths = developmentScoringEngine.calculateStrengths(responsesBySectionAndDim["SECTION_D"] || {});
     const responseQuality = developmentScoringEngine.calculateQuality(responsesByQNum);
 
     // 5. Transform scores into 29-Dimension Student Profile Vector (0-100 scale)
@@ -127,7 +142,11 @@ export class ScoringService {
     userId: string,
     attemptId: string,
     languageCode = "en"
-  ): Promise<{ success: boolean; resultId: string; result: SkillFinderFullResultDTO | StreamFinderResultDTO }> {
+  ): Promise<{
+    success: boolean;
+    resultId: string;
+    result: SkillFinderFullResultDTO | StreamFinderResultDTO | EngineeringBranchFinderResultDTO;
+  }> {
     const attempt = await assessmentContentRepository.findAttemptById(attemptId);
     if (!attempt) {
       throw AppError.notFound("Assessment attempt not found.", "ATTEMPT_NOT_FOUND");
@@ -157,7 +176,18 @@ export class ScoringService {
 
     // Score constructs
     let result: any;
-    if (attempt.assessment_code === "STREAM_FINDER") {
+    if (attempt.assessment_code === "ENGINEERING_BRANCH_FINDER") {
+      result = engineeringBranchFinderScoringService.computeEngineeringBranchFinderResult(
+        attemptId,
+        userId,
+        rawResponses,
+        {
+          versionCode: attempt.version_code,
+          versionName: attempt.version_name,
+          languageCode,
+        }
+      );
+    } else if (attempt.assessment_code === "STREAM_FINDER") {
       result = streamFinderScoringService.computeStreamFinderResult(attemptId, userId, rawResponses, {
         versionCode: attempt.version_code,
         versionName: attempt.version_name,
@@ -187,7 +217,10 @@ export class ScoringService {
         attemptId,
         resultId,
         code: attempt.assessment_code,
-        archetype: result.learningProfile?.archetypeTitle || result.primaryStream,
+        archetype:
+          result.learningProfile?.archetypeTitle ||
+          result.primaryStream ||
+          result.primaryBranch?.branchName,
       },
       "Psychometric scoring completed and result snapshot persisted."
     );
