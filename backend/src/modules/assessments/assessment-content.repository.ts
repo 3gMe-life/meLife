@@ -14,6 +14,11 @@ import {
   ENGINEERING_QUESTIONS,
 } from "./content/engineering-branch-finder-catalog.data";
 import {
+  COMMERCE_CAREER_FINDER_SECTIONS,
+  COMMERCE_CAREER_FINDER_DIMENSIONS,
+  COMMERCE_CAREER_FINDER_QUESTIONS,
+} from "./content/commerce-career-finder-catalog.data";
+import {
   SanitizedQuestionDTO,
   AssessmentSectionSummaryDTO,
   AssessmentAttemptQuestionsResponseDTO,
@@ -621,6 +626,127 @@ export class AssessmentContentRepository {
   }
 
   /**
+   * Seeds all 80 questions, sections, dimensions, and options for Commerce Career Finder idempotently.
+   */
+  async seedCommerceCareerFinderContent(client?: PoolClient): Promise<void> {
+    const db = client || pool;
+
+    // 1. Find COMMERCE_CAREER_FINDER assessment ID
+    const assessRes = await db.query(
+      `SELECT id FROM assessments WHERE code = 'COMMERCE_CAREER_FINDER' LIMIT 1`
+    );
+    if (!assessRes.rows[0]) {
+      logger.warn("COMMERCE_CAREER_FINDER assessment catalog entry missing, skipping content seeding");
+      return;
+    }
+    const assessmentId = assessRes.rows[0].id;
+
+    // Fast check: if already seeded 80 items, return immediately
+    const countCheck = await db.query(
+      `SELECT COUNT(*) as count FROM assessment_questions WHERE assessment_id = $1`,
+      [assessmentId]
+    );
+    if (parseInt(countCheck.rows[0]?.count, 10) === 80) {
+      logger.info("✨ Commerce Career Finder question bank already fully seeded (80 items).");
+      return;
+    }
+
+    // 2. Upsert Sections
+    const sectionMap: Record<string, string> = {};
+    for (const sec of COMMERCE_CAREER_FINDER_SECTIONS) {
+      const sRes = await db.query(
+        `INSERT INTO assessment_sections (assessment_id, code, name, description, display_order, updated_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())
+         ON CONFLICT (assessment_id, code) DO UPDATE SET
+           name = EXCLUDED.name,
+           description = EXCLUDED.description,
+           display_order = EXCLUDED.display_order,
+           updated_at = NOW()
+         RETURNING id`,
+        [assessmentId, sec.code, sec.name, sec.description, sec.displayOrder]
+      );
+      sectionMap[sec.code] = sRes.rows[0].id;
+    }
+
+    // 3. Upsert Dimensions
+    const dimensionMap: Record<string, string> = {};
+    for (const dim of COMMERCE_CAREER_FINDER_DIMENSIONS) {
+      const sectionId = sectionMap[dim.sectionCode];
+      if (!sectionId) continue;
+
+      const dRes = await db.query(
+        `INSERT INTO assessment_dimensions (section_id, code, name, description, display_order, updated_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())
+         ON CONFLICT (section_id, code) DO UPDATE SET
+           name = EXCLUDED.name,
+           description = EXCLUDED.description,
+           display_order = EXCLUDED.display_order,
+           updated_at = NOW()
+         RETURNING id`,
+        [sectionId, dim.code, dim.name, dim.description, dim.displayOrder]
+      );
+      dimensionMap[dim.code] = dRes.rows[0].id;
+    }
+
+    // 4. Upsert Questions & Options
+    for (const q of COMMERCE_CAREER_FINDER_QUESTIONS) {
+      const sectionId = sectionMap[q.sectionCode];
+      if (!sectionId) continue;
+
+      const dimensionId = q.dimensionCode ? dimensionMap[q.dimensionCode] || null : null;
+      const questionNumber = q.displayOrder;
+      const maxPoints = q.questionType === "likert_1_5" ? 5.0 : 1.0;
+
+      const qRes = await db.query(
+        `INSERT INTO assessment_questions (
+           assessment_id, section_id, dimension_id, question_number, question_text,
+           question_type, max_points, is_required, display_order, updated_at
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+         ON CONFLICT (assessment_id, question_number) DO UPDATE SET
+           section_id = EXCLUDED.section_id,
+           dimension_id = EXCLUDED.dimension_id,
+           question_text = EXCLUDED.question_text,
+           question_type = EXCLUDED.question_type,
+           max_points = EXCLUDED.max_points,
+           display_order = EXCLUDED.display_order,
+           updated_at = NOW()
+         RETURNING id`,
+        [
+          assessmentId,
+          sectionId,
+          dimensionId,
+          questionNumber,
+          q.questionText,
+          q.questionType,
+          maxPoints,
+          true,
+          questionNumber,
+        ]
+      );
+      const questionId = qRes.rows[0].id;
+
+      // Upsert Options
+      if (q.options && q.options.length > 0) {
+        for (const opt of q.options) {
+          await db.query(
+            `INSERT INTO question_options (question_id, option_key, option_text, score_value, display_order, updated_at)
+             VALUES ($1, $2, $3, $4, $5, NOW())
+             ON CONFLICT (question_id, option_key) DO UPDATE SET
+               option_text = EXCLUDED.option_text,
+               score_value = EXCLUDED.score_value,
+               display_order = EXCLUDED.display_order,
+               updated_at = NOW()`,
+            [questionId, opt.optionKey, opt.optionText, opt.scoreValue || 0, opt.displayOrder]
+          );
+        }
+      }
+    }
+
+    logger.info("✨ Commerce Career Finder 80-item question bank & options seeded successfully.");
+  }
+
+  /**
    * Finds an existing active attempt for participant and assessment.
    */
   async findActiveAttempt(userId: string, assessmentId: string, client?: PoolClient): Promise<any> {
@@ -810,6 +936,7 @@ export class AssessmentContentRepository {
                  'id', o.id,
                  'optionKey', o.option_key,
                  'optionText', COALESCE(ot.option_text, o.option_text),
+                 'originalOptionText', o.option_text,
                  'displayOrder', o.display_order
                ) ORDER BY o.display_order ASC
              ) FILTER (WHERE o.id IS NOT NULL),
@@ -846,6 +973,7 @@ export class AssessmentContentRepository {
                  'id', o.id,
                  'optionKey', o.option_key,
                  'optionText', COALESCE(ot.option_text, o.option_text),
+                 'originalOptionText', o.option_text,
                  'displayOrder', o.display_order
                ) ORDER BY o.display_order ASC
              ) FILTER (WHERE o.id IS NOT NULL),

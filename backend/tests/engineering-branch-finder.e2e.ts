@@ -6,7 +6,7 @@
 
 import http from "http";
 import { createApp } from "../src/app";
-import { connectDatabase, closeDatabasePool } from "../src/config/database";
+import { connectDatabase, closeDatabasePool, pool } from "../src/config/database";
 import { assessmentRepository } from "../src/modules/assessments/assessment.repository";
 import { assessmentContentRepository } from "../src/modules/assessments/assessment-content.repository";
 import { engineeringBranchFinderQuestionSelectionService } from "../src/modules/assessments/services/engineering-branch-finder-question-selection.service";
@@ -83,7 +83,16 @@ async function runE2ETests() {
     });
     assert(onboardRes.status === 200, "2. Student Calibration & Onboarding");
 
-    // 4. Start Engineering Branch Finder Attempt
+    // 4.1 Verify Master Item Bank in DB (Must remain 80 questions)
+    const bankRes = await pool.query(
+      `SELECT COUNT(*) as count FROM assessment_questions q
+       JOIN assessments a ON q.assessment_id = a.id
+       WHERE a.code = 'ENGINEERING_BRANCH_FINDER'`
+    );
+    const bankCount = parseInt(bankRes.rows[0]?.count, 10);
+    assert(bankCount === 80, "3. Master Item Bank Preserved in DB (80 questions)", `Bank count: ${bankCount}`);
+
+    // 4.2 Start Engineering Branch Finder Attempt (Standard 45-question edition)
     const startRes = await fetch(`${baseUrl}/assessments/ENGINEERING_BRANCH_FINDER/start`, {
       method: "POST",
       headers: {
@@ -95,40 +104,45 @@ async function runE2ETests() {
     const startData: any = await startRes.json();
     assert(
       startRes.status === 200 && startData.data?.attemptId && startData.data?.status === "IN_PROGRESS",
-      "3. Start Engineering Branch Finder Attempt (IN_PROGRESS)",
-      `Attempt ID: ${startData.data?.attemptId}`
+      "4. Start Engineering Branch Finder Attempt (IN_PROGRESS, 45 questions)",
+      `Attempt ID: ${startData.data?.attemptId}, Version: ${startData.data?.versionCode}`
     );
 
     const attemptId = startData.data.attemptId;
 
-    // 5. Fetch all 80 questions with options
+    // 5. Fetch all 45 questions with options (Question 1 to 45)
     const qRes = await fetch(`${baseUrl}/assessments/attempts/${attemptId}/questions?lang=en`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const qData: any = await qRes.json();
     assert(
-      qRes.status === 200 && qData.data?.questions?.length === 80,
-      "4. Fetch All 80 Sanitized Questions (E01–E80)",
+      qRes.status === 200 && qData.data?.questions?.length === 45,
+      "5. Fetch Exactly 45 Sanitized Questions for Student (1 to 45)",
       `Received ${qData.data?.questions?.length} questions.`
     );
 
     const questions = qData.data.questions;
 
-    // 6. Answer all 80 questions (simulate Mechanical & Aerospace dominant preferences)
-    console.log("⏳ Submitting responses for all 80 questions in concurrent batches...");
+    // Verify first and last question numbers are 1 and 45
+    assert(questions[0]?.questionNumber === 1, "5.1 First question has questionNumber = 1");
+    assert(questions[44]?.questionNumber === 45, "5.2 Last question has questionNumber = 45");
+
+    // 6. Answer all 45 questions (simulate Mechanical & Aerospace dominant preferences)
+    console.log("⏳ Submitting responses for all 45 questions in concurrent batches...");
     for (let i = 0; i < questions.length; i += 8) {
       const batch = questions.slice(i, i + 8);
       await Promise.all(
         batch.map(async (q: any) => {
           let responseVal = "2";
-          if (q.questionNumber >= 25 && q.questionNumber <= 32) {
-            responseVal = "4"; // High on Mechanical (Q25-Q32)
-          } else if (q.questionNumber >= 57 && q.questionNumber <= 64) {
-            responseVal = "3"; // High on Aerospace (Q57-Q64)
+          // Mechanical questions (Likert Q16-Q20 in the 45-item form, which correspond to items 25-29)
+          if (q.questionNumber >= 16 && q.questionNumber <= 20) {
+            responseVal = "4"; // High on Mechanical
+          } else if (q.questionNumber >= 36 && q.questionNumber <= 40) {
+            responseVal = "3"; // High on Aerospace (Likert Q36-Q40, items 57-61)
           }
 
-          if (q.questionNumber >= 65) {
-            // Forced choice: pick D (ME) or H (AERO)
+          if (q.questionNumber >= 41) {
+            // Forced choice scenarios (Q41-Q45): pick D (ME) or H (AERO)
             responseVal = q.questionNumber % 2 === 0 ? "D" : "H";
           }
 
@@ -150,7 +164,7 @@ async function runE2ETests() {
         })
       );
     }
-    assert(true, "5. Response Persistence (Autosave across 80 questions)");
+    assert(true, "6. Response Persistence (Autosave across 45 questions)");
 
     // 7. Submit Attempt for Final Scoring
     const submitRes = await fetch(`${baseUrl}/assessments/attempts/${attemptId}/submit`, {
@@ -166,29 +180,39 @@ async function runE2ETests() {
     const submitData: any = await submitRes.json();
     assert(
       submitRes.status === 200 && submitData.data?.result?.assessmentCode === "ENGINEERING_BRANCH_FINDER",
-      "6. Final Submission & Psychometric Scoring Pipeline",
+      "7. Final Submission & Psychometric Scoring Pipeline (45 questions)",
       `Result ID: ${submitData.data?.resultId}`
     );
 
     const result = submitData.data.result;
     assert(
+      result.totalQuestions === 45,
+      "7.1 Result totalQuestions is exactly 45",
+      `Total: ${result.totalQuestions}`
+    );
+    assert(
+      result.completedQuestions === 45,
+      "7.2 Result completedQuestions is exactly 45",
+      `Completed: ${result.completedQuestions}`
+    );
+    assert(
       result.primaryBranch?.branchCode === "ME",
-      "7. Scoring Accuracy: Primary Branch is Mechanical Engineering",
+      "8. Scoring Accuracy: Primary Branch is Mechanical Engineering",
       `Primary: ${result.primaryBranch?.branchName} (${result.primaryBranch?.displayPercentage}%)`
     );
     assert(
       result.secondaryBranch?.branchCode === "AERO",
-      "8. Scoring Accuracy: Secondary Branch is Aerospace Engineering",
+      "9. Scoring Accuracy: Secondary Branch is Aerospace Engineering",
       `Secondary: ${result.secondaryBranch?.branchName} (${result.secondaryBranch?.displayPercentage}%)`
     );
     assert(
       result.pilotStatus === "Development / Pilot Required",
-      "9. Pilot Status Declaration: 'Development / Pilot Required'",
+      "10. Pilot Status Declaration: 'Development / Pilot Required'",
       `Pilot status correctly tagged.`
     );
     assert(
       Object.keys(result.constructScores).length === 8,
-      "10. 8-Construct Profile Generation (C01–C08)",
+      "11. 8-Construct Profile Generation (C01–C08)",
       `Construct scores: ${Object.keys(result.constructScores).join(", ")}`
     );
 
@@ -201,7 +225,7 @@ async function runE2ETests() {
       getResultRes.status === 200 &&
         getResultData.data?.primaryBranch?.branchCode === "ME" &&
         getResultData.data?.attemptId === attemptId,
-      "11. Immutable Result Snapshot Retrieval"
+      "12. Immutable Result Snapshot Retrieval"
     );
 
     // 9. Generate Report Snapshot
@@ -219,7 +243,7 @@ async function runE2ETests() {
       (reportRes.status === 201 || reportRes.status === 200) &&
         (reportData.data?.report?.assessmentCode === "ENGINEERING_BRANCH_FINDER" ||
           reportData.data?.reportData?.assessmentCode === "ENGINEERING_BRANCH_FINDER"),
-      "12. Exploratory Report Synthesizer (Report Snapshot Generated)"
+      "13. Exploratory Report Synthesizer (Report Snapshot Generated)"
     );
 
     // 10. Start Retake Attempt (Milestone Tracking)
@@ -236,7 +260,7 @@ async function runE2ETests() {
       retakeRes.status === 200 &&
         retakeData.data?.isNew === true &&
         retakeData.data?.attemptId !== attemptId,
-      "13. Longitudinal Retake Session Initialization (Attempt #2 created, Baseline #1 preserved)"
+      "14. Longitudinal Retake Session Initialization (Attempt #2 created, Baseline #1 preserved)"
     );
 
     console.log("\n================================================================================");

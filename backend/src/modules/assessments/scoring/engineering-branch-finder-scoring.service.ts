@@ -61,7 +61,7 @@ export interface EngineeringConstructScoreDetails {
 export interface EngineeringResponseQualityDTO {
   isComplete: boolean;
   answeredCount: number;
-  totalQuestions: 80;
+  totalQuestions: number;
   straightLiningDetected: boolean;
   completionTimeSeconds?: number;
   qualityFlag: "NORMAL" | "CAUTION_LOW_VARIATION" | "INCOMPLETE";
@@ -77,7 +77,7 @@ export interface EngineeringBranchFinderResultDTO {
   versionCode: string | null;
   versionName: string | null;
   completedQuestions: number;
-  totalQuestions: 80;
+  totalQuestions: number;
   completionPercentage: number;
   isComplete: boolean;
   pilotStatus: "Development / Pilot Required";
@@ -119,7 +119,7 @@ export interface EngineeringBranchFinderResultDTO {
   createdAt: string;
 }
 
-// Map each of the 8 branch Likert item ranges (8 questions each)
+// Map each of the 8 branch Likert item ranges (8 questions each in master item bank)
 export const BRANCH_QUESTION_RANGES: Record<EngineeringBranchCode, [number, number]> = {
   CSE: [1, 8],
   ECE: [9, 16],
@@ -146,7 +146,7 @@ export const FORCED_CHOICE_OPTION_MAP: Record<string, EngineeringBranchCode> = {
 export class EngineeringBranchFinderScoringService {
   /**
    * Computes the complete Engineering Branch Finder exploratory result snapshot based strictly
-   * on the authoritative development workbook specification.
+   * on psychometric methodology, supporting both the standard 45-question student form and 80-question bank.
    */
   computeEngineeringBranchFinderResult(
     attemptId: string,
@@ -158,20 +158,23 @@ export class EngineeringBranchFinderScoringService {
       languageCode?: string;
     }
   ): EngineeringBranchFinderResultDTO {
-    const totalQuestions = 80;
+    const isComprehensive80 =
+      options?.versionCode === "ENGINEERING_BRANCH_FINDER_COMPREHENSIVE_80" ||
+      rawResponses.length >= 80;
+    const totalQuestions = isComprehensive80 ? 80 : 45;
     const answeredCount = rawResponses.length;
-    const completionPercentage = Math.round((answeredCount / totalQuestions) * 100);
+    const completionPercentage = Math.min(100, Math.round((answeredCount / totalQuestions) * 100));
     const isComplete = answeredCount >= totalQuestions;
 
     if (!isComplete) {
       throw AppError.badRequest(
-        `Complete all 80 questions to generate your Engineering Branch Finder exploration profile. Currently answered: ${answeredCount}/80.`,
+        `Complete all ${totalQuestions} questions to generate your Engineering Branch Finder exploration profile. Currently answered: ${answeredCount}/${totalQuestions}.`,
         "INCOMPLETE_ASSESSMENT_RESPONSES"
       );
     }
 
-    // Index responses by question number
-    const responsesByQNum: Record<number, { value: string; numValue: number }> = {};
+    // Index responses by question number & track by branch
+    const responsesByQNum: Record<number, { value: string; numValue: number; questionType?: string }> = {};
     const likertValues: number[] = [];
 
     for (const r of rawResponses) {
@@ -179,9 +182,15 @@ export class EngineeringBranchFinderScoringService {
       if (!isNaN(qNum)) {
         const rawStr = String(r.response_value ?? "").trim().toUpperCase();
         const numVal = parseInt(rawStr, 10);
-        responsesByQNum[qNum] = { value: rawStr, numValue: isNaN(numVal) ? 0 : numVal };
+        const qType = r.question_type || (qNum <= 64 ? "likert_1_4" : "forced_choice_8");
 
-        if (qNum <= 64) {
+        responsesByQNum[qNum] = {
+          value: rawStr,
+          numValue: isNaN(numVal) ? 0 : numVal,
+          questionType: qType,
+        };
+
+        if (qNum <= 64 || qType === "likert_1_4") {
           if (![1, 2, 3, 4, 5].includes(numVal)) {
             throw AppError.badRequest(
               `Invalid response for Likert question #${qNum}: expected rating between 1 and 4, received '${r.response_value}'`,
@@ -200,40 +209,45 @@ export class EngineeringBranchFinderScoringService {
       }
     }
 
-    // Verify all 80 questions exist
-    for (let i = 1; i <= 80; i++) {
-      if (!responsesByQNum[i]) {
-        throw AppError.badRequest(
-          `Missing required response for question #${i}. All 80 questions must be completed.`,
-          "MISSING_REQUIRED_QUESTION"
-        );
-      }
-    }
-
     // 1. Calculate Likert Points and Choice Points for all 8 branches
     const branchScores: Record<EngineeringBranchCode, EngineeringBranchScoreDetails> = {} as any;
     const branchCodes: EngineeringBranchCode[] = ["CSE", "ECE", "EEE", "ME", "CE", "CHE", "BME", "AERO"];
 
+    // Count total answered forced choice questions across attempt
+    const answeredChoiceItems: Array<{ qNum: number; chosenOpt: string }> = [];
+    for (let q = 65; q <= 80; q++) {
+      if (responsesByQNum[q]) {
+        answeredChoiceItems.push({ qNum: q, chosenOpt: responsesByQNum[q].value });
+      }
+    }
+    const totalChoiceScenarios = Math.max(1, answeredChoiceItems.length);
+
     for (const bCode of branchCodes) {
       const range = BRANCH_QUESTION_RANGES[bCode];
       let likertSum = 0;
+      let branchLikertCount = 0;
+
       for (let q = range[0]; q <= range[1]; q++) {
-        likertSum += responsesByQNum[q].numValue;
+        if (responsesByQNum[q]) {
+          likertSum += responsesByQNum[q].numValue;
+          branchLikertCount++;
+        }
       }
 
-      // Count forced-choice selections (Q65 to Q80)
+      // Count forced-choice selections choosing this branch
       let choiceCount = 0;
-      for (let q = 65; q <= 80; q++) {
-        const chosenOpt = responsesByQNum[q].value;
-        if (FORCED_CHOICE_OPTION_MAP[chosenOpt] === bCode) {
+      for (const item of answeredChoiceItems) {
+        if (FORCED_CHOICE_OPTION_MAP[item.chosenOpt] === bCode) {
           choiceCount++;
         }
       }
 
-      // Excel formula: Likert Points (scaled to 40 max) + Choice Points (choiceCount * 5)
-      // Likert max = 32 on 1-4 scale, scaled to 40 points -> (likertSum / 32) * 40
-      const scaledLikert = Math.min(40, (likertSum / 32) * 40);
-      const choicePoints = choiceCount * 5;
+      // Max raw Likert for this branch based on answered items (1-4 scale)
+      const maxBranchLikertRaw = Math.max(1, branchLikertCount * 4);
+      // Scaled to 40 max points
+      const scaledLikert = Math.min(40, (likertSum / maxBranchLikertRaw) * 40);
+      // Choice points scaled to 10 max points
+      const choicePoints = parseFloat(((choiceCount / totalChoiceScenarios) * 10).toFixed(1));
       const totalRaw = Math.min(50, Math.round(scaledLikert + choicePoints));
       const maxTotal = 50;
       const compatibilityPercentage = parseFloat((totalRaw / maxTotal).toFixed(2));
@@ -258,7 +272,7 @@ export class EngineeringBranchFinderScoringService {
         branchName: clusterData.name,
         likertPoints: Math.round(scaledLikert),
         maxLikertPoints: 40,
-        choicePoints,
+        choicePoints: Math.round(choicePoints),
         maxChoicePoints: 10,
         totalRaw,
         maxTotal,
@@ -300,7 +314,6 @@ export class EngineeringBranchFinderScoringService {
     // 2. Calculate Construct Scores (C01–C08)
     const constructScores: Record<string, EngineeringConstructScoreDetails> = {};
     for (const [cCode, cDef] of Object.entries(ENGINEERING_CONSTRUCTS)) {
-      // Find all associated branches
       const relevantBranches = cDef.associatedBranches as EngineeringBranchCode[];
       let rawSum = 0;
       let count = 0;
@@ -328,15 +341,18 @@ export class EngineeringBranchFinderScoringService {
     );
 
     // 3. Response Quality Analytics (Straight-lining, variance)
-    const meanLikert = likertValues.reduce((a, b) => a + b, 0) / likertValues.length;
-    const variance =
-      likertValues.reduce((sum, val) => sum + Math.pow(val - meanLikert, 2), 0) / likertValues.length;
+    const meanLikert = likertValues.length > 0
+      ? likertValues.reduce((a, b) => a + b, 0) / likertValues.length
+      : 2.5;
+    const variance = likertValues.length > 0
+      ? likertValues.reduce((sum, val) => sum + Math.pow(val - meanLikert, 2), 0) / likertValues.length
+      : 1;
     const straightLiningDetected = variance < 0.15;
 
     const responseQuality: EngineeringResponseQualityDTO = {
       isComplete: true,
-      answeredCount: 80,
-      totalQuestions: 80,
+      answeredCount,
+      totalQuestions,
       straightLiningDetected,
       qualityFlag: straightLiningDetected ? "CAUTION_LOW_VARIATION" : "NORMAL",
       pilotDisclaimer:
@@ -373,8 +389,8 @@ export class EngineeringBranchFinderScoringService {
       participantId,
       assessmentCode: "ENGINEERING_BRANCH_FINDER",
       assessmentName: "Engineering Branch Finder",
-      versionCode: options?.versionCode || "ENGINEERING_BRANCH_FINDER_V2",
-      versionName: options?.versionName || "Engineering Branch Finder — Standard Pilot Edition",
+      versionCode: options?.versionCode || (isComprehensive80 ? "ENGINEERING_BRANCH_FINDER_COMPREHENSIVE_80" : "ENGINEERING_BRANCH_FINDER_V2"),
+      versionName: options?.versionName || (isComprehensive80 ? "Engineering Branch Finder — Comprehensive Bank Edition" : "Engineering Branch Finder — Standard Edition"),
       completedQuestions: answeredCount,
       totalQuestions,
       completionPercentage,

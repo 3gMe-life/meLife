@@ -6,6 +6,7 @@ import { assessmentContentRepository } from "../assessments/assessment-content.r
 import { skillFinderReportTemplate } from "./templates/skill-finder.template";
 import { engineeringBranchFinderReportTemplate } from "./templates/engineering-branch-finder.template";
 import { reportPdfGenerator } from "./generators/report-pdf.generator";
+import { commerceCareerFinderReportTemplate } from "./templates/commerce-career-finder.template";
 import {
   SkillFinderReportDTO,
   AssessmentReportEntity,
@@ -88,7 +89,17 @@ export class ReportService {
     let reportTitle = `${safeProfile.name} - Skill Finder Report`;
     let archetype: string | null = null;
 
-    if (resultEntity.assessment_code === "ENGINEERING_BRANCH_FINDER") {
+    if (resultEntity.assessment_code === "COMMERCE_CAREER_FINDER") {
+      reportDto = await commerceCareerFinderReportTemplate.generateReport({
+        reportId,
+        result: resultData,
+        studentProfile: safeProfile,
+        languageCode: lang,
+      });
+      templateVer = commerceCareerFinderReportTemplate.templateVersion;
+      reportTitle = `${safeProfile.name} - Commerce Career Finder Report`;
+      archetype = reportDto.explorationFocus?.primaryFamilyName || null;
+    } else if (resultEntity.assessment_code === "ENGINEERING_BRANCH_FINDER") {
       reportDto = await engineeringBranchFinderReportTemplate.generateReport({
         reportId,
         result: resultData,

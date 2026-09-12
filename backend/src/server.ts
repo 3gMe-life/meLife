@@ -13,6 +13,8 @@ import { skillFinderTranslationsService } from "./modules/assessments/services/s
 import { streamFinderTranslationsService } from "./modules/assessments/services/stream-finder-translations.service";
 import { engineeringBranchFinderQuestionSelectionService } from "./modules/assessments/services/engineering-branch-finder-question-selection.service";
 import { engineeringBranchFinderTranslationsService } from "./modules/assessments/services/engineering-branch-finder-translations.service";
+import { commerceCareerFinderQuestionSelectionService } from "./modules/assessments/services/commerce-career-finder-question-selection.service";
+import { commerceCareerFinderTranslationsService } from "./modules/assessments/services/commerce-career-finder-translations.service";
 import { reportRepository } from "./modules/reports/report.repository";
 import { careerRepository } from "./modules/careers/career.repository";
 import { careerReportRepository } from "./modules/careers/reports/career-report.repository";
@@ -49,6 +51,11 @@ const bootstrap = async () => {
     await assessmentContentRepository.seedEngineeringBranchFinderContent();
     await engineeringBranchFinderQuestionSelectionService.seedEngineeringBranchFinderVersions();
     await engineeringBranchFinderTranslationsService.seedEngineeringBranchFinderTranslations();
+
+    // 5d. Commerce Career Finder Question Bank & Versions & Translations
+    await assessmentContentRepository.seedCommerceCareerFinderContent();
+    await commerceCareerFinderQuestionSelectionService.seedCommerceCareerFinderVersions();
+    await commerceCareerFinderTranslationsService.seedCommerceCareerFinderTranslations();
 
     // 6. Initialize psychometric reports schema
     await reportRepository.initSchema();

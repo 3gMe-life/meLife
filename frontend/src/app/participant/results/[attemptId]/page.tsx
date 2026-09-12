@@ -8,6 +8,7 @@ import { useAssessmentResultQuery } from "@/features/assessments/hooks/useAssess
 import { SkillFinderResultView } from "@/features/assessments/components/results/SkillFinderResultView";
 import { StreamFinderResultView } from "@/features/assessments/components/results/StreamFinderResultView";
 import { EngineeringBranchFinderResultView } from "@/features/assessments/components/results/EngineeringBranchFinderResultView";
+import { CommerceCareerFinderResultView } from "@/features/assessments/components/results/CommerceCareerFinderResultView";
 
 export default function AssessmentResultDetailPage() {
   const params = useParams();
@@ -46,7 +47,7 @@ export default function AssessmentResultDetailPage() {
                 Generating Psychometric Report...
               </h3>
               <p className="text-xs text-text-secondary mt-1">
-                Aggregating interest clusters, stream compatibility matrix, and developmental analytics.
+                Aggregating interest clusters, career compatibility matrix, and developmental analytics.
               </p>
             </div>
           ) : isError || !result ? (
@@ -69,6 +70,12 @@ export default function AssessmentResultDetailPage() {
                 Go to Assessments
               </button>
             </div>
+          ) : result.assessmentCode === "COMMERCE_CAREER_FINDER" ? (
+            <CommerceCareerFinderResultView
+              result={result}
+              currentLanguage={language}
+              onLanguageChange={setLanguage}
+            />
           ) : result.assessmentCode === "ENGINEERING_BRANCH_FINDER" ? (
             <EngineeringBranchFinderResultView
               result={result}

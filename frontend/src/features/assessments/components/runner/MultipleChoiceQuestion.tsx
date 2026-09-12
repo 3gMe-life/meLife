@@ -35,6 +35,12 @@ export function MultipleChoiceQuestion({
     >
       {displayOptions.map((opt) => {
         const isSelected = selectedValue?.toUpperCase() === opt.optionKey.toUpperCase();
+        const englishReference = opt.originalOptionText || "";
+        const displayLabel = opt.optionText || `Option ${opt.optionKey}`;
+        const isBilingual =
+          Boolean(englishReference) &&
+          Boolean(displayLabel) &&
+          englishReference.trim().toLowerCase() !== displayLabel.trim().toLowerCase();
 
         return (
           <button
@@ -64,16 +70,23 @@ export function MultipleChoiceQuestion({
                 {opt.optionKey}
               </span>
 
-              {/* Option Text */}
-              <span
-                className={`text-xs sm:text-sm font-semibold leading-relaxed tracking-tight ${
-                  isSelected
-                    ? "text-[#172B2A] dark:text-[#F7FAF9] font-bold"
-                    : "text-[#172B2A] dark:text-[#F7FAF9] group-hover:text-[#008F83] dark:group-hover:text-[#00BFA5]"
-                }`}
-              >
-                {opt.optionText}
-              </span>
+              {/* Option Text Stack */}
+              <div className="space-y-0.5">
+                {isBilingual && (
+                  <div className="text-[11px] font-medium text-[#728B88] dark:text-[#8EA8A4] leading-tight select-none">
+                    {englishReference}
+                  </div>
+                )}
+                <div
+                  className={`text-xs sm:text-sm font-semibold leading-relaxed tracking-tight ${
+                    isSelected
+                      ? "text-[#172B2A] dark:text-[#F7FAF9] font-bold"
+                      : "text-[#172B2A] dark:text-[#F7FAF9] group-hover:text-[#008F83] dark:group-hover:text-[#00BFA5]"
+                  }`}
+                >
+                  {displayLabel}
+                </div>
+              </div>
             </div>
 
             {/* Selection Checkmark */}

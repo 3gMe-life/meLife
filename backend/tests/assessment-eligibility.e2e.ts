@@ -1,3 +1,7 @@
+import dotenv from "dotenv";
+import path from "path";
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
+
 import { createApp } from "../src/app";
 import { pool, connectDatabase, closeDatabasePool } from "../src/config/database";
 import { authRepository } from "../src/modules/auth/auth.repository";

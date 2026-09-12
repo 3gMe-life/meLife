@@ -70,6 +70,7 @@ export interface QuestionOption {
   id: string;
   optionKey: string;
   optionText: string;
+  originalOptionText?: string | null;
   displayOrder: number;
 }
 
@@ -512,3 +513,95 @@ export interface EngineeringBranchFinderResult {
   };
 }
 
+export type CommerceFamilyCode =
+  | "ACCOUNTING_AUDIT_TAX"
+  | "FINANCE_INVESTMENT_BANKING"
+  | "BUSINESS_MANAGEMENT_ENTREPRENEURSHIP"
+  | "ECONOMICS_ANALYTICS_FINTECH";
+
+export interface CommerceCareerFamilyScoreItem {
+  familyCode: CommerceFamilyCode;
+  familyName: string;
+  likertPoints: number;
+  maxLikertPoints: number;
+  likertPercentage: number;
+  likertDisplayPercentage: number;
+  choiceCount: number;
+  maxChoiceCount: number;
+  choicePercentage: number;
+  choiceDisplayPercentage: number;
+  compatibilityPercentage: number;
+  displayPercentage: number;
+  alignment: string;
+  suggestedPathways: string;
+  exampleAreas: string;
+  counsellingNote: string;
+}
+
+export interface CommerceDimensionScoreItem {
+  dimensionCode: string;
+  dimensionName: string;
+  description: string;
+  rawScore: number;
+  maxScore: number;
+  normalizedScore: number;
+  answeredCount: number;
+  totalItems: number;
+}
+
+export interface CommerceCareerFinderResult {
+  resultId: string;
+  attemptId: string;
+  participantId: string;
+  assessmentCode: "COMMERCE_CAREER_FINDER";
+  assessmentName: string;
+  versionCode?: string | null;
+  versionName?: string | null;
+  language?: string;
+  completedAt?: string;
+  completedQuestions: number;
+  totalQuestions: number;
+  completionPercentage: number;
+  isComplete: boolean;
+
+  familyScores: Record<CommerceFamilyCode, CommerceCareerFamilyScoreItem>;
+  sortedFamilies: CommerceCareerFamilyScoreItem[];
+
+  primaryFamily: CommerceCareerFamilyScoreItem;
+  secondaryFamily: CommerceCareerFamilyScoreItem;
+
+  scoreGap: number;
+  scoreGapPercentage: number;
+  clarity: string;
+  isMixedProfile: boolean;
+
+  dimensionScores: Record<string, CommerceDimensionScoreItem>;
+  sortedDimensions: CommerceDimensionScoreItem[];
+
+  guidance: {
+    interpretationSummary: string;
+    careerExplorationDirection: string;
+    finalDecisionPrinciple: string;
+    doGuidelines: string[];
+    avoidGuidelines: string[];
+    academicSubjectGuidance: string[];
+    counsellorPrinciples: Array<{
+      area: string;
+      interpretation: string;
+      doText: string;
+      avoidText: string;
+    }>;
+  };
+
+  responseQuality: {
+    isComplete: boolean;
+    answeredCount: number;
+    totalQuestions: number;
+    straightLiningDetected: boolean;
+    completionTimeSeconds?: number;
+    qualityFlag: string;
+    pilotDisclaimer: string;
+  };
+
+  scoredAt?: string;
+}

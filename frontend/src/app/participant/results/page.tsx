@@ -7,6 +7,8 @@ import { ProtectedRouteGuard } from "@/features/dashboard/guards/ProtectedRouteG
 import { useLatestAssessmentResultQuery } from "@/features/assessments/hooks/useAssessmentResultQuery";
 import { SkillFinderResultView } from "@/features/assessments/components/results/SkillFinderResultView";
 import { StreamFinderResultView } from "@/features/assessments/components/results/StreamFinderResultView";
+import { EngineeringBranchFinderResultView } from "@/features/assessments/components/results/EngineeringBranchFinderResultView";
+import { CommerceCareerFinderResultView } from "@/features/assessments/components/results/CommerceCareerFinderResultView";
 import { Sparkles, ArrowRight, BrainCircuit, RefreshCw } from "lucide-react";
 
 export default function ParticipantResultsPage() {
@@ -67,7 +69,7 @@ export default function ParticipantResultsPage() {
                   No Assessment Completed Yet
                 </h2>
                 <p className="text-xs sm:text-sm text-[#526866] dark:text-[#9FB3B0] max-w-md mx-auto leading-relaxed">
-                  Complete your calibrated Skill Finder assessment to unlock your official psychometric archetype, RIASEC interest clusters, and verified career pathways.
+                  Complete your calibrated assessment to unlock your official psychometric archetype, career cluster affinity, and verified career pathways.
                 </p>
               </div>
 
@@ -87,15 +89,25 @@ export default function ParticipantResultsPage() {
                 </Link>
               </div>
             </div>
+          ) : latestResult.assessmentCode === "COMMERCE_CAREER_FINDER" ? (
+            <CommerceCareerFinderResultView
+              result={latestResult}
+              currentLanguage={language}
+              onLanguageChange={setLanguage}
+            />
+          ) : latestResult.assessmentCode === "ENGINEERING_BRANCH_FINDER" ? (
+            <EngineeringBranchFinderResultView
+              result={latestResult}
+              currentLanguage={language}
+              onLanguageChange={setLanguage}
+            />
           ) : latestResult.assessmentCode === "STREAM_FINDER" ? (
-            /* Render Live Stream Finder Psychometric Evaluation */
             <StreamFinderResultView
               result={latestResult}
               currentLanguage={language}
               onLanguageChange={setLanguage}
             />
           ) : (
-            /* Render Live Skill Finder Psychometric Evaluation */
             <SkillFinderResultView
               result={latestResult}
               currentLanguage={language}

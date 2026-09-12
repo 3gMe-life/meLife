@@ -12,6 +12,7 @@ export interface QuestionOptionDTO {
   id: string;
   optionKey: string;
   optionText: string;
+  originalOptionText?: string | null;
   displayOrder: number;
 }
 

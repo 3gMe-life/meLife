@@ -53,12 +53,13 @@ export function LikertQuestion({
     >
       {displayOptions.map((opt, idx) => {
         const isSelected = selectedValue === opt.optionKey;
-        const meta = DEFAULT_LIKERT_LABELS[opt.optionKey] || {
-          label: opt.optionText || `Option ${opt.optionKey}`,
-          sub: "",
-        };
-
-        const displayLabel = opt.optionText || meta.label;
+        const englishReference =
+          opt.originalOptionText || DEFAULT_LIKERT_LABELS[opt.optionKey]?.label || "";
+        const displayLabel = opt.optionText || englishReference || `Option ${opt.optionKey}`;
+        const isBilingual =
+          Boolean(englishReference) &&
+          Boolean(displayLabel) &&
+          englishReference.trim().toLowerCase() !== displayLabel.trim().toLowerCase();
         const indexStr = formatOptionIndex(opt.displayOrder || idx + 1);
 
         return (
@@ -69,7 +70,7 @@ export function LikertQuestion({
             aria-checked={isSelected}
             disabled={disabled}
             onClick={() => !disabled && onSelect(opt.optionKey, opt.id)}
-            className={`group relative flex flex-col justify-between p-4 sm:p-5 rounded-2xl border text-left transition-all duration-180 select-none outline-none min-h-[104px] sm:min-h-[120px] cursor-pointer ${
+            className={`group relative flex flex-col justify-between p-4 sm:p-5 rounded-2xl border text-left transition-all duration-180 select-none outline-none min-h-[110px] sm:min-h-[128px] cursor-pointer ${
               disabled ? "opacity-60 pointer-events-none cursor-not-allowed" : ""
             } ${
               isSelected
@@ -78,7 +79,7 @@ export function LikertQuestion({
             }`}
           >
             {/* Top Row: Option Number Anchor & Selection Indicator */}
-            <div className="flex items-center justify-between w-full mb-3">
+            <div className="flex items-center justify-between w-full mb-2.5">
               <span
                 className={`font-mono text-xs font-bold px-2 py-0.5 rounded-md transition-colors ${
                   isSelected
@@ -103,8 +104,13 @@ export function LikertQuestion({
               </div>
             </div>
 
-            {/* Option Text */}
-            <div className="space-y-0.5">
+            {/* Option Text Stack */}
+            <div className="space-y-1 w-full">
+              {isBilingual && (
+                <div className="text-[11px] font-medium text-[#728B88] dark:text-[#8EA8A4] leading-tight select-none">
+                  {englishReference}
+                </div>
+              )}
               <div
                 className={`font-semibold text-xs sm:text-sm leading-snug tracking-tight transition-colors ${
                   isSelected

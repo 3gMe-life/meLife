@@ -13,6 +13,10 @@ import {
   engineeringBranchFinderScoringService,
   type EngineeringBranchFinderResultDTO,
 } from "../assessments/scoring/engineering-branch-finder-scoring.service";
+import {
+  commerceCareerFinderScoringService,
+  type CommerceCareerFinderResultDTO,
+} from "../assessments/scoring/commerce-career-finder-scoring.service";
 import { interestScoringEngine } from "./skill-finder/interest.scoring";
 import { skillBehaviourScoringEngine } from "./skill-finder/skill-behaviour.scoring";
 import { aptitudeScoringEngine } from "./skill-finder/aptitude.scoring";
@@ -145,7 +149,11 @@ export class ScoringService {
   ): Promise<{
     success: boolean;
     resultId: string;
-    result: SkillFinderFullResultDTO | StreamFinderResultDTO | EngineeringBranchFinderResultDTO;
+    result:
+      | SkillFinderFullResultDTO
+      | StreamFinderResultDTO
+      | EngineeringBranchFinderResultDTO
+      | CommerceCareerFinderResultDTO;
   }> {
     const attempt = await assessmentContentRepository.findAttemptById(attemptId);
     if (!attempt) {
@@ -176,7 +184,18 @@ export class ScoringService {
 
     // Score constructs
     let result: any;
-    if (attempt.assessment_code === "ENGINEERING_BRANCH_FINDER") {
+    if (attempt.assessment_code === "COMMERCE_CAREER_FINDER") {
+      result = commerceCareerFinderScoringService.calculateScores({
+        attemptId,
+        participantId: userId,
+        versionCode: attempt.version_code,
+        versionName: attempt.version_name,
+        responses: rawResponses,
+        completionTimeSeconds: attempt.started_at
+          ? Math.round((Date.now() - new Date(attempt.started_at).getTime()) / 1000)
+          : undefined,
+      });
+    } else if (attempt.assessment_code === "ENGINEERING_BRANCH_FINDER") {
       result = engineeringBranchFinderScoringService.computeEngineeringBranchFinderResult(
         attemptId,
         userId,
