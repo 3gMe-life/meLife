@@ -9,6 +9,7 @@ import { SkillFinderResultView } from "@/features/assessments/components/results
 import { StreamFinderResultView } from "@/features/assessments/components/results/StreamFinderResultView";
 import { EngineeringBranchFinderResultView } from "@/features/assessments/components/results/EngineeringBranchFinderResultView";
 import { CommerceCareerFinderResultView } from "@/features/assessments/components/results/CommerceCareerFinderResultView";
+import { HumanitiesCareerFinderResultView } from "@/features/assessments/components/results/HumanitiesCareerFinderResultView";
 
 export default function AssessmentResultDetailPage() {
   const params = useParams();
@@ -70,6 +71,12 @@ export default function AssessmentResultDetailPage() {
                 Go to Assessments
               </button>
             </div>
+          ) : result.assessmentCode === "HUMANITIES_CAREER_FINDER" ? (
+            <HumanitiesCareerFinderResultView
+              result={result}
+              currentLanguage={language}
+              onLanguageChange={setLanguage}
+            />
           ) : result.assessmentCode === "COMMERCE_CAREER_FINDER" ? (
             <CommerceCareerFinderResultView
               result={result}

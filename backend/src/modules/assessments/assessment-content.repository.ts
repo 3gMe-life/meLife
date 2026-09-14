@@ -19,6 +19,11 @@ import {
   COMMERCE_CAREER_FINDER_QUESTIONS,
 } from "./content/commerce-career-finder-catalog.data";
 import {
+  HUMANITIES_CAREER_FINDER_SECTIONS,
+  HUMANITIES_CAREER_FINDER_DIMENSIONS,
+  HUMANITIES_CAREER_FINDER_QUESTIONS,
+} from "./content/humanities-career-finder-catalog.data";
+import {
   SanitizedQuestionDTO,
   AssessmentSectionSummaryDTO,
   AssessmentAttemptQuestionsResponseDTO,
@@ -744,6 +749,148 @@ export class AssessmentContentRepository {
     }
 
     logger.info("✨ Commerce Career Finder 80-item question bank & options seeded successfully.");
+  }
+
+  /**
+   * Seeds all 80 questions, sections, dimensions, and options for Humanities Career Finder idempotently.
+   */
+  async seedHumanitiesCareerFinderContent(client?: PoolClient): Promise<void> {
+    const isExternalClient = Boolean(client);
+    const db: PoolClient = client || (await pool.connect());
+
+    try {
+      if (!isExternalClient) {
+        await db.query("BEGIN");
+      }
+
+      // 1. Find HUMANITIES_CAREER_FINDER assessment ID
+      const assessRes = await db.query(
+        `SELECT id FROM assessments WHERE code = 'HUMANITIES_CAREER_FINDER' LIMIT 1`
+      );
+      if (!assessRes.rows[0]) {
+        logger.warn("HUMANITIES_CAREER_FINDER assessment catalog entry missing, skipping content seeding");
+        if (!isExternalClient) await db.query("COMMIT");
+        return;
+      }
+      const assessmentId = assessRes.rows[0].id;
+
+      // Fast check: if already seeded 80 items, return immediately
+      const countCheck = await db.query(
+        `SELECT COUNT(*) as count FROM assessment_questions WHERE assessment_id = $1`,
+        [assessmentId]
+      );
+      if (parseInt(countCheck.rows[0]?.count, 10) === 80) {
+        logger.info("✨ Humanities Career Finder question bank already fully seeded (80 items).");
+        if (!isExternalClient) await db.query("COMMIT");
+        return;
+      }
+
+      // 2. Upsert Sections
+      const sectionMap: Record<string, string> = {};
+      for (const sec of HUMANITIES_CAREER_FINDER_SECTIONS) {
+        const sRes = await db.query(
+          `INSERT INTO assessment_sections (assessment_id, code, name, description, display_order, updated_at)
+           VALUES ($1, $2, $3, $4, $5, NOW())
+           ON CONFLICT (assessment_id, code) DO UPDATE SET
+             name = EXCLUDED.name,
+             description = EXCLUDED.description,
+             display_order = EXCLUDED.display_order,
+             updated_at = NOW()
+           RETURNING id`,
+          [assessmentId, sec.code, sec.name, sec.description, sec.displayOrder]
+        );
+        sectionMap[sec.code] = sRes.rows[0].id;
+      }
+
+      // 3. Upsert Dimensions
+      const dimensionMap: Record<string, string> = {};
+      for (const dim of HUMANITIES_CAREER_FINDER_DIMENSIONS) {
+        const sectionId = sectionMap[dim.sectionCode];
+        if (!sectionId) continue;
+
+        const dRes = await db.query(
+          `INSERT INTO assessment_dimensions (section_id, code, name, description, display_order, updated_at)
+           VALUES ($1, $2, $3, $4, $5, NOW())
+           ON CONFLICT (section_id, code) DO UPDATE SET
+             name = EXCLUDED.name,
+             description = EXCLUDED.description,
+             display_order = EXCLUDED.display_order,
+             updated_at = NOW()
+           RETURNING id`,
+          [sectionId, dim.code, dim.name, dim.description, dim.displayOrder]
+        );
+        dimensionMap[dim.code] = dRes.rows[0].id;
+      }
+
+      // 4. Upsert Questions & Options
+      for (const q of HUMANITIES_CAREER_FINDER_QUESTIONS) {
+        const sectionId = sectionMap[q.sectionCode];
+        if (!sectionId) continue;
+
+        const dimensionId = q.dimensionCode ? dimensionMap[q.dimensionCode] || null : null;
+        const questionNumber = q.displayOrder;
+        const maxPoints = q.questionType === "likert_1_5" ? 5.0 : 1.0;
+
+        const qRes = await db.query(
+          `INSERT INTO assessment_questions (
+             assessment_id, section_id, dimension_id, question_number, question_text,
+             question_type, max_points, is_required, display_order, updated_at
+           )
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+           ON CONFLICT (assessment_id, question_number) DO UPDATE SET
+             section_id = EXCLUDED.section_id,
+             dimension_id = EXCLUDED.dimension_id,
+             question_text = EXCLUDED.question_text,
+             question_type = EXCLUDED.question_type,
+             max_points = EXCLUDED.max_points,
+             display_order = EXCLUDED.display_order,
+             updated_at = NOW()
+           RETURNING id`,
+          [
+            assessmentId,
+            sectionId,
+            dimensionId,
+            questionNumber,
+            q.questionText,
+            q.questionType,
+            maxPoints,
+            true,
+            questionNumber,
+          ]
+        );
+        const questionId = qRes.rows[0].id;
+
+        // Upsert Options
+        if (q.options && q.options.length > 0) {
+          for (const opt of q.options) {
+            await db.query(
+              `INSERT INTO question_options (question_id, option_key, option_text, score_value, display_order, updated_at)
+               VALUES ($1, $2, $3, $4, $5, NOW())
+               ON CONFLICT (question_id, option_key) DO UPDATE SET
+                 option_text = EXCLUDED.option_text,
+                 score_value = EXCLUDED.score_value,
+                 display_order = EXCLUDED.display_order,
+                 updated_at = NOW()`,
+              [questionId, opt.optionKey, opt.optionText, opt.scoreValue || 0, opt.displayOrder]
+            );
+          }
+        }
+      }
+
+      if (!isExternalClient) {
+        await db.query("COMMIT");
+      }
+      logger.info("✨ Humanities Career Finder 80-item question bank & options seeded successfully.");
+    } catch (err) {
+      if (!isExternalClient) {
+        await db.query("ROLLBACK");
+      }
+      throw err;
+    } finally {
+      if (!isExternalClient) {
+        db.release();
+      }
+    }
   }
 
   /**

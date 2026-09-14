@@ -605,3 +605,99 @@ export interface CommerceCareerFinderResult {
 
   scoredAt?: string;
 }
+
+export type HumanitiesFamilyCode =
+  | "HUMAN_BEHAVIOUR_WELLBEING"
+  | "LAW_PUBLIC_AFFAIRS_JUSTICE"
+  | "MEDIA_COMM_CREATIVE_CULTURE"
+  | "EDUCATION_LANG_SOCIAL_RESEARCH";
+
+export interface HumanitiesCareerFamilyScoreItem {
+  familyCode: HumanitiesFamilyCode;
+  familyName: string;
+  likertPoints: number;
+  maxLikertPoints: number;
+  likertPercentage: number;
+  likertDisplayPercentage: number;
+  choiceCount: number;
+  maxChoiceCount: number;
+  choicePercentage: number;
+  choiceDisplayPercentage: number;
+  compatibilityPercentage: number;
+  displayPercentage: number;
+  alignment: string;
+  suggestedPathways: string;
+  exampleAreas: string;
+  counsellingNote: string;
+}
+
+export interface HumanitiesDimensionScoreItem {
+  dimensionCode: string;
+  dimensionName: string;
+  description: string;
+  rawScore: number;
+  maxScore: number;
+  normalizedScore: number;
+  interpretation: string;
+  answeredCount: number;
+  totalItems: number;
+  strongestCareerLink: string;
+}
+
+export interface HumanitiesCareerFinderResult {
+  resultId: string;
+  attemptId: string;
+  participantId: string;
+  assessmentCode: "HUMANITIES_CAREER_FINDER";
+  assessmentName: string;
+  versionCode?: string | null;
+  versionName?: string | null;
+  language?: string;
+  completedAt?: string;
+  completedQuestions: number;
+  totalQuestions: number;
+  completionPercentage: number;
+  isComplete: boolean;
+
+  familyScores: Record<HumanitiesFamilyCode, HumanitiesCareerFamilyScoreItem>;
+  sortedFamilies: HumanitiesCareerFamilyScoreItem[];
+
+  primaryFamily: HumanitiesCareerFamilyScoreItem;
+  secondaryFamily: HumanitiesCareerFamilyScoreItem;
+
+  scoreGap: number;
+  scoreGapPercentage: number;
+  clarity: string;
+  isMixedProfile: boolean;
+
+  dimensionScores: Record<string, HumanitiesDimensionScoreItem>;
+  sortedDimensions: HumanitiesDimensionScoreItem[];
+
+  guidance: {
+    interpretationSummary: string;
+    careerExplorationDirection: string;
+    finalDecisionPrinciple: string;
+    doGuidelines: string[];
+    avoidGuidelines: string[];
+    academicSubjectGuidance: string[];
+    counsellorPrinciples: Array<{
+      area: string;
+      interpretation: string;
+      doText: string;
+      avoidText: string;
+    }>;
+  };
+
+  responseQuality: {
+    isComplete: boolean;
+    answeredCount: number;
+    totalQuestions: number;
+    straightLiningDetected: boolean;
+    completionTimeSeconds?: number;
+    qualityFlag: string;
+    pilotDisclaimer: string;
+  };
+
+  scoredAt?: string;
+}
+

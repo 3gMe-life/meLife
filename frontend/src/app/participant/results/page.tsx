@@ -9,6 +9,7 @@ import { SkillFinderResultView } from "@/features/assessments/components/results
 import { StreamFinderResultView } from "@/features/assessments/components/results/StreamFinderResultView";
 import { EngineeringBranchFinderResultView } from "@/features/assessments/components/results/EngineeringBranchFinderResultView";
 import { CommerceCareerFinderResultView } from "@/features/assessments/components/results/CommerceCareerFinderResultView";
+import { HumanitiesCareerFinderResultView } from "@/features/assessments/components/results/HumanitiesCareerFinderResultView";
 import { Sparkles, ArrowRight, BrainCircuit, RefreshCw } from "lucide-react";
 
 export default function ParticipantResultsPage() {
@@ -89,6 +90,12 @@ export default function ParticipantResultsPage() {
                 </Link>
               </div>
             </div>
+          ) : latestResult.assessmentCode === "HUMANITIES_CAREER_FINDER" ? (
+            <HumanitiesCareerFinderResultView
+              result={latestResult}
+              currentLanguage={language}
+              onLanguageChange={setLanguage}
+            />
           ) : latestResult.assessmentCode === "COMMERCE_CAREER_FINDER" ? (
             <CommerceCareerFinderResultView
               result={latestResult}

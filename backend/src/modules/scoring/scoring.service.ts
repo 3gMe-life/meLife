@@ -17,6 +17,10 @@ import {
   commerceCareerFinderScoringService,
   type CommerceCareerFinderResultDTO,
 } from "../assessments/scoring/commerce-career-finder-scoring.service";
+import {
+  humanitiesCareerFinderScoringService,
+  type HumanitiesCareerFinderResultDTO,
+} from "../assessments/scoring/humanities-career-finder-scoring.service";
 import { interestScoringEngine } from "./skill-finder/interest.scoring";
 import { skillBehaviourScoringEngine } from "./skill-finder/skill-behaviour.scoring";
 import { aptitudeScoringEngine } from "./skill-finder/aptitude.scoring";
@@ -139,7 +143,6 @@ export class ScoringService {
   }
 
   /**
-   * Finalizes and scores an assessment attempt.
    * Loads responses, scores constructs, persists result snapshot, and updates attempt state.
    */
   async scoreAndFinalizeAttempt(
@@ -153,7 +156,8 @@ export class ScoringService {
       | SkillFinderFullResultDTO
       | StreamFinderResultDTO
       | EngineeringBranchFinderResultDTO
-      | CommerceCareerFinderResultDTO;
+      | CommerceCareerFinderResultDTO
+      | HumanitiesCareerFinderResultDTO;
   }> {
     const attempt = await assessmentContentRepository.findAttemptById(attemptId);
     if (!attempt) {
@@ -184,7 +188,18 @@ export class ScoringService {
 
     // Score constructs
     let result: any;
-    if (attempt.assessment_code === "COMMERCE_CAREER_FINDER") {
+    if (attempt.assessment_code === "HUMANITIES_CAREER_FINDER") {
+      result = humanitiesCareerFinderScoringService.calculateScores({
+        attemptId,
+        participantId: userId,
+        versionCode: attempt.version_code,
+        versionName: attempt.version_name,
+        responses: rawResponses,
+        completionTimeSeconds: attempt.started_at
+          ? Math.round((Date.now() - new Date(attempt.started_at).getTime()) / 1000)
+          : undefined,
+      });
+    } else if (attempt.assessment_code === "COMMERCE_CAREER_FINDER") {
       result = commerceCareerFinderScoringService.calculateScores({
         attemptId,
         participantId: userId,
