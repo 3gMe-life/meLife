@@ -10,6 +10,8 @@ import { StreamFinderResultView } from "@/features/assessments/components/result
 import { EngineeringBranchFinderResultView } from "@/features/assessments/components/results/EngineeringBranchFinderResultView";
 import { CommerceCareerFinderResultView } from "@/features/assessments/components/results/CommerceCareerFinderResultView";
 import { HumanitiesCareerFinderResultView } from "@/features/assessments/components/results/HumanitiesCareerFinderResultView";
+import { RightCareerFinderResultView } from "@/features/assessments/components/results/RightCareerFinderResultView";
+import { AiJobRiskFinderResultView } from "@/features/assessments/components/results/AiJobRiskFinderResultView";
 
 export default function AssessmentResultDetailPage() {
   const params = useParams();
@@ -71,6 +73,18 @@ export default function AssessmentResultDetailPage() {
                 Go to Assessments
               </button>
             </div>
+          ) : result.assessmentCode === "AI_JOB_RISK_FINDER" ? (
+            <AiJobRiskFinderResultView
+              result={result}
+              currentLanguage={language}
+              onLanguageChange={setLanguage}
+            />
+          ) : result.assessmentCode === "RIGHT_CAREER_FINDER" ? (
+            <RightCareerFinderResultView
+              result={result}
+              currentLanguage={language}
+              onLanguageChange={setLanguage}
+            />
           ) : result.assessmentCode === "HUMANITIES_CAREER_FINDER" ? (
             <HumanitiesCareerFinderResultView
               result={result}

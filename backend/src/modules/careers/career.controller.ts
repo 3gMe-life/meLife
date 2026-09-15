@@ -1,40 +1,43 @@
 import { Request, Response, NextFunction } from "express";
 import { AppError } from "../../common/errors/app-error";
 import { HttpStatus } from "../../common/constants/http-status";
-import { careerRecommendationService } from "./career-recommendation.service";
+import { careerRecommendationService, GetRecommendedPathwaysOptions } from "./career-recommendation.service";
 import { careerRepository } from "./career.repository";
+import { CareerTier } from "./career.types";
 
 export class CareerController {
   /**
    * GET /api/v1/careers
-   * Retrieves all available career pathways with optional search / category filters.
+   * Retrieves all available career pathways with optional search / domain / category filters.
    */
   async getAllCareers(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const languageCode = (req.query.language as string) || (req.query.lang as string) || "en";
+      const domainCode = req.query.domain as string || req.query.domainCode as string;
+      const familyCode = req.query.family as string || req.query.familyCode as string;
+      const clusterCode = req.query.cluster as string || req.query.clusterCode as string;
       const category = req.query.category as string;
       const search = req.query.search as string;
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+      const isEmerging = req.query.isEmerging !== undefined ? req.query.isEmerging === "true" : undefined;
 
-      let careers = await careerRepository.findAllCareers(languageCode);
-
-      if (category && category !== "ALL") {
-        careers = careers.filter((c) => c.category.toLowerCase().includes(category.toLowerCase()));
-      }
-
-      if (search) {
-        const query = search.toLowerCase().trim();
-        careers = careers.filter(
-          (c) =>
-            c.title.toLowerCase().includes(query) ||
-            c.category.toLowerCase().includes(query) ||
-            c.description.toLowerCase().includes(query) ||
-            c.required_skills.some((s) => s.toLowerCase().includes(query))
-        );
-      }
+      const careers = await careerRepository.findAllCareers({
+        languageCode,
+        domainCode,
+        familyCode,
+        clusterCode,
+        category,
+        search,
+        page,
+        limit,
+        isEmerging,
+      });
 
       res.status(HttpStatus.OK).json({
         success: true,
         data: careers,
+        total: careers.length,
       });
     } catch (err) {
       next(err);
@@ -44,7 +47,7 @@ export class CareerController {
   /**
    * GET /api/v1/careers/recommendations
    * Retrieves ranked career pathway recommendations personalized to the participant's
-   * psychometric results.
+   * psychometric results across multiple assessments.
    */
   async getRecommendations(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -53,10 +56,30 @@ export class CareerController {
       }
 
       const languageCode = (req.query.language as string) || (req.query.lang as string) || "en";
+      const tier = req.query.tier as CareerTier | "ALL" | undefined;
+      const domainCode = (req.query.domain as string) || (req.query.domainCode as string);
+      const familyCode = (req.query.family as string) || (req.query.familyCode as string);
+      const clusterCode = (req.query.cluster as string) || (req.query.clusterCode as string);
+      const search = req.query.search as string;
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+      const viewAll = req.query.viewAll === "true" || req.query.all === "true";
+
+      const options: GetRecommendedPathwaysOptions = {
+        languageCode,
+        tier,
+        domainCode,
+        familyCode,
+        clusterCode,
+        search,
+        page,
+        limit,
+        viewAll,
+      };
 
       const data = await careerRecommendationService.getRecommendedPathways(
         req.user.id,
-        languageCode
+        options
       );
 
       res.status(HttpStatus.OK).json({

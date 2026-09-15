@@ -2,13 +2,14 @@
  * 3G MeLife Psychometrically Calibrated Multi-Assessment Career Matching Engine
  *
  * Implements a scientifically grounded, multi-pillar alignment algorithm across:
- * 1. Interest Alignment (RIASEC Model): 25%
- * 2. Cognitive & Behavioural Skills: 25%
- * 3. Demonstrated Aptitude Tasks: 20%
- * 4. Learning Archetype & Developmental Traits: 15%
- * 5. Academic Stream Alignment (Stream Finder Integration): 15%
+ * 1. Interest Alignment (RIASEC Model)
+ * 2. Cognitive & Behavioural Skills (8 Core Competencies)
+ * 3. Demonstrated Aptitude Tasks (8 Spatial/Logic/Numerical Constructs)
+ * 4. Learning Archetype & Developmental Traits (7 Strengths + 12 Archetypes)
+ * 5. Academic Stream Alignment (Stream Finder Integration)
+ * 6. Specialized Domain & Career Family Affinity (Right Career, Commerce, Humanities, Engineering Finder)
  *
- * Dynamically re-normalizes weights based on assessment completeness (Skill Finder, Stream Finder, or Dual).
+ * Dynamically re-normalizes weights based on assessment completeness.
  * Produces explainable, non-deterministic exploratory reasoning grounded in actual assessment vectors.
  */
 
@@ -16,14 +17,24 @@ import {
   CareerEntity,
   CareerMatchDTO,
   CareerMatchReasoning,
+  CareerMatchDriver,
+  CareerTier,
   MatchPillarBreakdown,
 } from "./career.types";
 import { SkillFinderFullResultDTO } from "../scoring/scoring.types";
 import { StreamFinderResultDTO } from "../assessments/scoring/stream-finder-scoring.service";
+import { RightCareerFinderResultDTO } from "../assessments/scoring/right-career-finder-scoring.service";
+import { CommerceCareerFinderResultDTO } from "../assessments/scoring/commerce-career-finder-scoring.service";
+import { HumanitiesCareerFinderResultDTO } from "../assessments/scoring/humanities-career-finder-scoring.service";
+import { EngineeringBranchFinderResultDTO } from "../assessments/scoring/engineering-branch-finder-scoring.service";
 
 export interface MultiAssessmentInput {
   skillFinderResult?: SkillFinderFullResultDTO | null;
   streamFinderResult?: StreamFinderResultDTO | null;
+  rightCareerFinderResult?: RightCareerFinderResultDTO | null;
+  commerceCareerFinderResult?: CommerceCareerFinderResultDTO | null;
+  humanitiesCareerFinderResult?: HumanitiesCareerFinderResultDTO | null;
+  engineeringBranchFinderResult?: EngineeringBranchFinderResultDTO | null;
 }
 
 export interface CareerMatchComputationOptions {
@@ -41,7 +52,7 @@ export class CareerMatchingService {
     options?: CareerMatchComputationOptions
   ): CareerMatchDTO[] {
     const lang = options?.languageCode || "en";
-    
+
     // Normalize input format
     const multiInput: MultiAssessmentInput =
       "assessmentCode" in input
@@ -53,12 +64,15 @@ export class CareerMatchingService {
     );
 
     // Sort descending by match percentage, tie-break by display order
-    return scoredList.sort((a, b) => {
+    scoredList.sort((a, b) => {
       if (b.matchPercentage !== a.matchPercentage) {
         return b.matchPercentage - a.matchPercentage;
       }
       return 0;
     });
+
+    // Assign tiers based on relative distribution and thresholds
+    return this.assignTiersToMatches(scoredList);
   }
 
   /**
@@ -76,9 +90,16 @@ export class CareerMatchingService {
 
     const skillResult = multiInput.skillFinderResult;
     const streamResult = multiInput.streamFinderResult;
+    const rightCareerResult = multiInput.rightCareerFinderResult;
+    const commerceResult = multiInput.commerceCareerFinderResult;
+    const humanitiesResult = multiInput.humanitiesCareerFinderResult;
+    const engineeringResult = multiInput.engineeringBranchFinderResult;
 
     const hasSkillFinder = Boolean(skillResult);
     const hasStreamFinder = Boolean(streamResult && streamResult.streamScores);
+    const hasDomainCareerFinder = Boolean(
+      rightCareerResult || commerceResult || humanitiesResult || engineeringResult
+    );
 
     // ========================================================================
     // 1. EXTRACT NORMALIZED STUDENT VECTORS (0 - 100 SCALE)
@@ -88,6 +109,7 @@ export class CareerMatchingService {
     const aptitudeMap = this.extractAptitudeScores(skillResult);
     const developmentMap = this.extractDevelopmentScores(skillResult);
     const streamsMap = this.extractStreamScores(streamResult);
+    const domainScoresMap = this.extractDomainAndSpecializedScores(multiInput);
 
     const targetRiasec = career.related_dimensions?.riasec || {};
     const targetSkills = career.related_dimensions?.skills || {};
@@ -95,11 +117,12 @@ export class CareerMatchingService {
     const targetDevelopment = career.related_dimensions?.development || {};
     const targetStreams = career.related_dimensions?.streams || {};
     const targetArchetypes = career.related_dimensions?.archetypes || [];
+    const targetSpecialized = career.related_dimensions?.specialized_dimensions || {};
 
     // ========================================================================
     // 2. COMPUTE PILLAR ALIGNMENT SCORES
     // ========================================================================
-    
+
     // Pillar 1: Interest Alignment (RIASEC)
     const interestAffinity = this.computeWeightedAffinity(riasecMap, targetRiasec, 70);
 
@@ -112,7 +135,7 @@ export class CareerMatchingService {
     // Pillar 4: Learning Archetype & Developmental Trait Alignment
     const studentArchetype = skillResult?.learningProfile?.archetypeTitle || "Practical Explorer";
     const devTraitAffinity = this.computeWeightedAffinity(developmentMap, targetDevelopment, 72);
-    
+
     let archetypeBoost = 0;
     const hasDirectArchetypeMatch = targetArchetypes.some(
       (arch) =>
@@ -123,15 +146,33 @@ export class CareerMatchingService {
       archetypeBoost = 6;
     } else {
       const archLower = studentArchetype.toLowerCase();
-      const catLower = career.category.toLowerCase();
+      const catLower = (career.category || "").toLowerCase();
+      const domainLower = (career.domain_name || "").toLowerCase();
       if (
-        (archLower.includes("explorer") && (catLower.includes("stem") || catLower.includes("tech") || catLower.includes("science"))) ||
-        (archLower.includes("builder") && (catLower.includes("engineering") || catLower.includes("applied"))) ||
-        (archLower.includes("creator") && (catLower.includes("design") || catLower.includes("arts"))) ||
-        (archLower.includes("coordinator") && (catLower.includes("analytics") || catLower.includes("economics") || catLower.includes("business"))) ||
-        (archLower.includes("catalyst") || archLower.includes("mentor")) && (catLower.includes("health") || catLower.includes("learning") || catLower.includes("psychology"))
+        archLower.includes("explorer") &&
+        (catLower.includes("stem") || catLower.includes("tech") || catLower.includes("science") || domainLower.includes("tech") || domainLower.includes("data"))
       ) {
-        archetypeBoost = 3;
+        archetypeBoost = 4;
+      } else if (
+        archLower.includes("builder") &&
+        (catLower.includes("engineering") || catLower.includes("applied") || domainLower.includes("engineering"))
+      ) {
+        archetypeBoost = 4;
+      } else if (
+        archLower.includes("creator") &&
+        (catLower.includes("design") || catLower.includes("arts") || domainLower.includes("creative") || domainLower.includes("media"))
+      ) {
+        archetypeBoost = 4;
+      } else if (
+        archLower.includes("coordinator") &&
+        (catLower.includes("analytics") || catLower.includes("economics") || catLower.includes("business") || domainLower.includes("finance") || domainLower.includes("management"))
+      ) {
+        archetypeBoost = 4;
+      } else if (
+        (archLower.includes("catalyst") || archLower.includes("mentor") || archLower.includes("helper")) &&
+        (catLower.includes("health") || catLower.includes("learning") || catLower.includes("psychology") || domainLower.includes("education") || domainLower.includes("health"))
+      ) {
+        archetypeBoost = 4;
       }
     }
     const personalityAffinity = Math.min(98, Math.max(50, devTraitAffinity + archetypeBoost));
@@ -139,15 +180,47 @@ export class CareerMatchingService {
     // Pillar 5: Academic Stream Alignment (Stream Finder)
     const streamAffinity = this.computeWeightedAffinity(streamsMap, targetStreams, 75);
 
+    // Pillar 6: Domain & Specialized Career Family Affinity
+    const domainAffinity = this.computeDomainAndSpecializedAffinity(
+      career,
+      domainScoresMap,
+      targetSpecialized
+    );
+
     // ========================================================================
     // 3. DYNAMIC WEIGHT NORMALIZATION ACROSS AVAILABLE ASSESSMENTS
     // ========================================================================
     let compositeScore = 75;
-    let confidence: "High Confidence" | "Moderate Confidence" | "Baseline Confidence" | "Exploratory" = "Exploratory";
+    let confidence: "High Confidence" | "Moderate Confidence" | "Baseline Confidence" | "Exploratory" =
+      "Exploratory";
     let assessmentCoverage = "Exploratory Baseline";
 
-    if (hasSkillFinder && hasStreamFinder) {
-      // Dual Assessment: 25% Interest + 25% Skills + 20% Aptitude + 15% Personality + 15% Stream
+    if (hasSkillFinder && hasStreamFinder && hasDomainCareerFinder) {
+      // Full Assessment Suite (3+ Modules):
+      // 25% Domain/Career Affinity + 20% RIASEC + 20% Skills + 15% Aptitude + 10% Stream + 10% Personality
+      compositeScore =
+        0.25 * domainAffinity +
+        0.20 * interestAffinity +
+        0.20 * skillAffinity +
+        0.15 * aptitudeAffinity +
+        0.10 * streamAffinity +
+        0.10 * personalityAffinity;
+      confidence = "High Confidence";
+      assessmentCoverage = "Comprehensive Multi-Assessment Calibrated";
+    } else if (hasSkillFinder && hasDomainCareerFinder) {
+      // Skill Finder + Career Finder:
+      // 30% Domain Affinity + 25% RIASEC + 20% Skills + 15% Aptitude + 10% Personality
+      compositeScore =
+        0.30 * domainAffinity +
+        0.25 * interestAffinity +
+        0.20 * skillAffinity +
+        0.15 * aptitudeAffinity +
+        0.10 * personalityAffinity;
+      confidence = "High Confidence";
+      assessmentCoverage = "Skill Finder + Career Finder Calibrated";
+    } else if (hasSkillFinder && hasStreamFinder) {
+      // Skill Finder + Stream Finder:
+      // 25% RIASEC + 25% Skills + 20% Aptitude + 15% Personality + 15% Stream
       compositeScore =
         0.25 * interestAffinity +
         0.25 * skillAffinity +
@@ -156,6 +229,18 @@ export class CareerMatchingService {
         0.15 * streamAffinity;
       confidence = "High Confidence";
       assessmentCoverage = "Skill Finder + Stream Finder";
+    } else if (hasDomainCareerFinder && hasStreamFinder) {
+      // Career Finder + Stream Finder:
+      // 55% Domain Affinity + 30% Stream + 15% Baseline Personality/Skills
+      compositeScore = 0.55 * domainAffinity + 0.30 * streamAffinity + 0.15 * 72;
+      confidence = "Moderate Confidence";
+      assessmentCoverage = "Career Finder + Stream Finder Calibrated";
+    } else if (hasDomainCareerFinder) {
+      // Career Finder Only:
+      // 70% Domain Affinity + 30% Baseline Compatibility
+      compositeScore = 0.70 * domainAffinity + 0.30 * 70;
+      confidence = "Moderate Confidence";
+      assessmentCoverage = "Career Finder Calibrated";
     } else if (hasSkillFinder) {
       // Skill Finder Only: Re-normalize over 85 base weight
       compositeScore =
@@ -181,18 +266,32 @@ export class CareerMatchingService {
       aptitudeScore: Math.round(aptitudeAffinity),
       personalityScore: Math.round(personalityAffinity),
       streamScore: hasStreamFinder ? Math.round(streamAffinity) : undefined,
+      domainScore: hasDomainCareerFinder ? Math.round(domainAffinity) : undefined,
     };
 
     // ========================================================================
-    // 4. EXTRACT PERSONALIZED STRENGTHS & DEVELOPMENT TARGETS
+    // 4. EXTRACT PERSONALIZED DRIVER CONSTRUCTS (EXPLAINABILITY LAYER)
+    // ========================================================================
+    const driverConstructs = this.synthesizeDriverConstructs(
+      career,
+      multiInput,
+      riasecMap,
+      skillsMap,
+      aptitudeMap,
+      streamsMap,
+      domainScoresMap
+    );
+
+    // ========================================================================
+    // 5. EXTRACT PERSONALIZED STRENGTHS & DEVELOPMENT TARGETS
     // ========================================================================
     const strengthAlignment = this.extractStrengthAlignment(
       career,
-      skillResult,
-      streamResult,
+      multiInput,
       riasecMap,
       skillsMap,
-      aptitudeMap
+      aptitudeMap,
+      driverConstructs
     );
 
     const developmentAreas = this.extractDevelopmentAreas(
@@ -203,32 +302,78 @@ export class CareerMatchingService {
     );
 
     // ========================================================================
-    // 5. SYNTHESIZE EXPLAINABLE EXPLORATORY REASONING
+    // 6. SYNTHESIZE EXPLAINABLE EXPLORATORY REASONING
     // ========================================================================
     const reasoning = this.buildExplorationReasoning(
       career,
       studentArchetype,
       strengthAlignment,
+      driverConstructs,
       hasStreamFinder ? streamResult?.primaryStream : undefined
     );
+
+    // Initial tier assignment (refined later in bulk sorting)
+    let tier: CareerTier = "EXPLORE_FURTHER";
+    if (boundedMatch >= 80) tier = "PRIMARY";
+    else if (boundedMatch >= 70) tier = "SECONDARY";
+    else if (boundedMatch < 60) tier = "DEVELOPING";
 
     return {
       id: career.id,
       slug: career.slug,
       title: career.title,
+      shortTitle: career.short_title,
       category: career.category,
       industry: career.industry,
+      domainCode: career.domain_code,
+      domainName: career.domain_name,
+      familyCode: career.family_code,
+      familyName: career.family_name,
+      clusterCode: career.cluster_code,
+      clusterName: career.cluster_name,
+      specialization: career.specialization,
+      growthCategory: career.growth_category,
+      educationLevel: career.education_level,
+      isEmerging: career.is_emerging,
       description: career.description,
       futureGrowth: career.future_growth,
       matchPercentage: boundedMatch,
-      keySkills: career.required_skills.slice(0, 5),
+      tier,
+      keySkills: career.required_skills ? career.required_skills.slice(0, 5) : [],
       reasoning,
+      driverConstructs,
       strengthAlignment,
       developmentAreas,
       matchBreakdown,
       confidence,
       assessmentCoverage,
     };
+  }
+
+  /**
+   * Partitions scored careers into clean tiers (PRIMARY, SECONDARY, EXPLORE_FURTHER, DEVELOPING).
+   */
+  private assignTiersToMatches(matches: CareerMatchDTO[]): CareerMatchDTO[] {
+    if (matches.length === 0) return matches;
+
+    return matches.map((match, index) => {
+      let tier: CareerTier;
+
+      if (index < 6 || (match.matchPercentage >= 86 && index < 10)) {
+        tier = "PRIMARY";
+      } else if (index < 24 || (match.matchPercentage >= 78 && index < 30)) {
+        tier = "SECONDARY";
+      } else if (index < 60 || match.matchPercentage >= 65) {
+        tier = "EXPLORE_FURTHER";
+      } else {
+        tier = "DEVELOPING";
+      }
+
+      return {
+        ...match,
+        tier,
+      };
+    });
   }
 
   // ==========================================================================
@@ -262,6 +407,53 @@ export class CareerMatchingService {
 
     if (totalWeight === 0) return defaultFallback;
     return Math.round((weightedSum / totalWeight) * 100) / 100;
+  }
+
+  /**
+   * Computes domain and specialized career family affinity.
+   */
+  private computeDomainAndSpecializedAffinity(
+    career: CareerEntity,
+    domainScoresMap: Record<string, number>,
+    targetSpecialized: Record<string, number>
+  ): number {
+    const domainCode = (career.domain_code || "").toLowerCase();
+    const familyCode = (career.family_code || "").toLowerCase();
+    const clusterCode = (career.cluster_code || "").toLowerCase();
+
+    let directDomainScore = 70;
+    let matchCount = 0;
+    let scoreSum = 0;
+
+    // Check cluster code
+    if (clusterCode && typeof domainScoresMap[clusterCode] === "number") {
+      scoreSum += domainScoresMap[clusterCode] * 1.5;
+      matchCount += 1.5;
+    }
+
+    // Check family code
+    if (familyCode && typeof domainScoresMap[familyCode] === "number") {
+      scoreSum += domainScoresMap[familyCode] * 1.2;
+      matchCount += 1.2;
+    }
+
+    // Check domain code
+    if (domainCode && typeof domainScoresMap[domainCode] === "number") {
+      scoreSum += domainScoresMap[domainCode] * 1.0;
+      matchCount += 1.0;
+    }
+
+    if (matchCount > 0) {
+      directDomainScore = scoreSum / matchCount;
+    }
+
+    // Combine with specialized construct weights
+    if (Object.keys(targetSpecialized).length > 0) {
+      const specializedScore = this.computeWeightedAffinity(domainScoresMap, targetSpecialized, directDomainScore);
+      return Math.round((directDomainScore * 0.5 + specializedScore * 0.5) * 10) / 10;
+    }
+
+    return Math.round(directDomainScore * 10) / 10;
   }
 
   /**
@@ -338,7 +530,6 @@ export class CareerMatchingService {
       return map;
     }
 
-    // Direct parsing from skillBehaviour dimensions
     for (const dim of result.skillBehaviour?.dimensions || []) {
       const key = dim.name.toLowerCase().replace(/[^a-z0-9]/g, "_");
       const pos = dim.scalePositionPercentage || 50;
@@ -451,54 +642,252 @@ export class CareerMatchingService {
   }
 
   /**
+   * Extracts specialized domain, family, and construct alignment scores across Career Finder assessments.
+   */
+  private extractDomainAndSpecializedScores(input: MultiAssessmentInput): Record<string, number> {
+    const map: Record<string, number> = {};
+
+    // 1. Right Career Finder (General Career Finder)
+    if (input.rightCareerFinderResult) {
+      const r = input.rightCareerFinderResult;
+      if (r.familyScores) {
+        for (const [code, details] of Object.entries(r.familyScores)) {
+          const normKey = code.toLowerCase().trim();
+          map[normKey] = details.displayPercentage;
+
+          // Cross-map to taxonomy domain codes
+          if (code === "TECH_COMPUTING_AI") {
+            map["tech_computing"] = Math.max(map["tech_computing"] || 0, details.displayPercentage);
+            map["emerging_frontiers"] = Math.max(map["emerging_frontiers"] || 0, details.displayPercentage);
+          } else if (code === "BUSINESS_FINANCE_ENTERPRISE") {
+            map["business_management"] = Math.max(map["business_management"] || 0, details.displayPercentage);
+            map["finance_economics"] = Math.max(map["finance_economics"] || 0, details.displayPercentage);
+          } else if (code === "HEALTHCARE_LIFE_SCIENCES") {
+            map["healthcare_life_sciences"] = Math.max(map["healthcare_life_sciences"] || 0, details.displayPercentage);
+            map["pure_applied_sciences"] = Math.max(map["pure_applied_sciences"] || 0, details.displayPercentage);
+          } else if (code === "LAW_POLICY_GOVERNANCE") {
+            map["law_governance"] = Math.max(map["law_governance"] || 0, details.displayPercentage);
+            map["education_human_dev"] = Math.max(map["education_human_dev"] || 0, details.displayPercentage);
+          } else if (code === "CREATIVE_DESIGN_MEDIA") {
+            map["design_creative_media"] = Math.max(map["design_creative_media"] || 0, details.displayPercentage);
+          } else if (code === "ENGINEERING_SUSTAINABILITY") {
+            map["engineering_manufacturing"] = Math.max(map["engineering_manufacturing"] || 0, details.displayPercentage);
+            map["environment_sustainability"] = Math.max(map["environment_sustainability"] || 0, details.displayPercentage);
+            map["aviation_logistics"] = Math.max(map["aviation_logistics"] || 0, details.displayPercentage);
+          }
+        }
+      }
+
+      if (r.dimensionScores) {
+        for (const [code, details] of Object.entries(r.dimensionScores)) {
+          const normKey = code.toLowerCase().trim();
+          map[normKey] = details.normalizedScore;
+        }
+      }
+    }
+
+    // 2. Commerce Career Finder
+    if (input.commerceCareerFinderResult) {
+      const c = input.commerceCareerFinderResult;
+      if (c.familyScores) {
+        for (const [code, details] of Object.entries(c.familyScores)) {
+          const normKey = code.toLowerCase().trim();
+          map[normKey] = details.displayPercentage;
+
+          if (code === "ACCOUNTING_AUDIT_TAX" || code === "FINANCE_INVESTMENT_BANKING") {
+            map["finance_economics"] = Math.max(map["finance_economics"] || 0, details.displayPercentage);
+            map["business_management"] = Math.max(map["business_management"] || 0, details.displayPercentage * 0.85);
+          } else if (code === "BUSINESS_MANAGEMENT_ENTREPRENEURSHIP") {
+            map["business_management"] = Math.max(map["business_management"] || 0, details.displayPercentage);
+          } else if (code === "ECONOMICS_ANALYTICS_FINTECH") {
+            map["finance_economics"] = Math.max(map["finance_economics"] || 0, details.displayPercentage);
+            map["tech_computing"] = Math.max(map["tech_computing"] || 0, details.displayPercentage * 0.8);
+          }
+        }
+      }
+
+      if (c.dimensionScores) {
+        for (const [code, details] of Object.entries(c.dimensionScores)) {
+          map[code.toLowerCase().trim()] = details.normalizedScore;
+        }
+      }
+    }
+
+    // 3. Humanities Career Finder
+    if (input.humanitiesCareerFinderResult) {
+      const h = input.humanitiesCareerFinderResult;
+      if (h.familyScores) {
+        for (const [code, details] of Object.entries(h.familyScores)) {
+          const normKey = code.toLowerCase().trim();
+          map[normKey] = details.displayPercentage;
+
+          if (code === "HUMAN_BEHAVIOUR_WELLBEING") {
+            map["education_human_dev"] = Math.max(map["education_human_dev"] || 0, details.displayPercentage);
+            map["healthcare_life_sciences"] = Math.max(map["healthcare_life_sciences"] || 0, details.displayPercentage * 0.8);
+          } else if (code === "LAW_PUBLIC_AFFAIRS_JUSTICE") {
+            map["law_governance"] = Math.max(map["law_governance"] || 0, details.displayPercentage);
+          } else if (code === "MEDIA_COMM_CREATIVE_CULTURE") {
+            map["design_creative_media"] = Math.max(map["design_creative_media"] || 0, details.displayPercentage);
+          } else if (code === "EDUCATION_LANG_SOCIAL_RESEARCH") {
+            map["education_human_dev"] = Math.max(map["education_human_dev"] || 0, details.displayPercentage);
+          }
+        }
+      }
+
+      if (h.dimensionScores) {
+        for (const [code, details] of Object.entries(h.dimensionScores)) {
+          map[code.toLowerCase().trim()] = details.normalizedScore;
+        }
+      }
+    }
+
+    // 4. Engineering Branch Finder
+    if (input.engineeringBranchFinderResult) {
+      const e = input.engineeringBranchFinderResult;
+      if (e.branchScores) {
+        for (const [code, details] of Object.entries(e.branchScores)) {
+          const normKey = code.toLowerCase().trim();
+          map[normKey] = details.displayPercentage;
+
+          if (code === "CSE") {
+            map["tech_computing"] = Math.max(map["tech_computing"] || 0, details.displayPercentage);
+            map["emerging_frontiers"] = Math.max(map["emerging_frontiers"] || 0, details.displayPercentage);
+          } else if (code === "ECE" || code === "EEE" || code === "ME" || code === "CE") {
+            map["engineering_manufacturing"] = Math.max(map["engineering_manufacturing"] || 0, details.displayPercentage);
+          } else if (code === "CHE" || code === "BME") {
+            map["healthcare_life_sciences"] = Math.max(map["healthcare_life_sciences"] || 0, details.displayPercentage);
+            map["pure_applied_sciences"] = Math.max(map["pure_applied_sciences"] || 0, details.displayPercentage);
+            map["engineering_manufacturing"] = Math.max(map["engineering_manufacturing"] || 0, details.displayPercentage * 0.9);
+          } else if (code === "AERO") {
+            map["engineering_manufacturing"] = Math.max(map["engineering_manufacturing"] || 0, details.displayPercentage);
+            map["aviation_logistics"] = Math.max(map["aviation_logistics"] || 0, details.displayPercentage);
+          }
+        }
+      }
+    }
+
+    return map;
+  }
+
+  /**
+   * Derives explainable driver constructs for why this pathway matches the student.
+   */
+  private synthesizeDriverConstructs(
+    career: CareerEntity,
+    input: MultiAssessmentInput,
+    _riasecMap: Record<string, number>,
+    skillsMap: Record<string, number>,
+    aptitudeMap: Record<string, number>,
+    _streamsMap: Record<string, number>,
+    domainScoresMap: Record<string, number>
+  ): CareerMatchDriver[] {
+    const drivers: CareerMatchDriver[] = [];
+
+    // 1. High scoring cognitive skills matching career requirements
+    const targetSkills = career.related_dimensions?.skills || {};
+    for (const [skillKey, weight] of Object.entries(targetSkills)) {
+      const score = skillsMap[skillKey];
+      if (typeof score === "number" && score >= 70 && weight >= 0.7) {
+        const title = skillKey.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+        drivers.push({
+          constructCode: skillKey.toUpperCase(),
+          constructName: title,
+          normalizedScore: Math.round(score),
+          weight,
+          rationale: `Strong capability in ${title.toLowerCase()} provides solid aptitude for core activities in this occupation.`,
+        });
+      }
+    }
+
+    // 2. High scoring aptitude tasks matching career requirements
+    const targetApt = career.related_dimensions?.aptitude || {};
+    for (const [aptKey, weight] of Object.entries(targetApt)) {
+      const score = aptitudeMap[aptKey];
+      if (typeof score === "number" && score >= 70 && weight >= 0.7) {
+        const title = aptKey.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+        drivers.push({
+          constructCode: aptKey.toUpperCase(),
+          constructName: title,
+          normalizedScore: Math.round(score),
+          weight,
+          rationale: `Demonstrated high performance in ${title.toLowerCase()} directly supports analytical and problem-solving demands.`,
+        });
+      }
+    }
+
+    // 3. Domain or Career Finder specific driver constructs
+    if (input.rightCareerFinderResult?.primaryDriverConstructs) {
+      for (const d of input.rightCareerFinderResult.primaryDriverConstructs) {
+        if (domainScoresMap[d.dimensionCode.toLowerCase()] >= 70) {
+          drivers.push({
+            constructCode: d.dimensionCode,
+            constructName: d.dimensionName,
+            normalizedScore: d.normalizedScore,
+            weight: d.weight,
+            rationale: d.rationale,
+          });
+        }
+      }
+    }
+
+    // Sort drivers by weight * normalizedScore descending and select top 3
+    drivers.sort((a, b) => ((b.weight || 1) * (b.normalizedScore || 0)) - ((a.weight || 1) * (a.normalizedScore || 0)));
+
+    // Fallbacks if no constructs identified
+    if (drivers.length === 0) {
+      drivers.push({
+        constructCode: "FOUNDATIONAL_EXPLORATION",
+        constructName: "Exploratory Alignment",
+        normalizedScore: 75,
+        weight: 0.8,
+        rationale: "Broad alignment across fundamental academic and problem-solving indicators.",
+      });
+      drivers.push({
+        constructCode: "GROWTH_POTENTIAL",
+        constructName: "High Growth Sector Alignment",
+        normalizedScore: 78,
+        weight: 0.75,
+        rationale: "Strong developmental fit for expanding industry demands and evolving career tracks.",
+      });
+    }
+
+    return drivers.slice(0, 3);
+  }
+
+  /**
    * Derives explainable strength alignment items based on student's top validated indicators.
    */
   private extractStrengthAlignment(
     career: CareerEntity,
-    skillResult?: SkillFinderFullResultDTO | null,
-    streamResult?: StreamFinderResultDTO | null,
+    input: MultiAssessmentInput,
     _riasecMap: Record<string, number> = {},
-    skillsMap: Record<string, number> = {},
-    aptitudeMap: Record<string, number> = {}
+    _skillsMap: Record<string, number> = {},
+    _aptitudeMap: Record<string, number> = {},
+    driverConstructs: CareerMatchDriver[] = []
   ): string[] {
     const strengths: string[] = [];
 
-    // 1. Top Interest Alignment
-    if (skillResult?.interestDiscovery?.topClusters?.[0]) {
-      const topInt = skillResult.interestDiscovery.topClusters[0];
+    // 1. Top Interest Alignment from Skill Finder
+    if (input.skillFinderResult?.interestDiscovery?.topClusters?.[0]) {
+      const topInt = input.skillFinderResult.interestDiscovery.topClusters[0];
       strengths.push(`${topInt.name} Affinity (${Math.round(topInt.scalePositionPercentage)}%)`);
     }
 
-    // 2. High-scoring cognitive skill matching career requirement
-    const targetSkills = career.related_dimensions?.skills || {};
-    for (const [skillKey, weight] of Object.entries(targetSkills)) {
-      if (weight >= 0.85 && (skillsMap[skillKey] || 0) >= 70) {
-        const formatted = skillKey.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
-        strengths.push(`Strong ${formatted} Capability`);
-        break;
-      }
+    // 2. Top driver construct names
+    for (const d of driverConstructs) {
+      strengths.push(`High ${d.constructName} Alignment (${d.normalizedScore}%)`);
     }
 
-    // 3. High-scoring aptitude matching career requirement
-    const targetApt = career.related_dimensions?.aptitude || {};
-    for (const [aptKey, weight] of Object.entries(targetApt)) {
-      if (weight >= 0.85 && (aptitudeMap[aptKey] || 0) >= 70) {
-        const formatted = aptKey.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
-        strengths.push(`Demonstrated ${formatted} Performance`);
-        break;
-      }
-    }
-
-    // 4. Stream alignment strength if available
-    if (streamResult && streamResult.primaryStream) {
+    // 3. Stream alignment strength if available
+    if (input.streamFinderResult?.primaryStream) {
       const targetStreams = career.related_dimensions?.streams || {};
-      const primaryKey = streamResult.primaryStream.toLowerCase().replace(/[^a-z]/g, "_");
-      if ((targetStreams[primaryKey] || 0) >= 0.8) {
-        strengths.push(`High ${streamResult.primaryStream} Academic Compatibility`);
+      const primaryKey = input.streamFinderResult.primaryStream.toLowerCase().replace(/[^a-z]/g, "_");
+      if ((targetStreams[primaryKey] || 0) >= 0.75) {
+        strengths.push(`High ${input.streamFinderResult.primaryStream} Academic Compatibility`);
       }
     }
 
-    // Fallbacks if list is sparse
+    // 4. Fallbacks if list is sparse
     if (strengths.length < 2) {
       strengths.push("Curious Inquiry & Foundational Exploration");
       strengths.push("Interdisciplinary Problem-Solving Aptitude");
@@ -548,6 +937,7 @@ export class CareerMatchingService {
     career: CareerEntity,
     archetype: string,
     strengths: string[],
+    driverConstructs: CareerMatchDriver[],
     primaryStream?: string
   ): CareerMatchReasoning {
     const primaryStrength = strengths[0] || "structured analytical reasoning";
@@ -559,7 +949,7 @@ export class CareerMatchingService {
 
     return {
       summary,
-      topMatchingFactors: strengths.slice(0, 3),
+      topMatchingFactors: driverConstructs.map((d) => `${d.constructName} (${d.normalizedScore}%)`),
       alignmentNote,
     };
   }

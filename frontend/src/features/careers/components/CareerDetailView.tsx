@@ -13,7 +13,6 @@ import {
   Compass,
   Milestone,
   Globe,
-  Share2,
   Layers,
   ChevronRight,
   Target,
@@ -21,8 +20,11 @@ import {
   Award,
   Zap,
   ShieldCheck,
+  Building,
+  Laptop,
+  Check,
 } from "lucide-react";
-import { CareerDetailDTO } from "../types/career.types";
+import { CareerDetailDTO, CareerTier } from "../types/career.types";
 import { MatchScore } from "./MatchScore";
 
 interface CareerDetailViewProps {
@@ -49,8 +51,6 @@ export function CareerDetailView({
     SUPPORTED_LANGUAGES.find((l) => l.code === currentLanguage) || SUPPORTED_LANGUAGES[0];
   const isRtl = activeLangConfig.dir === "rtl";
 
-  const isTopMatch = career.matchPercentage >= 88;
-
   // Determine Growth styling
   const growthColor =
     career.futureGrowth === "Very High"
@@ -59,17 +59,76 @@ export function CareerDetailView({
       ? "bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5] border-[#00BFA5]/30"
       : "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30";
 
+  // Determine Tier styling
+  const getTierBadge = (tier?: CareerTier) => {
+    switch (tier) {
+      case "PRIMARY":
+        return {
+          label: "Strong Alignment (Primary)",
+          className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
+        };
+      case "SECONDARY":
+        return {
+          label: "High Compatibility (Secondary)",
+          className: "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30",
+        };
+      case "EXPLORE_FURTHER":
+        return {
+          label: "Recommended for Exploration",
+          className: "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30",
+        };
+      case "DEVELOPING":
+      default:
+        return {
+          label: "Developing Alignment",
+          className: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
+        };
+    }
+  };
+
+  const tierConfig = getTierBadge(career.tier);
+  const drivers = career.driverConstructs || career.reasoning?.driverConstructs || [];
+
   return (
     <div dir={isRtl ? "rtl" : "ltr"} className="space-y-8 animate-in fade-in duration-300">
-      {/* 1. Top Navigation Bar */}
+      {/* 1. Top Navigation Bar & Hierarchy Breadcrumbs */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <Link
-          href="/participant/career-pathways"
-          className="inline-flex items-center gap-2 text-xs font-bold text-[#526866] dark:text-[#9FB3B0] hover:text-[#008F83] dark:hover:text-[#00BFA5] transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to All Career Pathways</span>
-        </Link>
+        <div className="flex items-center gap-2 flex-wrap text-xs">
+          <Link
+            href="/participant/career-pathways"
+            className="inline-flex items-center gap-1.5 font-bold text-[#526866] dark:text-[#9FB3B0] hover:text-[#008F83] dark:hover:text-[#00BFA5] transition-colors"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>All Pathways</span>
+          </Link>
+
+          {career.domainName && (
+            <>
+              <span className="text-[#A5B8B5]">/</span>
+              <span className="font-semibold text-[#728B88] dark:text-[#9FB3B0]">
+                {career.domainName}
+              </span>
+            </>
+          )}
+
+          {career.familyName && (
+            <>
+              <span className="text-[#A5B8B5]">/</span>
+              <span className="font-semibold text-[#728B88] dark:text-[#9FB3B0]">
+                {career.familyName}
+              </span>
+            </>
+          )}
+
+          {career.clusterName && (
+            <>
+              <span className="text-[#A5B8B5]">/</span>
+              <span className="font-bold text-[#172B2A] dark:text-white">
+                {career.clusterName}
+              </span>
+            </>
+          )}
+        </div>
 
         {/* Language Switcher */}
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 text-xs font-semibold shadow-sm">
@@ -100,13 +159,23 @@ export function CareerDetailView({
 
         <div className="relative space-y-5">
           {/* Header Badges */}
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span
+              className={`px-3 py-1 rounded-full text-[11px] font-black tracking-wider uppercase border ${tierConfig.className}`}
+            >
+              {tierConfig.label}
+            </span>
+
             <span className="px-3.5 py-1 rounded-full text-[11px] font-black tracking-wider uppercase bg-white/10 text-white/90 border border-white/15">
               {career.category}
             </span>
-            <span className="px-3.5 py-1 rounded-full text-[11px] font-bold text-[#9FB3B0]">
-              {career.industry}
-            </span>
+
+            {career.isEmerging && (
+              <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                <span>Emerging Future Occupation</span>
+              </span>
+            )}
 
             <MatchScore score={career.matchPercentage} size="md" showLabel={true} />
 
@@ -125,11 +194,16 @@ export function CareerDetailView({
             </div>
           </div>
 
-          {/* Title & Description */}
+          {/* Title & Subtitle */}
           <div>
-            <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white mb-3">
+            <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white mb-2">
               {career.title}
             </h1>
+            {career.specialization && (
+              <p className="text-sm font-semibold text-[#00BFA5] mb-3">
+                Focus Area: {career.specialization}
+              </p>
+            )}
             <p className="text-sm sm:text-base text-[#C2D6D3] max-w-3xl leading-relaxed">
               {career.description}
             </p>
@@ -137,7 +211,7 @@ export function CareerDetailView({
         </div>
       </div>
 
-      {/* 3. Psychometric Match Reasoning Card ("Why This Matches You") & 4-Pillar Score Breakdown */}
+      {/* 3. Psychometric Match Reasoning Card ("Why This Matches You") */}
       <div className="space-y-6">
         {career.reasoning && (
           <div className="relative rounded-3xl bg-gradient-to-br from-white to-[#F4F8F7] dark:from-[#172B2A] dark:to-[#122221] border border-[#00BFA5]/40 p-6 sm:p-8 shadow-md">
@@ -147,10 +221,10 @@ export function CareerDetailView({
               </div>
               <div>
                 <h2 className="text-base sm:text-lg font-black text-[#172B2A] dark:text-[#F7FAF9]">
-                  Why This Career Pathway Matches Your Profile
+                  Why This Occupation Matches Your Profile
                 </h2>
                 <p className="text-[11px] text-[#728B88] dark:text-[#7D9491]">
-                  Scientifically computed psychometric alignment across Interests, Skills, Aptitudes, Traits, and Academic Streams
+                  Evidence synthesis across cognitive aptitude, behavioral competencies, interest vectors, and stream alignment
                 </p>
               </div>
             </div>
@@ -160,13 +234,50 @@ export function CareerDetailView({
                 {career.reasoning.summary}
               </p>
 
+              {/* Explainability Drivers: Top Construct Drivers */}
+              {drivers.length > 0 && (
+                <div className="pt-2 border-t border-[#E3ECEA] dark:border-white/10 space-y-3">
+                  <div className="text-[11px] font-black uppercase tracking-wider text-[#728B88] dark:text-[#7D9491]">
+                    Key Psychometric Driver Constructs:
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {drivers.map((driver, idx) => (
+                      <div
+                        key={idx}
+                        className="p-3.5 rounded-2xl bg-white dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-1.5"
+                      >
+                        <div className="flex items-center justify-between text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9]">
+                          <span className="truncate pr-1">{driver.constructName || driver.dimensionName}</span>
+                          {driver.normalizedScore !== undefined && (
+                            <span className="font-mono text-[#008F83] dark:text-[#00BFA5]">
+                              {driver.normalizedScore}%
+                            </span>
+                          )}
+                        </div>
+                        {driver.normalizedScore !== undefined && (
+                          <div className="w-full bg-[#E3ECEA] dark:bg-white/10 h-1.5 rounded-full overflow-hidden">
+                            <div
+                              className="bg-[#00BFA5] h-full rounded-full"
+                              style={{ width: `${driver.normalizedScore}%` }}
+                            />
+                          </div>
+                        )}
+                        <p className="text-[11px] text-[#526866] dark:text-[#9FB3B0] leading-snug">
+                          {driver.rationale}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Multi-Pillar Breakdown Visualizer */}
               {career.matchBreakdown && (
                 <div className="pt-2 border-t border-[#E3ECEA] dark:border-white/10">
                   <div className="text-[11px] font-black uppercase tracking-wider text-[#728B88] dark:text-[#7D9491] mb-3">
                     Multi-Dimensional Match Breakdown:
                   </div>
-                  <div className={`grid grid-cols-1 sm:grid-cols-2 ${career.matchBreakdown.streamScore !== undefined ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-3`}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     {/* Pillar 1: Interest */}
                     <div className="p-3.5 rounded-2xl bg-white dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10">
                       <div className="flex items-center justify-between text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9] mb-1.5">
@@ -184,9 +295,6 @@ export function CareerDetailView({
                           style={{ width: `${career.matchBreakdown.interestScore}%` }}
                         />
                       </div>
-                      <span className="text-[10px] text-[#728B88] dark:text-[#7D9491]">
-                        Interest Alignment
-                      </span>
                     </div>
 
                     {/* Pillar 2: Skills */}
@@ -206,9 +314,6 @@ export function CareerDetailView({
                           style={{ width: `${career.matchBreakdown.skillScore}%` }}
                         />
                       </div>
-                      <span className="text-[10px] text-[#728B88] dark:text-[#7D9491]">
-                        Skill Behaviour
-                      </span>
                     </div>
 
                     {/* Pillar 3: Aptitude */}
@@ -228,12 +333,9 @@ export function CareerDetailView({
                           style={{ width: `${career.matchBreakdown.aptitudeScore}%` }}
                         />
                       </div>
-                      <span className="text-[10px] text-[#728B88] dark:text-[#7D9491]">
-                        Demonstrated Tasks
-                      </span>
                     </div>
 
-                    {/* Pillar 4: Personality */}
+                    {/* Pillar 4: Personality & Archetype */}
                     <div className="p-3.5 rounded-2xl bg-white dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10">
                       <div className="flex items-center justify-between text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9] mb-1.5">
                         <span className="flex items-center gap-1.5">
@@ -250,39 +352,12 @@ export function CareerDetailView({
                           style={{ width: `${career.matchBreakdown.personalityScore}%` }}
                         />
                       </div>
-                      <span className="text-[10px] text-[#728B88] dark:text-[#7D9491]">
-                        Archetype & Traits
-                      </span>
                     </div>
-
-                    {/* Pillar 5: Stream Finder (if assessed) */}
-                    {career.matchBreakdown.streamScore !== undefined && (
-                      <div className="p-3.5 rounded-2xl bg-white dark:bg-white/5 border border-[#00BFA5]/30 bg-[#00BFA5]/5">
-                        <div className="flex items-center justify-between text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9] mb-1.5">
-                          <span className="flex items-center gap-1.5">
-                            <GraduationCap className="w-3.5 h-3.5 text-[#00BFA5]" />
-                            Stream Match
-                          </span>
-                          <span className="font-mono text-[#008F83] dark:text-[#00BFA5]">
-                            {career.matchBreakdown.streamScore}%
-                          </span>
-                        </div>
-                        <div className="w-full bg-[#E3ECEA] dark:bg-white/10 h-2 rounded-full overflow-hidden mb-1">
-                          <div
-                            className="bg-[#00BFA5] h-full rounded-full transition-all duration-500"
-                            style={{ width: `${career.matchBreakdown.streamScore}%` }}
-                          />
-                        </div>
-                        <span className="text-[10px] text-[#008F83] dark:text-[#00BFA5] font-semibold">
-                          Academic Stream
-                        </span>
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
 
-              {/* Strengths & Development Areas Grid */}
+              {/* Strengths & Development Areas */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                 {/* Strength Alignments */}
                 {(career.strengthAlignment || career.reasoning?.topMatchingFactors) && (
@@ -341,7 +416,7 @@ export function CareerDetailView({
 
       {/* 4. Two-Column Detailed Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left 2 Columns: Overview, Roadmap, and Education */}
+        {/* Left 2 Columns: Overview, Roadmap, Degrees & Entry Pathways */}
         <div className="lg:col-span-2 space-y-8">
           {/* Detailed Overview */}
           {career.overview && (
@@ -349,12 +424,77 @@ export function CareerDetailView({
               <div className="flex items-center gap-2">
                 <Compass className="w-5 h-5 text-[#00BFA5]" />
                 <h2 className="text-base sm:text-lg font-black text-[#172B2A] dark:text-[#F7FAF9]">
-                  Career Pathway Overview
+                  Occupational Overview
                 </h2>
               </div>
               <p className="text-xs sm:text-sm text-[#526866] dark:text-[#9FB3B0] leading-relaxed">
                 {career.overview}
               </p>
+            </div>
+          )}
+
+          {/* Degrees & Entry Qualifications */}
+          {(career.recommendedDegrees?.length || career.typicalQualifications?.length || career.careerEntryPath?.length) && (
+            <div className="rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-8 shadow-sm space-y-5">
+              <div className="flex items-center gap-2">
+                <GraduationCap className="w-5 h-5 text-[#00BFA5]" />
+                <h2 className="text-base sm:text-lg font-black text-[#172B2A] dark:text-[#F7FAF9]">
+                  Academic Degrees & Entry Pathways
+                </h2>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Recommended Degrees */}
+                {career.recommendedDegrees && career.recommendedDegrees.length > 0 && (
+                  <div className="p-4 rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-2">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] block">
+                      Recommended Degrees & Majors:
+                    </span>
+                    <ul className="space-y-1.5 text-xs text-[#172B2A] dark:text-[#F7FAF9]">
+                      {career.recommendedDegrees.map((deg, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <Check className="w-3.5 h-3.5 text-[#00BFA5] shrink-0 mt-0.5" />
+                          <span>{deg}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Typical Qualifications */}
+                {career.typicalQualifications && career.typicalQualifications.length > 0 && (
+                  <div className="p-4 rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-2">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] block">
+                      Typical Qualifications & Levels:
+                    </span>
+                    <ul className="space-y-1.5 text-xs text-[#172B2A] dark:text-[#F7FAF9]">
+                      {career.typicalQualifications.map((qual, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <Check className="w-3.5 h-3.5 text-[#00BFA5] shrink-0 mt-0.5" />
+                          <span>{qual}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {/* Career Entry Paths */}
+              {career.careerEntryPath && career.careerEntryPath.length > 0 && (
+                <div className="p-4 rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] block">
+                    Career Entry Routes:
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-[#172B2A] dark:text-[#F7FAF9]">
+                    {career.careerEntryPath.map((entry, idx) => (
+                      <div key={idx} className="flex items-start gap-2">
+                        <ArrowLeft className="w-3.5 h-3.5 text-[#00BFA5] shrink-0 rotate-180 mt-0.5" />
+                        <span>{entry}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -434,16 +574,16 @@ export function CareerDetailView({
 
         {/* Right 1 Column: Skills, Subjects, Sample Roles, Related Careers */}
         <div className="space-y-8">
-          {/* Required Skills & Competencies */}
+          {/* Core & Required Competencies */}
           <div className="rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-7 shadow-sm space-y-4">
             <div className="flex items-center gap-2">
               <Layers className="w-5 h-5 text-[#00BFA5]" />
               <h3 className="text-sm sm:text-base font-black text-[#172B2A] dark:text-[#F7FAF9]">
-                Required Competencies
+                Core Competencies
               </h3>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {(career.requiredSkills || career.keySkills || []).map((skill, idx) => (
+              {(career.coreSkills || career.requiredSkills || career.keySkills || []).map((skill, idx) => (
                 <span
                   key={idx}
                   className="px-3 py-1 rounded-lg text-xs font-semibold bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 text-[#172B2A] dark:text-[#F7FAF9]"
@@ -452,27 +592,119 @@ export function CareerDetailView({
                 </span>
               ))}
             </div>
+
+            {career.supportingSkills && career.supportingSkills.length > 0 && (
+              <div className="pt-2 border-t border-[#E3ECEA] dark:border-white/10">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#728B88] dark:text-[#7D9491] mb-2 block">
+                  Supporting Skills:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {career.supportingSkills.map((skill, idx) => (
+                    <span
+                      key={idx}
+                      className="px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 text-[#526866] dark:text-[#C2D6D3]"
+                    >
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Recommended Subjects */}
-          {career.recommendedSubjects && career.recommendedSubjects.length > 0 && (
+          {/* Recommended Subjects & Streams */}
+          {(career.recommendedSubjects?.length || career.recommendedStreams?.length) && (
             <div className="rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-7 shadow-sm space-y-4">
               <div className="flex items-center gap-2">
                 <BookOpen className="w-5 h-5 text-[#00BFA5]" />
                 <h3 className="text-sm sm:text-base font-black text-[#172B2A] dark:text-[#F7FAF9]">
-                  Recommended Subjects
+                  Recommended Academic Alignment
                 </h3>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {career.recommendedSubjects.map((sub, idx) => (
-                  <span
-                    key={idx}
-                    className="px-3 py-1 rounded-lg text-xs font-semibold bg-[#00BFA5]/10 text-[#008F83] dark:text-[#00BFA5] border border-[#00BFA5]/20"
-                  >
-                    {sub}
+
+              {career.recommendedStreams && career.recommendedStreams.length > 0 && (
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] mb-1.5 block">
+                    Recommended Streams:
                   </span>
-                ))}
+                  <div className="flex flex-wrap gap-1.5">
+                    {career.recommendedStreams.map((stream, idx) => (
+                      <span
+                        key={idx}
+                        className="px-3 py-1 rounded-lg text-xs font-bold bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5] border border-[#00BFA5]/30"
+                      >
+                        {stream}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {career.recommendedSubjects && career.recommendedSubjects.length > 0 && (
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#728B88] dark:text-[#7D9491] mb-1.5 block">
+                    Foundational Subjects:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {career.recommendedSubjects.map((sub, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-[#F4F8F7] dark:bg-white/5 text-[#172B2A] dark:text-[#F7FAF9] border border-[#E3ECEA] dark:border-white/10"
+                      >
+                        {sub}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Work Environment & Technology Areas */}
+          {(career.workEnvironment?.length || career.technologyAreas?.length) && (
+            <div className="rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-7 shadow-sm space-y-4">
+              <div className="flex items-center gap-2">
+                <Building className="w-5 h-5 text-[#00BFA5]" />
+                <h3 className="text-sm sm:text-base font-black text-[#172B2A] dark:text-[#F7FAF9]">
+                  Workplace & Technologies
+                </h3>
               </div>
+
+              {career.workEnvironment && career.workEnvironment.length > 0 && (
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#728B88] dark:text-[#7D9491] mb-1.5 block">
+                    Work Environments:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {career.workEnvironment.map((env, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 text-[#526866] dark:text-[#C2D6D3]"
+                      >
+                        {env}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {career.technologyAreas && career.technologyAreas.length > 0 && (
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#728B88] dark:text-[#7D9491] mb-1.5 block">
+                    Technology Stacks & Tools:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {career.technologyAreas.map((tech, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-[#00B8D4]/10 text-[#008F83] dark:text-[#00B8D4] border border-[#00B8D4]/20"
+                      >
+                        {tech}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -502,7 +734,7 @@ export function CareerDetailView({
           {career.relatedCareers && career.relatedCareers.length > 0 && (
             <div className="rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-7 shadow-sm space-y-4">
               <h3 className="text-sm sm:text-base font-black text-[#172B2A] dark:text-[#F7FAF9]">
-                Related Career Pathways
+                Related Occupations
               </h3>
               <div className="space-y-2.5">
                 {career.relatedCareers.map((rel) => (

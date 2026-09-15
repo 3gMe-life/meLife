@@ -72,6 +72,28 @@ export function SkillFinderReportView({
     }
   };
 
+  if (!report || !report.executiveSummary || !report.studentProfile) {
+    return (
+      <div className="rounded-3xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 p-8 text-center max-w-lg mx-auto space-y-4 my-12">
+        <AlertTriangle className="w-10 h-10 text-amber-600 dark:text-amber-400 mx-auto" />
+        <h2 className="text-lg font-bold text-amber-950 dark:text-amber-200">
+          Incompatible Report Format
+        </h2>
+        <p className="text-xs text-amber-800 dark:text-amber-300">
+          This report snapshot does not contain valid Skill Finder psychometric data.
+        </p>
+        <div className="pt-2 flex items-center justify-center gap-3">
+          <Link
+            href="/participant/results"
+            className="px-4 py-2 rounded-xl bg-white dark:bg-white/10 border border-amber-200 dark:border-amber-800 text-xs font-bold text-amber-900 dark:text-amber-200"
+          >
+            Back to Results
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       dir={isRtl ? "rtl" : "ltr"}

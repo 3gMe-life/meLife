@@ -10,6 +10,8 @@ import { StreamFinderResultView } from "@/features/assessments/components/result
 import { EngineeringBranchFinderResultView } from "@/features/assessments/components/results/EngineeringBranchFinderResultView";
 import { CommerceCareerFinderResultView } from "@/features/assessments/components/results/CommerceCareerFinderResultView";
 import { HumanitiesCareerFinderResultView } from "@/features/assessments/components/results/HumanitiesCareerFinderResultView";
+import { RightCareerFinderResultView } from "@/features/assessments/components/results/RightCareerFinderResultView";
+import { AiJobRiskFinderResultView } from "@/features/assessments/components/results/AiJobRiskFinderResultView";
 import { Sparkles, ArrowRight, BrainCircuit, RefreshCw } from "lucide-react";
 
 export default function ParticipantResultsPage() {
@@ -90,6 +92,18 @@ export default function ParticipantResultsPage() {
                 </Link>
               </div>
             </div>
+          ) : latestResult.assessmentCode === "AI_JOB_RISK_FINDER" ? (
+            <AiJobRiskFinderResultView
+              result={latestResult}
+              currentLanguage={language}
+              onLanguageChange={setLanguage}
+            />
+          ) : latestResult.assessmentCode === "RIGHT_CAREER_FINDER" ? (
+            <RightCareerFinderResultView
+              result={latestResult}
+              currentLanguage={language}
+              onLanguageChange={setLanguage}
+            />
           ) : latestResult.assessmentCode === "HUMANITIES_CAREER_FINDER" ? (
             <HumanitiesCareerFinderResultView
               result={latestResult}

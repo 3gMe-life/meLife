@@ -42,10 +42,13 @@ export const reportApi = {
   },
 
   /**
-   * Retrieves the participant's latest report.
+   * Retrieves the participant's latest report for a specific assessment.
    */
-  async getLatestReport(language = "en"): Promise<ReportResponseData> {
-    const query = language ? `?language=${encodeURIComponent(language)}` : "";
+  async getLatestReport(language = "en", assessmentCode = "SKILL_FINDER"): Promise<ReportResponseData> {
+    const params = new URLSearchParams();
+    if (language) params.append("language", language);
+    if (assessmentCode) params.append("assessmentCode", assessmentCode);
+    const query = params.toString() ? `?${params.toString()}` : "";
     const res = await fetchApi<ApiResponse<ReportResponseData>>(`/reports/participant/latest${query}`, {
       method: "GET",
     });

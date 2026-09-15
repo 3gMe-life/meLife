@@ -8,6 +8,7 @@ import { engineeringBranchFinderReportTemplate } from "./templates/engineering-b
 import { reportPdfGenerator } from "./generators/report-pdf.generator";
 import { commerceCareerFinderReportTemplate } from "./templates/commerce-career-finder.template";
 import { humanitiesCareerFinderReportTemplate } from "./templates/humanities-career-finder.template";
+import { rightCareerFinderReportTemplate } from "./templates/right-career-finder.template";
 import {
   SkillFinderReportDTO,
   AssessmentReportEntity,
@@ -90,7 +91,17 @@ export class ReportService {
     let reportTitle = `${safeProfile.name} - Skill Finder Report`;
     let archetype: string | null = null;
 
-    if (resultEntity.assessment_code === "HUMANITIES_CAREER_FINDER") {
+    if (resultEntity.assessment_code === "RIGHT_CAREER_FINDER") {
+      reportDto = await rightCareerFinderReportTemplate.generateReport({
+        reportId,
+        result: resultData,
+        studentProfile: safeProfile,
+        languageCode: lang,
+      });
+      templateVer = rightCareerFinderReportTemplate.templateVersion;
+      reportTitle = `${safeProfile.name} - Career Finder Exploration Report`;
+      archetype = reportDto.explorationFocus?.primaryFamilyName || null;
+    } else if (resultEntity.assessment_code === "HUMANITIES_CAREER_FINDER") {
       reportDto = await humanitiesCareerFinderReportTemplate.generateReport({
         reportId,
         result: resultData,
@@ -255,18 +266,19 @@ export class ReportService {
   }
 
   /**
-   * Retrieves the participant's latest report.
+   * Retrieves the participant's latest report for a specific assessment.
    */
   async getLatestReportForParticipant(
     participantId: string,
-    _assessmentCode = "SKILL_FINDER",
+    assessmentCode = "SKILL_FINDER",
     languageCode = "en"
-  ): Promise<{ report: AssessmentReportEntity; reportData: SkillFinderReportDTO } | null> {
+  ): Promise<{ report: AssessmentReportEntity; reportData: any } | null> {
     const lang = (languageCode || "en").toLowerCase().trim();
 
-    // 1. Always find the latest completed assessment result
+    // 1. Find the latest completed assessment result for the specified assessmentCode
     const latestResult = await assessmentContentRepository.findLatestResultByUserId(
-      participantId
+      participantId,
+      assessmentCode
     );
     if (!latestResult) {
       return null;

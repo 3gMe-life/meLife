@@ -24,6 +24,16 @@ import {
   HUMANITIES_CAREER_FINDER_QUESTIONS,
 } from "./content/humanities-career-finder-catalog.data";
 import {
+  RIGHT_CAREER_FINDER_SECTIONS,
+  RIGHT_CAREER_FINDER_DIMENSIONS,
+  RIGHT_CAREER_FINDER_QUESTIONS,
+} from "./content/right-career-finder-catalog.data";
+import {
+  AI_JOB_RISK_FINDER_SECTIONS,
+  AI_JOB_RISK_FINDER_DIMENSIONS,
+  AI_JOB_RISK_FINDER_QUESTIONS,
+} from "./content/ai-job-risk-finder-catalog.data";
+import {
   SanitizedQuestionDTO,
   AssessmentSectionSummaryDTO,
   AssessmentAttemptQuestionsResponseDTO,
@@ -894,6 +904,282 @@ export class AssessmentContentRepository {
   }
 
   /**
+   * Seeds all 80 questions, sections, dimensions, and options for Right Career Finder idempotently.
+   */
+  async seedRightCareerFinderContent(client?: PoolClient): Promise<void> {
+    const db = client || pool;
+
+    // 1. Find RIGHT_CAREER_FINDER assessment ID
+    const assessRes = await db.query(
+      `SELECT id FROM assessments WHERE code = 'RIGHT_CAREER_FINDER' LIMIT 1`
+    );
+    if (!assessRes.rows[0]) {
+      logger.warn("RIGHT_CAREER_FINDER assessment catalog entry missing, skipping content seeding");
+      return;
+    }
+    const assessmentId = assessRes.rows[0].id;
+
+    // Fast check: if already seeded 80 items, return immediately
+    const countCheck = await db.query(
+      `SELECT COUNT(*) as count FROM assessment_questions WHERE assessment_id = $1`,
+      [assessmentId]
+    );
+    if (parseInt(countCheck.rows[0]?.count, 10) === 80) {
+      logger.info("✨ Career Finder question bank already fully seeded (80 items).");
+      return;
+    }
+
+    // 2. Upsert Sections
+    const sectionMap: Record<string, string> = {};
+    for (const sec of RIGHT_CAREER_FINDER_SECTIONS) {
+      const sRes = await db.query(
+        `INSERT INTO assessment_sections (assessment_id, code, name, description, display_order, updated_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())
+         ON CONFLICT (assessment_id, code) DO UPDATE SET
+           name = EXCLUDED.name,
+           description = EXCLUDED.description,
+           display_order = EXCLUDED.display_order,
+           updated_at = NOW()
+         RETURNING id`,
+        [assessmentId, sec.code, sec.name, sec.description, sec.displayOrder]
+      );
+      sectionMap[sec.code] = sRes.rows[0].id;
+    }
+
+    // 3. Upsert Dimensions
+    const dimensionMap: Record<string, string> = {};
+    for (const dim of RIGHT_CAREER_FINDER_DIMENSIONS) {
+      const sectionId = sectionMap[dim.sectionCode];
+      if (!sectionId) continue;
+
+      const dRes = await db.query(
+        `INSERT INTO assessment_dimensions (section_id, code, name, description, display_order, updated_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())
+         ON CONFLICT (section_id, code) DO UPDATE SET
+           name = EXCLUDED.name,
+           description = EXCLUDED.description,
+           display_order = EXCLUDED.display_order,
+           updated_at = NOW()
+         RETURNING id`,
+        [sectionId, dim.code, dim.name, dim.description, dim.displayOrder]
+      );
+      dimensionMap[dim.code] = dRes.rows[0].id;
+    }
+
+    // 4. Batch Upsert Questions
+    const qPayload = RIGHT_CAREER_FINDER_QUESTIONS.map((q) => ({
+      section_id: sectionMap[q.sectionCode],
+      dimension_id: q.dimensionCode ? dimensionMap[q.dimensionCode] || null : null,
+      question_number: q.displayOrder,
+      question_text: q.questionText,
+      question_type: q.questionType,
+      max_points: q.questionType === "likert_1_5" ? 5.0 : 1.0,
+      is_required: true,
+      display_order: q.displayOrder,
+    }));
+
+    const qRes = await db.query(
+      `INSERT INTO assessment_questions (
+         assessment_id, section_id, dimension_id, question_number, question_text,
+         question_type, max_points, is_required, display_order, updated_at
+       )
+       SELECT $1, t.section_id, t.dimension_id, t.question_number, t.question_text,
+              t.question_type, t.max_points, t.is_required, t.display_order, NOW()
+       FROM json_to_recordset($2) AS t(
+         section_id uuid, dimension_id uuid, question_number integer, question_text text,
+         question_type varchar, max_points numeric, is_required boolean, display_order integer
+       )
+       ON CONFLICT (assessment_id, question_number) DO UPDATE SET
+         section_id = EXCLUDED.section_id,
+         dimension_id = EXCLUDED.dimension_id,
+         question_text = EXCLUDED.question_text,
+         question_type = EXCLUDED.question_type,
+         max_points = EXCLUDED.max_points,
+         display_order = EXCLUDED.display_order,
+         updated_at = NOW()
+       RETURNING id, question_number`,
+      [assessmentId, JSON.stringify(qPayload)]
+    );
+
+    const qIdMap: Record<number, string> = {};
+    for (const row of qRes.rows) {
+      qIdMap[row.question_number] = row.id;
+    }
+
+    // 5. Batch Upsert Options
+    const optPayload: any[] = [];
+    for (const q of RIGHT_CAREER_FINDER_QUESTIONS) {
+      const qId = qIdMap[q.displayOrder];
+      if (!qId || !q.options) continue;
+      for (const opt of q.options) {
+        optPayload.push({
+          question_id: qId,
+          option_key: opt.optionKey,
+          option_text: opt.optionText,
+          score_value: opt.scoreValue || 0,
+          display_order: opt.displayOrder,
+        });
+      }
+    }
+
+    if (optPayload.length > 0) {
+      await db.query(
+        `INSERT INTO question_options (question_id, option_key, option_text, score_value, display_order, updated_at)
+         SELECT t.question_id, t.option_key, t.option_text, t.score_value, t.display_order, NOW()
+         FROM json_to_recordset($1) AS t(
+           question_id uuid, option_key varchar, option_text text, score_value numeric, display_order integer
+         )
+         ON CONFLICT (question_id, option_key) DO UPDATE SET
+           option_text = EXCLUDED.option_text,
+           score_value = EXCLUDED.score_value,
+           display_order = EXCLUDED.display_order,
+           updated_at = NOW()`,
+        [JSON.stringify(optPayload)]
+      );
+    }
+
+    logger.info("✨ Career Finder 80-item question bank & options seeded successfully.");
+  }
+
+  /**
+   * Seeds all 48 questions, sections, dimensions, and options for AI Job Risk Finder idempotently.
+   */
+  async seedAiJobRiskFinderContent(client?: PoolClient): Promise<void> {
+    const db = client || pool;
+
+    // 1. Find AI_JOB_RISK_FINDER assessment ID
+    const assessRes = await db.query(
+      `SELECT id FROM assessments WHERE code = 'AI_JOB_RISK_FINDER' LIMIT 1`
+    );
+    if (!assessRes.rows[0]) {
+      logger.warn("AI_JOB_RISK_FINDER assessment catalog entry missing, skipping content seeding");
+      return;
+    }
+    const assessmentId = assessRes.rows[0].id;
+
+    // Fast check: if already seeded 48 items, return immediately
+    const countCheck = await db.query(
+      `SELECT COUNT(*) as count FROM assessment_questions WHERE assessment_id = $1`,
+      [assessmentId]
+    );
+    if (parseInt(countCheck.rows[0]?.count, 10) === 48) {
+      logger.info("✨ AI Job Risk Finder question bank already fully seeded (48 items).");
+      return;
+    }
+
+    // 2. Upsert Sections
+    const sectionMap: Record<string, string> = {};
+    for (const sec of AI_JOB_RISK_FINDER_SECTIONS) {
+      const sRes = await db.query(
+        `INSERT INTO assessment_sections (assessment_id, code, name, description, display_order, updated_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())
+         ON CONFLICT (assessment_id, code) DO UPDATE SET
+           name = EXCLUDED.name,
+           description = EXCLUDED.description,
+           display_order = EXCLUDED.display_order,
+           updated_at = NOW()
+         RETURNING id`,
+        [assessmentId, sec.code, sec.name, sec.description, sec.displayOrder]
+      );
+      sectionMap[sec.code] = sRes.rows[0].id;
+    }
+
+    // 3. Upsert Dimensions
+    const dimensionMap: Record<string, string> = {};
+    for (const dim of AI_JOB_RISK_FINDER_DIMENSIONS) {
+      const sectionId = sectionMap[dim.sectionCode];
+      if (!sectionId) continue;
+
+      const dRes = await db.query(
+        `INSERT INTO assessment_dimensions (section_id, code, name, description, display_order, updated_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())
+         ON CONFLICT (section_id, code) DO UPDATE SET
+           name = EXCLUDED.name,
+           description = EXCLUDED.description,
+           display_order = EXCLUDED.display_order,
+           updated_at = NOW()
+         RETURNING id`,
+        [sectionId, dim.code, dim.name, dim.description, dim.displayOrder]
+      );
+      dimensionMap[dim.code] = dRes.rows[0].id;
+    }
+
+    // 4. Batch Upsert Questions
+    const qPayload = AI_JOB_RISK_FINDER_QUESTIONS.map((q) => ({
+      section_id: sectionMap[q.sectionCode],
+      dimension_id: q.dimensionCode ? dimensionMap[q.dimensionCode] || null : null,
+      question_number: q.displayOrder,
+      question_text: q.questionText,
+      question_type: q.questionType,
+      max_points: 5.0,
+      is_required: true,
+      display_order: q.displayOrder,
+    }));
+
+    const qRes = await db.query(
+      `INSERT INTO assessment_questions (
+         assessment_id, section_id, dimension_id, question_number, question_text,
+         question_type, max_points, is_required, display_order, updated_at
+       )
+       SELECT $1, t.section_id, t.dimension_id, t.question_number, t.question_text,
+              t.question_type, t.max_points, t.is_required, t.display_order, NOW()
+       FROM json_to_recordset($2) AS t(
+         section_id uuid, dimension_id uuid, question_number integer, question_text text,
+         question_type varchar, max_points numeric, is_required boolean, display_order integer
+       )
+       ON CONFLICT (assessment_id, question_number) DO UPDATE SET
+         section_id = EXCLUDED.section_id,
+         dimension_id = EXCLUDED.dimension_id,
+         question_text = EXCLUDED.question_text,
+         question_type = EXCLUDED.question_type,
+         max_points = EXCLUDED.max_points,
+         display_order = EXCLUDED.display_order,
+         updated_at = NOW()
+       RETURNING id, question_number`,
+      [assessmentId, JSON.stringify(qPayload)]
+    );
+
+    const qIdMap: Record<number, string> = {};
+    for (const row of qRes.rows) {
+      qIdMap[row.question_number] = row.id;
+    }
+
+    // 5. Batch Upsert Options
+    const optPayload: any[] = [];
+    for (const q of AI_JOB_RISK_FINDER_QUESTIONS) {
+      const qId = qIdMap[q.displayOrder];
+      if (!qId || !q.options) continue;
+      for (const opt of q.options) {
+        optPayload.push({
+          question_id: qId,
+          option_key: opt.optionKey,
+          option_text: opt.optionText,
+          score_value: opt.scoreValue || 0,
+          display_order: opt.displayOrder,
+        });
+      }
+    }
+
+    if (optPayload.length > 0) {
+      await db.query(
+        `INSERT INTO question_options (question_id, option_key, option_text, score_value, display_order, updated_at)
+         SELECT t.question_id, t.option_key, t.option_text, t.score_value, t.display_order, NOW()
+         FROM json_to_recordset($1) AS t(
+           question_id uuid, option_key varchar, option_text text, score_value numeric, display_order integer
+         )
+         ON CONFLICT (question_id, option_key) DO UPDATE SET
+           option_text = EXCLUDED.option_text,
+           score_value = EXCLUDED.score_value,
+           display_order = EXCLUDED.display_order,
+           updated_at = NOW()`,
+        [JSON.stringify(optPayload)]
+      );
+    }
+
+    logger.info("✨ AI Job Risk Finder 48-item question bank & options seeded successfully.");
+  }
+
+  /**
    * Finds an existing active attempt for participant and assessment.
    */
   async findActiveAttempt(userId: string, assessmentId: string, client?: PoolClient): Promise<any> {
@@ -1636,25 +1922,39 @@ export class AssessmentContentRepository {
   }
 
   /**
-   * Retrieves the latest completed assessment result for a participant.
+   * Retrieves the latest completed assessment result for a participant, optionally filtered by assessment code.
    */
-  async findLatestResultByUserId(participantId: string, client?: PoolClient): Promise<any | null> {
+  async findLatestResultByUserId(
+    participantId: string,
+    assessmentCode?: string,
+    client?: PoolClient
+  ): Promise<any | null> {
     if (!participantId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(participantId)) {
       return null;
     }
     const db = client || pool;
-    const res = await db.query(
-      `SELECT r.id, r.attempt_id, r.participant_id, r.assessment_code, r.result_data, r.created_at,
-              a.started_at, a.completed_at,
-              u.first_name, u.last_name, u.email
-       FROM assessment_results r
-       JOIN assessment_attempts a ON r.attempt_id = a.id
-       JOIN users u ON r.participant_id = u.id
-       WHERE r.participant_id = $1
-       ORDER BY r.created_at DESC
-       LIMIT 1`,
-      [participantId]
-    );
+    const hasCode = Boolean(assessmentCode && assessmentCode.trim());
+    const query = hasCode
+      ? `SELECT r.id, r.attempt_id, r.participant_id, r.assessment_code, r.result_data, r.created_at,
+                a.started_at, a.completed_at,
+                u.first_name, u.last_name, u.email
+         FROM assessment_results r
+         JOIN assessment_attempts a ON r.attempt_id = a.id
+         JOIN users u ON r.participant_id = u.id
+         WHERE r.participant_id = $1 AND r.assessment_code = $2
+         ORDER BY r.created_at DESC
+         LIMIT 1`
+      : `SELECT r.id, r.attempt_id, r.participant_id, r.assessment_code, r.result_data, r.created_at,
+                a.started_at, a.completed_at,
+                u.first_name, u.last_name, u.email
+         FROM assessment_results r
+         JOIN assessment_attempts a ON r.attempt_id = a.id
+         JOIN users u ON r.participant_id = u.id
+         WHERE r.participant_id = $1
+         ORDER BY r.created_at DESC
+         LIMIT 1`;
+    const params = hasCode ? [participantId, assessmentCode!.trim()] : [participantId];
+    const res = await db.query(query, params);
     return res.rows[0] || null;
   }
 

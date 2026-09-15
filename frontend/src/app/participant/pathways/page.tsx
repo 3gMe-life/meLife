@@ -47,6 +47,7 @@ export default function ParticipantPathwaysPage() {
           ) : (
             <CareerPathwaysListView
               recommendations={data?.recommendations || []}
+              domainSummaries={data?.domainSummaries || []}
               isAssessed={data?.isAssessed ?? false}
               currentLanguage={language}
               onLanguageChange={setLanguage}

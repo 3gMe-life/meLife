@@ -14,7 +14,13 @@ export default function SkillFinderReportDirectPage() {
     data: reportData,
     isLoading,
     isError,
-  } = useLatestReportQuery(language);
+  } = useLatestReportQuery(language, "SKILL_FINDER");
+
+  const isSkillFinderReport = Boolean(
+    reportData?.report &&
+    (reportData.report.assessmentCode === "SKILL_FINDER" || !reportData.report.assessmentCode) &&
+    reportData.report.executiveSummary
+  );
 
   return (
     <DashboardShell allowedRoles={["PARTICIPANT"]}>
@@ -28,7 +34,7 @@ export default function SkillFinderReportDirectPage() {
             Retrieving latest psychometric report snapshot.
           </p>
         </div>
-      ) : isError || !reportData?.report ? (
+      ) : isError || !isSkillFinderReport ? (
         <div className="rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-10 text-center max-w-lg mx-auto space-y-4 my-12 shadow-sm">
           <div className="w-12 h-12 rounded-2xl bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5] flex items-center justify-center mx-auto">
             <BookOpen className="w-6 h-6" />
@@ -47,12 +53,11 @@ export default function SkillFinderReportDirectPage() {
               <span>Start Assessment</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
-
           </div>
         </div>
       ) : (
         <SkillFinderReportView
-          report={reportData.report}
+          report={reportData!.report}
           currentLanguage={language}
           onLanguageChange={setLanguage}
         />

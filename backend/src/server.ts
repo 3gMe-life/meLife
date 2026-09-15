@@ -15,6 +15,12 @@ import { engineeringBranchFinderQuestionSelectionService } from "./modules/asses
 import { engineeringBranchFinderTranslationsService } from "./modules/assessments/services/engineering-branch-finder-translations.service";
 import { commerceCareerFinderQuestionSelectionService } from "./modules/assessments/services/commerce-career-finder-question-selection.service";
 import { commerceCareerFinderTranslationsService } from "./modules/assessments/services/commerce-career-finder-translations.service";
+import { humanitiesCareerFinderQuestionSelectionService } from "./modules/assessments/services/humanities-career-finder-question-selection.service";
+import { humanitiesCareerFinderTranslationsService } from "./modules/assessments/services/humanities-career-finder-translations.service";
+import { rightCareerFinderQuestionSelectionService } from "./modules/assessments/services/right-career-finder-question-selection.service";
+import { rightCareerFinderTranslationsService } from "./modules/assessments/services/right-career-finder-translations.service";
+import { aiJobRiskFinderQuestionSelectionService } from "./modules/assessments/services/ai-job-risk-finder-question-selection.service";
+import { aiJobRiskFinderTranslationsService } from "./modules/assessments/services/ai-job-risk-finder-translations.service";
 import { reportRepository } from "./modules/reports/report.repository";
 import { careerRepository } from "./modules/careers/career.repository";
 import { careerReportRepository } from "./modules/careers/reports/career-report.repository";
@@ -56,6 +62,21 @@ const bootstrap = async () => {
     await assessmentContentRepository.seedCommerceCareerFinderContent();
     await commerceCareerFinderQuestionSelectionService.seedCommerceCareerFinderVersions();
     await commerceCareerFinderTranslationsService.seedCommerceCareerFinderTranslations();
+
+    // 5e. Humanities Career Finder Question Bank & Versions & Translations
+    await assessmentContentRepository.seedHumanitiesCareerFinderContent();
+    await humanitiesCareerFinderQuestionSelectionService.seedHumanitiesCareerFinderVersions();
+    await humanitiesCareerFinderTranslationsService.seedHumanitiesCareerFinderTranslations();
+
+    // 5f. Right Career Finder Question Bank & Versions & Translations
+    await assessmentContentRepository.seedRightCareerFinderContent();
+    await rightCareerFinderQuestionSelectionService.seedRightCareerFinderVersions();
+    await rightCareerFinderTranslationsService.seedRightCareerFinderTranslations();
+
+    // 5g. AI Job Risk Finder Question Bank & Versions & Translations
+    await assessmentContentRepository.seedAiJobRiskFinderContent();
+    await aiJobRiskFinderQuestionSelectionService.seedAiJobRiskFinderVersions();
+    await aiJobRiskFinderTranslationsService.seedAiJobRiskFinderTranslations();
 
     // 6. Initialize psychometric reports schema
     await reportRepository.initSchema();

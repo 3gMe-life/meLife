@@ -701,3 +701,234 @@ export interface HumanitiesCareerFinderResult {
   scoredAt?: string;
 }
 
+export type RightCareerFamilyCode =
+  | "TECH_COMPUTING_AI"
+  | "BUSINESS_FINANCE_ENTERPRISE"
+  | "HEALTHCARE_LIFE_SCIENCES"
+  | "LAW_POLICY_GOVERNANCE"
+  | "CREATIVE_DESIGN_MEDIA"
+  | "ENGINEERING_SUSTAINABILITY";
+
+export interface RightCareerFamilyScoreItem {
+  familyCode: RightCareerFamilyCode;
+  familyName: string;
+  likertPoints: number;
+  maxLikertPoints: number;
+  likertPercentage: number;
+  likertDisplayPercentage: number;
+  choiceCount: number;
+  maxChoiceCount: number;
+  choicePercentage: number;
+  choiceDisplayPercentage: number;
+  compatibilityPercentage: number;
+  displayPercentage: number;
+  alignment: string;
+  suggestedPathways: string;
+  exampleAreas: string;
+  counsellingNote: string;
+}
+
+export interface RightCareerDimensionScoreItem {
+  dimensionCode: string;
+  dimensionName: string;
+  description: string;
+  rawScore: number;
+  maxScore: number;
+  normalizedScore: number;
+  interpretation: string;
+  answeredCount: number;
+  totalItems: number;
+  strongestCareerLink: string;
+}
+
+export interface RightCareerFinderResult {
+  resultId: string;
+  attemptId: string;
+  participantId: string;
+  assessmentCode: "RIGHT_CAREER_FINDER";
+  assessmentName: string;
+  versionCode?: string | null;
+  versionName?: string | null;
+  language?: string;
+  completedAt?: string;
+  completedQuestions: number;
+  totalQuestions: number;
+  completionPercentage: number;
+  isComplete: boolean;
+
+  familyScores: Record<RightCareerFamilyCode, RightCareerFamilyScoreItem>;
+  sortedFamilies: RightCareerFamilyScoreItem[];
+
+  primaryFamily: RightCareerFamilyScoreItem;
+  secondaryFamily: RightCareerFamilyScoreItem;
+
+  scoreGap: number;
+  scoreGapPercentage: number;
+  clarity: string;
+  isMixedProfile: boolean;
+
+  primaryDriverConstructs?: Array<{
+    dimensionCode: string;
+    dimensionName: string;
+    normalizedScore: number;
+    weight: number;
+    rationale: string;
+  }>;
+
+  dimensionScores: Record<string, RightCareerDimensionScoreItem>;
+  sortedDimensions: RightCareerDimensionScoreItem[];
+
+  guidance: {
+    interpretationSummary: string;
+    careerExplorationDirection: string;
+    finalDecisionPrinciple: string;
+    doGuidelines: string[];
+    avoidGuidelines: string[];
+    academicSubjectGuidance: string[];
+    counsellorPrinciples: Array<{
+      area: string;
+      interpretation: string;
+      doText: string;
+      avoidText: string;
+    }>;
+  };
+
+  responseQuality: {
+    isComplete: boolean;
+    answeredCount: number;
+    totalQuestions: number;
+    straightLiningDetected: boolean;
+    completionTimeSeconds?: number;
+    qualityFlag: string;
+    pilotDisclaimer: string;
+  };
+
+  scoredAt?: string;
+}
+
+export type AiTransformationVelocity =
+  | "Rapid Evolution"
+  | "High Transformation"
+  | "Steady Evolution"
+  | "Emerging Frontier";
+
+export type AiCareerArchetype =
+  | "AI_AUGMENTED_SYSTEMS"
+  | "HUMAN_CENTRIC_RESILIENT"
+  | "AI_TRANSFORMING"
+  | "EMERGING_AI_FRONTIER";
+
+export type StudentReadinessTier =
+  | "Exceptional Readiness"
+  | "Proficient / High Readiness"
+  | "Developing Readiness"
+  | "Foundational Orientation";
+
+export interface StudentConstructScoreDetails {
+  dimensionCode: string;
+  dimensionName: string;
+  sectionCode: string;
+  description: string;
+  rawScore: number;
+  minPossibleRaw: number;
+  maxPossibleRaw: number;
+  normalizedScore: number;
+  level: "Exceptional" | "High" | "Moderate" | "Developing";
+  answeredCount: number;
+  totalItems: number;
+  developmentalFocus: string;
+}
+
+export interface OccupationalTaskExposureItem {
+  taskId: string;
+  taskName: string;
+  taskDescription: string;
+  frequency: "Daily / Core" | "Periodic" | "Project-Based";
+  digitalIntensity: number;
+  routineLevel: number;
+  rulePredictability: number;
+  humanJudgmentRequirement: number;
+  socialRequirement: number;
+  creativityRequirement: number;
+  aiAugmentationPotential: number;
+  taskAiExposureScore: number;
+  transformationMode: "AI-Augmented" | "Human-Led" | "Automated Streamlining" | "Collaborative Synthesis";
+  counsellingInsight: string;
+}
+
+export interface OccupationalAiImpactProfile {
+  careerCode: string;
+  careerTitle: string;
+  careerDomain: string;
+  archetype: AiCareerArchetype;
+  archetypeTitle: string;
+  archetypeTagline: string;
+  transformationVelocity: AiTransformationVelocity;
+  overallTaskExposureIndex: number;
+  aiAugmentationPotential: number;
+  humanCriticalRequirement: number;
+  adaptationUrgency: number;
+  taskExposureBand: "Low" | "Moderate" | "High" | "Very High";
+  transformationBand: "Moderate" | "High" | "Very High";
+  augmentationBand: "Moderate" | "High" | "Very High";
+  humanCriticalBand: "High" | "Very High";
+  tasks: OccupationalTaskExposureItem[];
+  enduringHumanCapabilities: string[];
+  futureSkillPriorities: Array<{
+    skillName: string;
+    category: "Technical / AI Fluency" | "Cognitive & Analytical" | "Human & Social";
+    importance: "Critical" | "High" | "Valuable";
+    rationale: string;
+  }>;
+  emergingOpportunities: string[];
+}
+
+export interface DualEvidenceSynthesis {
+  readinessTier: StudentReadinessTier;
+  readinessIndex: number;
+  synthesisSummary: string;
+  alignmentHighlights: string[];
+  skillsWorthDeveloping: Array<{
+    skillName: string;
+    construct: string;
+    currentReadiness: "High" | "Developing" | "Foundational";
+    actionableAdvice: string;
+  }>;
+  counsellorDiscussionPrompts: string[];
+  methodologyNote: string;
+  pilotDisclaimer: string;
+}
+
+export interface AiJobRiskFinderResult {
+  resultId: string;
+  attemptId: string;
+  participantId: string;
+  assessmentCode: "AI_JOB_RISK_FINDER";
+  assessmentName: "AI Job Risk Finder";
+  versionCode: string | null;
+  versionName: string | null;
+  completedQuestions: number;
+  totalQuestions: number;
+  completionPercentage: number;
+  isComplete: boolean;
+
+  studentReadinessIndex: number;
+  studentReadinessTier: StudentReadinessTier;
+  constructScores: Record<string, StudentConstructScoreDetails>;
+  sortedConstructs: StudentConstructScoreDetails[];
+  topStrengths: StudentConstructScoreDetails[];
+  priorityGrowthAreas: StudentConstructScoreDetails[];
+
+  targetCareerProfile: OccupationalAiImpactProfile;
+  dualEvidenceSynthesis: DualEvidenceSynthesis;
+
+  responseQuality: {
+    isComplete: boolean;
+    answeredCount: number;
+    totalQuestions: number;
+    straightLiningDetected: boolean;
+    completionTimeSeconds?: number;
+    qualityFlag: "NORMAL" | "CAUTION_LOW_VARIATION" | "INCOMPLETE";
+  };
+}
+

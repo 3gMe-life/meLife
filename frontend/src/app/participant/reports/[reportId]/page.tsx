@@ -53,6 +53,26 @@ export default function ParticipantReportDetailPage() {
             </Link>
           </div>
         </div>
+      ) : !reportData.report.executiveSummary && reportData.report.assessmentCode && reportData.report.assessmentCode !== "SKILL_FINDER" ? (
+        <div className="rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-8 text-center max-w-lg mx-auto space-y-4 my-12 shadow-sm">
+          <div className="w-12 h-12 rounded-2xl bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5] flex items-center justify-center mx-auto">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-bold text-[#172B2A] dark:text-[#F7FAF9]">
+            {reportData.report.assessmentCode.replace(/_/g, " ")} Report
+          </h2>
+          <p className="text-xs text-[#526866] dark:text-[#9FB3B0]">
+            This assessment evaluation is available in your personalized result dashboard.
+          </p>
+          <div className="pt-2 flex items-center justify-center gap-3">
+            <Link
+              href={`/participant/results/${reportData.report.attemptId || reportData.resultId}`}
+              className="px-5 py-2.5 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white text-xs font-bold transition-all shadow-md shadow-[#00BFA5]/25"
+            >
+              View Assessment Results
+            </Link>
+          </div>
+        </div>
       ) : (
         <SkillFinderReportView
           report={reportData.report}

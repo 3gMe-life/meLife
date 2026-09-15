@@ -29,12 +29,12 @@ export function useResultReportQuery(resultId?: string, language = "en") {
 }
 
 /**
- * Hook to fetch the participant's latest report.
+ * Hook to fetch the participant's latest report for a specific assessment.
  */
-export function useLatestReportQuery(language = "en") {
+export function useLatestReportQuery(language = "en", assessmentCode = "SKILL_FINDER") {
   return useQuery<ReportResponseData, Error>({
-    queryKey: ["latestReport", language],
-    queryFn: () => reportApi.getLatestReport(language),
+    queryKey: ["latestReport", assessmentCode, language],
+    queryFn: () => reportApi.getLatestReport(language, assessmentCode),
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,
   });
