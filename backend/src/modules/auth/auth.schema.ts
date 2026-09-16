@@ -73,6 +73,15 @@ export const googleAuthSchema = z.object({
   registrationPath: registrationPathEnum.optional().default("STUDENT"),
 });
 
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z
+    .string()
+    .min(8, "New password must be at least 8 characters long")
+    .max(128, "Password cannot exceed 128 characters"),
+});
+
 export type RegisterSchemaInput = z.infer<typeof registerSchema>;
 export type LoginSchemaInput = z.infer<typeof loginSchema>;
 export type GoogleAuthSchemaInput = z.infer<typeof googleAuthSchema>;
+export type ChangePasswordSchemaInput = z.infer<typeof changePasswordSchema>;

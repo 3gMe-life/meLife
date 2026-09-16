@@ -23,6 +23,9 @@ export type GuardianRelationshipStatus =
 export interface ParticipantProfile {
   id: string;
   userId: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
   dateOfBirth: string | null;
   educationStage: EducationStage | string | null;
   gradeLevel: GradeLevel | string | null;
@@ -52,6 +55,8 @@ export interface ParticipantOnboardingDTO {
 }
 
 export interface UpdateParticipantProfileDTO {
+  firstName?: string;
+  lastName?: string;
   dateOfBirth?: string | null;
   educationStage?: string | null;
   gradeLevel?: string | null;

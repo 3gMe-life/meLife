@@ -625,6 +625,43 @@ export class AuthService {
       },
     };
   }
+
+  /**
+   * Securely changes password for authenticated user.
+   */
+  async changePassword(
+    userId: string,
+    dto: { currentPassword: string; newPassword: string }
+  ): Promise<{ success: boolean; message: string }> {
+    const user = await userRepository.findById(userId);
+    if (!user) {
+      throw AppError.notFound("User not found.", "AUTH_USER_NOT_FOUND");
+    }
+
+    if (!user.password_hash) {
+      throw AppError.badRequest(
+        "Account was created via social login (Google). Password cannot be changed this way.",
+        "AUTH_PASSWORD_NOT_SET"
+      );
+    }
+
+    const isValid = await verifyPassword(user.password_hash, dto.currentPassword);
+    if (!isValid) {
+      throw AppError.unauthorized(
+        "Current password entered is incorrect.",
+        "AUTH_INVALID_CURRENT_PASSWORD"
+      );
+    }
+
+    const newHash = await hashPassword(dto.newPassword);
+    await userRepository.updatePassword(userId, newHash);
+
+    logger.info({ userId }, "User password changed successfully");
+    return {
+      success: true,
+      message: "Password changed successfully.",
+    };
+  }
 }
 
 export const authService = new AuthService();

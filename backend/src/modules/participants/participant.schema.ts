@@ -80,6 +80,8 @@ export const participantOnboardingSchema = z
   });
 
 export const updateParticipantProfileSchema = z.object({
+  firstName: z.string().trim().min(1, "First name cannot be empty.").max(100).optional(),
+  lastName: z.string().trim().min(1, "Last name cannot be empty.").max(100).optional(),
   dateOfBirth: dateOfBirthSchema,
   educationStage: z.string().trim().min(1).optional().nullable(),
   gradeLevel: z.string().trim().max(50).optional().nullable(),

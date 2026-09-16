@@ -2,6 +2,8 @@ import { DimensionScoreItem } from "@/features/assessments/types/assessment.type
 
 export type ScoredDimensionItem = DimensionScoreItem;
 
+export type ReportAudienceView = "STUDENT" | "PARENT" | "COUNSELLOR";
+
 export interface ReportStudentProfile {
   studentName: string;
   firstName: string;
@@ -17,6 +19,7 @@ export interface ReportStudentProfile {
   assessmentCode: string;
   versionName: string;
   versionCode: string;
+  attemptNumber?: number;
   completedAt: string;
   reportId: string;
   generatedAt: string;
@@ -74,6 +77,9 @@ export interface ReportExplorationCluster {
   description: string;
   sampleFocusAreas: string[];
   suggestedProjectsAndActivities: string[];
+  alignmentLevel?: "High Alignment" | "Good Match" | "Exploratory Synergy";
+  whyEvidence?: string[];
+  developmentAreas?: string[];
 }
 
 export interface ReportExplorationAreas {
@@ -89,6 +95,21 @@ export interface ReportParentGuidance {
   donts: string[];
 }
 
+export interface ReportResponseQuality {
+  completionPercentage: number;
+  consistencySignal: string;
+  missingResponsesCount: number;
+  validityStatus: string;
+  confidenceIndicator: string;
+  note?: string;
+}
+
+export interface ReportActionPlan {
+  next30Days: string[];
+  next3Months: string[];
+  next6Months: string[];
+}
+
 export interface SkillFinderReportDTO {
   reportId: string;
   resultId: string;
@@ -100,12 +121,14 @@ export interface SkillFinderReportDTO {
   generatedAt: string;
   studentProfile: ReportStudentProfile;
   executiveSummary: ReportExecutiveSummary;
+  responseQuality?: ReportResponseQuality;
   interestProfile: ReportInterestProfile;
   skillBehaviour: ReportSkillBehaviourProfile;
   aptitudeInsights: ReportAptitudeInsights;
   developmentalStrengths: ReportDevelopmentalStrengths;
   explorationAreas: ReportExplorationAreas;
   parentGuidance: ReportParentGuidance;
+  actionPlan?: ReportActionPlan;
 }
 
 export interface ReportResponseData {
@@ -116,3 +139,4 @@ export interface ReportResponseData {
   generatedAt: string;
   report: SkillFinderReportDTO;
 }
+

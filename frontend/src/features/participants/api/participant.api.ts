@@ -2,6 +2,7 @@ import { fetchApi } from "@/services/api/client";
 import type {
   ParticipantProfileResponse,
   ParticipantOnboardingPayload,
+  UpdateParticipantProfilePayload,
   ParticipantOnboardingResponse,
   ParticipantProfile,
 } from "../types/participant.types";
@@ -17,10 +18,10 @@ export const participantApi = {
   },
 
   /**
-   * Progressively updates participant profile
+   * Updates participant profile (personal identity, calibration, guardian details)
    */
   async updateProfile(
-    payload: Partial<ParticipantOnboardingPayload>
+    payload: UpdateParticipantProfilePayload
   ): Promise<ParticipantProfileResponse> {
     return fetchApi<ParticipantProfileResponse>("/participant/profile", {
       method: "PATCH",

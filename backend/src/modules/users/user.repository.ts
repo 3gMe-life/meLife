@@ -189,6 +189,47 @@ export class UserRepository {
       dateOfBirth: res.rows[0].date_of_birth || null,
     };
   }
+
+  /**
+   * Updates a user's first and last name in the users table.
+   */
+  async updateProfileNames(
+    userId: string,
+    firstName: string,
+    lastName: string,
+    client?: PoolClient
+  ): Promise<void> {
+    if (!userId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+      return;
+    }
+    const db = client || pool;
+    const query = `
+      UPDATE users
+      SET first_name = $2, last_name = $3, updated_at = NOW()
+      WHERE id = $1
+    `;
+    await db.query(query, [userId, firstName.trim(), lastName.trim()]);
+  }
+
+  /**
+   * Updates a user's password hash in the users table.
+   */
+  async updatePassword(
+    userId: string,
+    passwordHash: string,
+    client?: PoolClient
+  ): Promise<void> {
+    if (!userId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+      return;
+    }
+    const db = client || pool;
+    const query = `
+      UPDATE users
+      SET password_hash = $2, updated_at = NOW()
+      WHERE id = $1
+    `;
+    await db.query(query, [userId, passwordHash]);
+  }
 }
 
 export const userRepository = new UserRepository();

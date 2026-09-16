@@ -89,7 +89,7 @@ export class ParticipantRepository {
   }
 
   /**
-   * Finds a participant profile by user ID.
+   * Finds a participant profile by user ID with attached user identity metadata.
    */
   async findByUserId(
     userId: string,
@@ -98,24 +98,28 @@ export class ParticipantRepository {
     const db = client || pool;
     const query = `
       SELECT
-        id,
-        user_id as "userId",
-        TO_CHAR(date_of_birth, 'YYYY-MM-DD') as "dateOfBirth",
-        education_stage as "educationStage",
-        grade_level as "gradeLevel",
-        school_name as "schoolName",
-        curriculum_or_board as "curriculumOrBoard",
-        guardian_name as "guardianName",
-        guardian_phone as "guardianPhone",
-        guardian_email as "guardianEmail",
-        guardian_relationship as "guardianRelationship",
-        guardian_verification_status as "guardianVerificationStatus",
-        is_onboarded as "isOnboarded",
-        onboarding_completed_at as "onboardingCompletedAt",
-        created_at as "createdAt",
-        updated_at as "updatedAt"
-      FROM participant_profiles
-      WHERE user_id = $1
+        p.id,
+        p.user_id as "userId",
+        u.first_name as "firstName",
+        u.last_name as "lastName",
+        u.email as "email",
+        TO_CHAR(p.date_of_birth, 'YYYY-MM-DD') as "dateOfBirth",
+        p.education_stage as "educationStage",
+        p.grade_level as "gradeLevel",
+        p.school_name as "schoolName",
+        p.curriculum_or_board as "curriculumOrBoard",
+        p.guardian_name as "guardianName",
+        p.guardian_phone as "guardianPhone",
+        p.guardian_email as "guardianEmail",
+        p.guardian_relationship as "guardianRelationship",
+        p.guardian_verification_status as "guardianVerificationStatus",
+        p.is_onboarded as "isOnboarded",
+        p.onboarding_completed_at as "onboardingCompletedAt",
+        p.created_at as "createdAt",
+        p.updated_at as "updatedAt"
+      FROM participant_profiles p
+      JOIN users u ON p.user_id = u.id
+      WHERE p.user_id = $1
       LIMIT 1
     `;
     const res = await db.query(query, [userId]);
@@ -123,7 +127,7 @@ export class ParticipantRepository {
   }
 
   /**
-   * Upserts participant profile and syncs with student_profiles for backward compatibility.
+   * Upserts participant profile, updates user names if provided, and syncs student_profiles.
    */
   async upsertProfile(
     userId: string,
@@ -131,6 +135,21 @@ export class ParticipantRepository {
     client?: PoolClient
   ): Promise<ParticipantProfile> {
     const db = client || pool;
+
+    // Update user first_name and last_name if provided
+    if (data.firstName !== undefined || data.lastName !== undefined) {
+      const userRes = await db.query(`SELECT first_name, last_name FROM users WHERE id = $1`, [userId]);
+      const currentFirst = userRes.rows[0]?.first_name || "";
+      const currentLast = userRes.rows[0]?.last_name || "";
+      const newFirst = data.firstName !== undefined ? data.firstName.trim() : currentFirst;
+      const newLast = data.lastName !== undefined ? data.lastName.trim() : currentLast;
+
+      await db.query(
+        `UPDATE users SET first_name = $2, last_name = $3, updated_at = NOW() WHERE id = $1`,
+        [userId, newFirst, newLast]
+      );
+    }
+
     const query = `
       INSERT INTO participant_profiles (
         user_id,
@@ -190,7 +209,7 @@ export class ParticipantRepository {
       data.guardianRelationship || null,
     ];
 
-    const res = await db.query(query, values);
+    await db.query(query, values);
 
     // Also sync to student_profiles
     const studentQuery = `
@@ -214,7 +233,8 @@ export class ParticipantRepository {
     `;
     await db.query(studentQuery, values);
 
-    return res.rows[0];
+    const fullProfile = await this.findByUserId(userId, client);
+    return fullProfile!;
   }
 
   /**

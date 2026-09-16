@@ -17,6 +17,9 @@ export type GradeLevel =
 export interface ParticipantProfile {
   id: string;
   userId: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
   dateOfBirth: string | null;
   educationStage: string | null;
   gradeLevel: string | null;
@@ -36,6 +39,20 @@ export interface ParticipantProfile {
 export interface ParticipantOnboardingPayload {
   dateOfBirth?: string | null;
   educationStage: string;
+  gradeLevel?: string | null;
+  schoolName?: string | null;
+  curriculumOrBoard?: string | null;
+  guardianName?: string | null;
+  guardianPhone?: string | null;
+  guardianEmail?: string | null;
+  guardianRelationship?: string | null;
+}
+
+export interface UpdateParticipantProfilePayload {
+  firstName?: string;
+  lastName?: string;
+  dateOfBirth?: string | null;
+  educationStage?: string | null;
   gradeLevel?: string | null;
   schoolName?: string | null;
   curriculumOrBoard?: string | null;

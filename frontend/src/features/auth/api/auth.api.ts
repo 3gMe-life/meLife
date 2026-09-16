@@ -128,4 +128,17 @@ export const authApi = {
       }
     }
   },
+
+  /**
+   * Change Account Password
+   */
+  async changePassword(payload: {
+    currentPassword: string;
+    newPassword: string;
+  }): Promise<{ success: boolean; data?: { message: string }; error?: { message: string } }> {
+    return fetchApi("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
 };

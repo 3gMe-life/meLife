@@ -3,7 +3,7 @@ import rateLimit from "express-rate-limit";
 import { authController } from "./auth.controller";
 import { validateBody } from "../../middleware/validate.middleware";
 import { authenticate } from "../../middleware/authenticate.middleware";
-import { registerSchema, loginSchema, googleAuthSchema } from "./auth.schema";
+import { registerSchema, loginSchema, googleAuthSchema, changePasswordSchema } from "./auth.schema";
 
 const authRouter = Router();
 
@@ -115,6 +115,13 @@ authRouter.get(
   "/me",
   authenticate,
   authController.getMe
+);
+
+authRouter.post(
+  "/change-password",
+  authenticate,
+  validateBody(changePasswordSchema),
+  authController.changePassword
 );
 
 export { authRouter };

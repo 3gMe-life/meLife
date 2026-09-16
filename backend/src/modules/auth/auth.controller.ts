@@ -203,6 +203,26 @@ export class AuthController {
       next(err);
     }
   }
+
+  /**
+   * POST /api/v1/auth/change-password
+   */
+  async changePassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        throw AppError.unauthorized("Authentication required", "AUTH_UNAUTHORIZED");
+      }
+
+      const result = await authService.changePassword(req.user.id, req.body);
+
+      res.status(HttpStatus.OK).json({
+        success: true,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const authController = new AuthController();
