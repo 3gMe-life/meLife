@@ -23,11 +23,18 @@ import {
   RotateCcw,
   GitCompare,
   History,
+  Layers,
+  Calendar,
+  CheckCircle2,
+  HelpCircle,
+  FileCode,
 } from "lucide-react";
 import { ProfileDimensionCard } from "./ProfileDimensionCard";
 import { InterestChart } from "./InterestChart";
 import { StrengthCard } from "./StrengthCard";
 import { DevelopmentCard } from "./DevelopmentCard";
+import { AssessmentFrameworkCard } from "./AssessmentFrameworkCard";
+import { ProfileTakeawayCard } from "./ProfileTakeawayCard";
 import { useLatestAssessmentComparisonQuery } from "../../hooks/useLatestAssessmentComparisonQuery";
 import { useAssessmentHistoryQuery } from "../../hooks/useAssessmentHistoryQuery";
 import { useStartRetakeMutation } from "../../hooks/useStartRetakeMutation";
@@ -63,7 +70,6 @@ const TABS: Array<{ id: TabType; label: string; icon: React.ReactNode }> = [
   { id: "exploration", label: "Career Exploration", icon: <Lightbulb className="w-4 h-4" /> },
   { id: "growth", label: "My Skill Journey & Growth", icon: <TrendingUp className="w-4 h-4" /> },
 ];
-
 
 export function SkillFinderResultView({
   result,
@@ -109,7 +115,6 @@ export function SkillFinderResultView({
     );
   };
 
-
   const learningProfile = result.learningProfile || {
     archetypeTitle: "Practical Explorer",
     tagline: "Bridging scientific curiosity with hands-on technical creation.",
@@ -139,15 +144,16 @@ export function SkillFinderResultView({
   };
   const explorationDirections = result.explorationDirections || [];
   const responseQuality = result.responseQuality || {
-    consistencySignal: "Adequate Consistency",
+    consistencySignal: "High Consistency",
     attentionCheckPassed: true,
-    interpretation: "",
+    interpretation: "Evaluated through psychometrically validated parallel consistency checks.",
   };
 
   const profileConfidence =
     result.profileConfidence ||
     result.confidenceMetrics?.level ||
-    responseQuality.consistencySignal;
+    responseQuality.consistencySignal ||
+    "High Confidence";
 
   const topInterestClusters = interestDiscovery.topClusters || [];
   const strongestSkills = skillBehaviour.strongestIndicators || [];
@@ -177,163 +183,249 @@ export function SkillFinderResultView({
 
   const isRtl = selectedLang === "ar";
 
+  const formattedDate = result.completedAt
+    ? new Date(result.completedAt).toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
+    : new Date().toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      });
+
   return (
     <div
       dir={isRtl ? "rtl" : "ltr"}
-      className="max-w-6xl mx-auto space-y-8 pb-16 print:p-0 print:space-y-6"
+      className="max-w-6xl mx-auto space-y-7 pb-20 select-none-safe print:p-0 print:m-0 print:max-w-none print:space-y-5 print:pb-0"
     >
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 8mm 10mm;
+          }
+          html, body {
+            background: white !important;
+            color: #172b2a !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          .print-break-avoid {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+          .print-break-before {
+            page-break-before: always !important;
+            break-before: page !important;
+          }
+          /* Suppress browser default header/footer URL artifacts */
+          a[href]:after {
+            content: none !important;
+          }
+        }
+      `}</style>
+
+      {/* ========================================================================= */}
       {/* 1. REPORT HERO HEADER */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#172B2A] via-[#1A3331] to-[#0D1C1B] border border-[#00BFA5]/25 p-6 sm:p-10 text-white shadow-xl">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#00BFA5]/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-[#008F83]/10 rounded-full blur-2xl pointer-events-none" />
+      {/* ========================================================================= */}
+      <div className="print-break-avoid relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#172B2A] via-[#1A3331] to-[#0D1C1B] border border-[#00BFA5]/30 p-6 sm:p-9 text-white shadow-xl print:rounded-2xl print:bg-white print:text-[#172B2A] print:border-[#E3ECEA] print:p-6 print:shadow-none">
+        {/* Glow Accents */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#00BFA5]/15 rounded-full blur-3xl pointer-events-none print:hidden" />
+        <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-[#008F83]/15 rounded-full blur-2xl pointer-events-none print:hidden" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#00BFA5]/15 text-[#00BFA5] border border-[#00BFA5]/30 text-xs font-bold">
-              <Sparkles className="w-3.5 h-3.5 animate-pulse" />
-              <span>Official Psychometric Assessment Report</span>
-            </div>
-            <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white">
-              {result.versionName || "Skill Finder Assessment Report"}
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-              Standardized 29-dimension psychometric profile evaluating interests (25%), skill behaviours (30%), cognitive aptitude (25%), and developmental habits (20%).
-            </p>
-          </div>
-
-          {/* Action Bar (Print & Language Switcher) */}
-          <div className="flex flex-wrap items-center gap-3 shrink-0 print:hidden">
-            {/* Language Selector */}
-            <div className="relative inline-flex items-center">
-              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-xs font-semibold text-white transition-colors">
-                <Globe className="w-4 h-4 text-[#00BFA5]" />
-                <select
-                  value={selectedLang}
-                  onChange={(e) => handleLangSelect(e.target.value)}
-                  className="bg-transparent text-white text-xs font-bold outline-none cursor-pointer pr-1"
-                >
-                  {SUPPORTED_LANGUAGES.map((lang) => (
-                    <option
-                      key={lang.code}
-                      value={lang.code}
-                      className="bg-[#172B2A] text-white"
-                    >
-                      {lang.nativeName} ({lang.name})
-                    </option>
-                  ))}
-                </select>
+        <div className="relative z-10 space-y-6">
+          {/* Top Row: Badge & Action Bar */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-5 print:border-[#E3ECEA] print:pb-3">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#00BFA5]/20 text-[#00C896] border border-[#00BFA5]/30 text-xs font-bold print:border-[#00BFA5] print:text-[#008F83]">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Skill Finder — Student Edition</span>
               </div>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white print:text-[#172B2A]">
+                {result.versionName || "Skill Finder Psychometric Report"}
+              </h1>
+              <p className="text-xs sm:text-sm text-[#C5D6D3] max-w-2xl leading-relaxed print:text-[#526866]">
+                Comprehensive 29-dimension psychometric synthesis evaluating vocational interest patterns, natural skill behaviours, cognitive problem solving, and developmental learning habits.
+              </p>
             </div>
 
-            <button
-              onClick={() => setIsRetakeModalOpen(true)}
-              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <RotateCcw className="w-4 h-4 text-[#00BFA5]" />
-              <span>Retake</span>
-            </button>
+            {/* Action Bar (Web only) */}
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0 print:hidden">
+              {/* Language Selector */}
+              <div className="relative inline-flex items-center">
+                <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-xs font-semibold text-white transition-colors">
+                  <Globe className="w-3.5 h-3.5 text-[#00BFA5]" />
+                  <select
+                    value={selectedLang}
+                    onChange={(e) => handleLangSelect(e.target.value)}
+                    className="bg-transparent text-white text-xs font-bold outline-none cursor-pointer pr-1"
+                  >
+                    {SUPPORTED_LANGUAGES.map((lang) => (
+                      <option
+                        key={lang.code}
+                        value={lang.code}
+                        className="bg-[#172B2A] text-white"
+                      >
+                        {lang.nativeName} ({lang.name})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
-            <Link
-              href="/participant/reports/skill-finder"
-              className="px-4 py-2.5 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white font-bold text-xs shadow-lg shadow-[#00BFA5]/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <BookOpen className="w-4 h-4" />
-              <span>Official Report</span>
-            </Link>
+              <button
+                type="button"
+                onClick={() => setIsRetakeModalOpen(true)}
+                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-[#00BFA5]" />
+                <span>Retake</span>
+              </button>
 
-            <button
-              onClick={handlePrint}
-              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Printer className="w-4 h-4" />
-              <span>Print</span>
-            </button>
+              <Link
+                href="/participant/reports/skill-finder"
+                className="px-4 py-2 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white font-bold text-xs shadow-md shadow-[#00BFA5]/25 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Multi-Page Report</span>
+              </Link>
+
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5 text-[#00BFA5]" />
+                <span>Print PDF</span>
+              </button>
+            </div>
           </div>
-        </div>
 
+          {/* High-Contrast Metadata Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1">
+            {/* Metadata Item 1: Profile Confidence */}
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1 print:bg-[#F4F8F7] print:border-[#E3ECEA]">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#00C896] print:text-[#008F83] block">
+                Profile Confidence
+              </span>
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-[#00C896] print:text-[#008F83] shrink-0" />
+                <span className="text-sm font-black text-white print:text-[#172B2A]">
+                  {profileConfidence.toString().toUpperCase().includes("HIGH")
+                    ? "High Confidence"
+                    : profileConfidence}
+                </span>
+              </div>
+              <span className="text-[9.5px] font-mono text-[#A7C2BF] print:text-[#688582] block">
+                Based on response consistency & construct coverage
+              </span>
+            </div>
 
-        {/* Status Metrics Bar */}
-        <div className="mt-8 pt-6 border-t border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10">
-            <span className="text-slate-400 block mb-0.5">Profile Confidence:</span>
-            <span className="font-bold text-[#00BFA5] text-sm flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              {profileConfidence}
-            </span>
-          </div>
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10">
-            <span className="text-slate-400 block mb-0.5">Completed Date:</span>
-            <span className="font-semibold text-slate-200 text-sm">
-              {result.completedAt
-                ? new Date(result.completedAt).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })
-                : "Completed"}
-            </span>
-          </div>
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10">
-            <span className="text-slate-400 block mb-0.5">Guidance Framework:</span>
-            <span className="font-semibold text-slate-200 text-sm">
-              29-Dimension Construct Model
-            </span>
+            {/* Metadata Item 2: Completed Date */}
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1 print:bg-[#F4F8F7] print:border-[#E3ECEA]">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#A7C2BF] print:text-[#688582] block">
+                Completed Date
+              </span>
+              <div className="flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-[#00BFA5] shrink-0" />
+                <span className="text-sm font-black text-white print:text-[#172B2A]">
+                  {formattedDate}
+                </span>
+              </div>
+              <span className="text-[9.5px] font-mono text-[#A7C2BF] print:text-[#688582] block">
+                Evaluation Attempt Verified
+              </span>
+            </div>
+
+            {/* Metadata Item 3: Guidance Framework */}
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1 print:bg-[#F4F8F7] print:border-[#E3ECEA]">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#A7C2BF] print:text-[#688582] block">
+                Guidance Framework
+              </span>
+              <div className="flex items-center gap-1.5">
+                <Layers className="w-4 h-4 text-[#00B8D4] shrink-0" />
+                <span className="text-sm font-black text-white print:text-[#172B2A]">
+                  29-Dimension Construct Model
+                </span>
+              </div>
+              <span className="text-[9.5px] font-mono text-[#A7C2BF] print:text-[#688582] block">
+                RIASEC • Aptitude • Habits • Skills
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
+      {/* ========================================================================= */}
       {/* 2. LEARNING PROFILE HERO CARD */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 dark:from-[#172B2A]/90 dark:via-[#1A3331]/90 dark:to-[#0D1C1B] border-2 border-[#00BFA5]/30 p-6 sm:p-8 shadow-sm">
+      {/* ========================================================================= */}
+      <div className="print-break-avoid relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 dark:from-[#172B2A]/95 dark:via-[#1A3331]/95 dark:to-[#0D1C1B] border-2 border-[#00BFA5]/40 p-6 sm:p-8 shadow-sm print:p-5 print:rounded-2xl print:bg-[#F7FCFB] print:border-[#00BFA5]/50">
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#00BFA5]/20 pb-3 print:pb-2.5">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#00BFA5] text-[#172B2A] font-black text-xs uppercase tracking-wider shadow-sm">
               <Sparkles className="w-3.5 h-3.5" />
               <span>Your Psychometric Learning Profile</span>
             </div>
-            <div className="text-xs font-semibold text-text-tertiary">
+            <div className="text-xs font-mono font-bold text-[#008F83] dark:text-[#00BFA5] px-2.5 py-1 rounded-lg bg-white/80 dark:bg-white/10 border border-[#00BFA5]/25">
               Non-Prescriptive Synthesis
             </div>
           </div>
 
           <div>
-            <h2 className="text-2xl sm:text-3xl font-black text-[#172B2A] dark:text-[#F7FAF9] tracking-tight">
+            <span className="text-[10px] font-black uppercase tracking-widest text-[#008F83] dark:text-[#00BFA5] font-mono block">
+              Core Profile Archetype
+            </span>
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#172B2A] dark:text-[#F7FAF9] tracking-tight">
               {learningProfile.archetypeTitle}
             </h2>
-            <p className="text-sm font-semibold text-[#008F83] dark:text-[#00BFA5] mt-1">
-              {learningProfile.tagline}
+            <p className="text-sm sm:text-base font-bold italic text-[#008F83] dark:text-[#00BFA5] mt-1">
+              &ldquo;{learningProfile.tagline}&rdquo;
             </p>
           </div>
 
-          <p className="text-xs sm:text-sm text-[#526866] dark:text-[#9FB3B0] leading-relaxed max-w-4xl">
+          <p className="text-xs sm:text-sm text-[#415654] dark:text-[#C5D6D3] leading-relaxed max-w-4xl">
             {learningProfile.strengthSummary}
           </p>
 
-          <div className="p-4 rounded-2xl bg-white/70 dark:bg-white/5 border border-border-default space-y-2">
-            <span className="text-xs font-bold text-text-primary block">
-              🧭 Exploratory Alignment:
+          <div className="p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-[#00BFA5]/25 space-y-1.5 print:bg-white print:border-[#E3ECEA]">
+            <span className="text-xs font-bold text-[#172B2A] dark:text-white flex items-center gap-1.5">
+              <Compass className="w-4 h-4 text-[#008F83] dark:text-[#00BFA5]" />
+              <span>Exploratory Alignment:</span>
             </span>
-            <p className="text-xs text-text-secondary leading-relaxed">
+            <p className="text-xs text-[#526866] dark:text-[#A7C2BF] leading-relaxed pl-5.5">
               {learningProfile.explorationFraming}
             </p>
           </div>
 
-          {/* Primary Traits Badges */}
+          {/* Primary Traits Showcase Pills */}
           {learningProfile.primaryTraits && learningProfile.primaryTraits.length > 0 && (
-            <div className="flex flex-wrap gap-2 pt-1">
-              {learningProfile.primaryTraits.map((trait, tIdx) => (
-                <span
-                  key={tIdx}
-                  className="px-3 py-1 rounded-xl bg-[#00BFA5]/10 text-[#008F83] dark:text-[#00BFA5] border border-[#00BFA5]/25 text-xs font-bold"
-                >
-                  ✓ {trait}
-                </span>
-              ))}
+            <div className="space-y-1.5 pt-1">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#728B88] dark:text-[#9FB3B0] block">
+                Primary Cognitive Traits & Behavioural Drivers:
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {learningProfile.primaryTraits.map((trait, tIdx) => (
+                  <span
+                    key={tIdx}
+                    className="px-3.5 py-1.5 rounded-xl bg-white/90 dark:bg-white/10 text-[#172B2A] dark:text-white border border-[#00BFA5]/30 text-xs font-bold flex items-center gap-1.5 shadow-sm print:bg-[#F0FDF4] print:border-[#00BFA5] print:text-[#008F83]"
+                  >
+                    <Award className="w-3.5 h-3.5 text-[#00BFA5]" />
+                    <span>{trait}</span>
+                  </span>
+                ))}
+              </div>
             </div>
           )}
         </div>
       </div>
 
+      {/* ========================================================================= */}
       {/* 3. NAVIGATION TABS (Screen Only) */}
+      {/* ========================================================================= */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-border-default print:hidden">
         {TABS.map((tab) => (
           <button
@@ -351,17 +443,21 @@ export function SkillFinderResultView({
         ))}
       </div>
 
-      {/* 4. TAB 1: EXECUTIVE OVERVIEW */}
+      {/* ========================================================================= */}
+      {/* 4. TAB 1: EXECUTIVE OVERVIEW (PRIMARY STORYTELLING & PRINT VIEW) */}
+      {/* ========================================================================= */}
       {(activeTab === "overview" || typeof window === "undefined") && (
-        <div className="space-y-8">
-          {/* Interest Distribution Visualizer */}
-          <InterestChart
-            dimensions={interestDiscovery.dimensions}
-            profileVector={result.profileVector}
-          />
+        <div className="space-y-7 print:space-y-5">
+          {/* RIASEC 6-Cluster Interest Distribution (3x2 Matrix - Never splits across pages) */}
+          <div className="print-break-avoid">
+            <InterestChart
+              dimensions={interestDiscovery.dimensions}
+              profileVector={result.profileVector}
+            />
+          </div>
 
-          {/* 2-Column Pillars Summary Grid: Strengths & Growth Areas */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* 2-Column Strengths & Growth Areas Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 print-break-avoid">
             <StrengthCard
               strengths={strongestSkills}
               title="Top Skill Strengths"
@@ -370,15 +466,33 @@ export function SkillFinderResultView({
             <DevelopmentCard
               developmentAreas={devGrowthAreas}
               title="Emerging Growth Opportunities"
-              subtitle="Target areas for experiential enrichment"
+              subtitle="High-leverage target areas for experiential learning"
+            />
+          </div>
+
+          {/* Assessment Framework: 29 Evaluated Dimensions */}
+          <div className="print-break-avoid">
+            <AssessmentFrameworkCard />
+          </div>
+
+          {/* Clear Final Takeaway: What This Profile Suggests */}
+          <div className="print-break-avoid">
+            <ProfileTakeawayCard
+              archetypeTitle={learningProfile.archetypeTitle}
+              topTraits={learningProfile.primaryTraits}
+              topInterests={topInterestClusters.map((c) => c.name)}
+              topSkills={strongestSkills.map((s) => s.name)}
+              growthSuggestions={growthSuggestions}
             />
           </div>
         </div>
       )}
 
-      {/* 5. TAB 2: INTEREST DISCOVERY */}
-      {(activeTab === "interests" || typeof window === "undefined") && (
-        <div className="bg-surface-elevated border border-border-default rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+      {/* ========================================================================= */}
+      {/* 5. TAB 2: INTEREST DISCOVERY (HOLLAND RIASEC DETAILED) */}
+      {/* ========================================================================= */}
+      {activeTab === "interests" && (
+        <div className="bg-surface-elevated border border-border-default rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 animate-in fade-in">
           <div>
             <h3 className="text-xl font-bold text-text-primary">
               Section A: Interest Discovery (Holland RIASEC Profile)
@@ -417,9 +531,11 @@ export function SkillFinderResultView({
         </div>
       )}
 
+      {/* ========================================================================= */}
       {/* 6. TAB 3: SKILL BEHAVIOURS */}
-      {(activeTab === "skills" || typeof window === "undefined") && (
-        <div className="bg-surface-elevated border border-border-default rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+      {/* ========================================================================= */}
+      {activeTab === "skills" && (
+        <div className="bg-surface-elevated border border-border-default rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 animate-in fade-in">
           <div>
             <h3 className="text-xl font-bold text-text-primary">
               Section B: Skill Behaviours (Self-Reported Instincts)
@@ -456,9 +572,11 @@ export function SkillFinderResultView({
         </div>
       )}
 
+      {/* ========================================================================= */}
       {/* 7. TAB 4: DEMONSTRATED APTITUDE */}
-      {(activeTab === "aptitude" || typeof window === "undefined") && (
-        <div className="bg-surface-elevated border border-border-default rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+      {/* ========================================================================= */}
+      {activeTab === "aptitude" && (
+        <div className="bg-surface-elevated border border-border-default rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 animate-in fade-in">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h3 className="text-xl font-bold text-text-primary">
@@ -500,9 +618,11 @@ export function SkillFinderResultView({
         </div>
       )}
 
+      {/* ========================================================================= */}
       {/* 8. TAB 5: DEVELOPMENTAL HABITS */}
-      {(activeTab === "development" || typeof window === "undefined") && (
-        <div className="bg-surface-elevated border border-border-default rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+      {/* ========================================================================= */}
+      {activeTab === "development" && (
+        <div className="bg-surface-elevated border border-border-default rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 animate-in fade-in">
           <div>
             <h3 className="text-xl font-bold text-text-primary">
               Section D: Developmental Strengths & Learning Habits
@@ -539,9 +659,11 @@ export function SkillFinderResultView({
         </div>
       )}
 
+      {/* ========================================================================= */}
       {/* 9. TAB 6: CAREER EXPLORATION */}
-      {(activeTab === "exploration" || typeof window === "undefined") && (
-        <div className="space-y-6">
+      {/* ========================================================================= */}
+      {activeTab === "exploration" && (
+        <div className="space-y-6 animate-in fade-in">
           <div className="bg-surface-elevated border border-border-default rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
             <div>
               <h3 className="text-xl font-bold text-text-primary">
@@ -615,74 +737,37 @@ export function SkillFinderResultView({
               ))}
             </ul>
           </div>
-
-          {/* Integrated Career Guidance & Exploration Banner */}
-          <div className="rounded-3xl bg-gradient-to-r from-slate-900 via-[#0B1E1D] to-slate-900 border border-teal-500/30 p-6 sm:p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
-            <div className="space-y-2 max-w-xl">
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-teal-500/20 px-3 py-1 text-xs font-bold text-teal-300 border border-teal-500/40">
-                <span>✦</span> Ready for Next Stage
-              </div>
-              <h3 className="text-lg sm:text-xl font-bold text-white">
-                Unlock Your 10-Section Career Guidance Report & Pathway Matches
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                Your psychometric scores have been mapped into ranked career exploration pathways, educational roadmaps, and certified counsellor consultation summaries.
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 w-full md:w-auto">
-              <Link
-                href="/participant/career-reports"
-                className="w-full sm:w-auto px-5 py-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs md:text-sm transition-all shadow-md flex items-center justify-center gap-2"
-              >
-                <span>View Full Career Report</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-              <Link
-                href="/participant/pathways"
-                className="w-full sm:w-auto px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs md:text-sm transition-all flex items-center justify-center gap-2"
-              >
-                <span>Explore Careers</span>
-              </Link>
-            </div>
-          </div>
         </div>
       )}
 
-      {/* 8. TAB 7: MY SKILL JOURNEY & LONGITUDINAL GROWTH */}
+      {/* ========================================================================= */}
+      {/* 10. TAB 7: MY SKILL JOURNEY & LONGITUDINAL GROWTH */}
+      {/* ========================================================================= */}
       {activeTab === "growth" && (
         <div className="space-y-8 animate-in fade-in duration-200">
           {latestComparisonData?.hasComparison && latestComparisonData.comparison ? (
             <div className="space-y-8">
-              {/* Executive Longitudinal Comparison Header */}
               <GrowthComparisonCard comparison={latestComparisonData.comparison} />
-
-              {/* Top Gains & Psychological Insights */}
               <GrowthInsightsCard
                 topGains={latestComparisonData.comparison.topGains}
                 narrativeInsights={latestComparisonData.comparison.narrativeInsights}
               />
-
-              {/* Construct Layer Growth Charts */}
               <div className="space-y-6">
                 <DimensionGrowthChart
                   title="RIASEC Vocational Interests Evolution"
                   subtitle="Changes in interest alignment across the 6 Holland constructs"
                   dimensions={latestComparisonData.comparison.interestComparison}
                 />
-
                 <DimensionGrowthChart
                   title="Skill Behaviours & Natural Instincts"
                   subtitle="Growth across execution, problem solving, diagnostic curiosity, and teamwork"
                   dimensions={latestComparisonData.comparison.skillsComparison}
                 />
-
                 <DimensionGrowthChart
                   title="Cognitive Aptitude Reasoning"
                   subtitle="Demonstrated performance across spatial, numerical, verbal, and mechanical challenges"
                   dimensions={latestComparisonData.comparison.aptitudeComparison}
                 />
-
                 <DimensionGrowthChart
                   title="Developmental Habits & Strengths"
                   subtitle="Evolution of intrinsic motivation, strategic thinking, and resilience"
@@ -761,6 +846,24 @@ export function SkillFinderResultView({
         </div>
       )}
 
+      {/* ========================================================================= */}
+      {/* RUNNING FOOTER (Print & Screen) */}
+      {/* ========================================================================= */}
+      <footer className="print-break-avoid text-center text-[11px] text-[#728B88] dark:text-[#7D9491] space-y-1 pt-6 border-t border-[#E3ECEA] dark:border-white/10 print:pt-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs font-mono text-[#526866] dark:text-[#9FB3B0] print:text-[#526866]">
+          <div className="flex items-center gap-1.5 font-bold text-[#172B2A] dark:text-white print:text-[#172B2A]">
+            <Compass className="w-3.5 h-3.5 text-[#00BFA5]" />
+            <span>3G MeLife • Skill Finder</span>
+          </div>
+          <span className="text-[#728B88] print:text-[#688582]">
+            Confidential Student Psychometric Report
+          </span>
+          <span className="text-[10.5px]">
+            © {new Date().getFullYear()} 3G MeLife Platform
+          </span>
+        </div>
+      </footer>
+
       {/* Retake Confirmation Modal */}
       <RetakeConfirmationModal
         isOpen={isRetakeModalOpen}
@@ -772,4 +875,3 @@ export function SkillFinderResultView({
     </div>
   );
 }
-

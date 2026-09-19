@@ -29,7 +29,7 @@ export default function AssessmentResultDetailPage() {
   return (
     <ProtectedRouteGuard allowedRoles={["PARTICIPANT"]}>
       <DashboardShell allowedRoles={["PARTICIPANT"]}>
-        <div className="space-y-6">
+        <div className="space-y-6 print:space-y-0 print:p-0 print:m-0">
           {/* Back Action Bar */}
           <div className="flex items-center justify-between print:hidden">
             <button

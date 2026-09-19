@@ -32,7 +32,8 @@ const bootstrap = async () => {
     // 1. Connect to PostgreSQL database
     await connectDatabase();
 
-    // 2. Ensure initial role permissions are seeded
+    // 2. Initialize Auth, User, Role, Permission & Session schema
+    await authRepository.initSchema();
     await authRepository.seedRolePermissions();
 
     // 3. Initialize participant schema & migrations
@@ -144,7 +145,7 @@ const bootstrap = async () => {
       process.exit(1);
     });
   } catch (error) {
-    logger.fatal({ error }, "Application bootstrap failed");
+    logger.fatal({ err: error }, "Application bootstrap failed");
     process.exit(1);
   }
 };

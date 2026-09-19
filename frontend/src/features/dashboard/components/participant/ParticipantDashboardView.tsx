@@ -33,6 +33,7 @@ import type {
   AssessmentHistoryItem,
   ParticipantAssessmentItem,
 } from "@/features/assessments/types/assessment.types";
+import { getSavedLanguagePreference } from "@/features/assessments/config/assessment-i18n.config";
 import { Download, Calendar as CalendarIcon, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
@@ -49,16 +50,19 @@ export function ParticipantDashboardView({
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
   const [retakeTargetCode, setRetakeTargetCode] = useState<string | null>(null);
 
+  // Synchronized language preference
+  const [savedLanguage] = useState<string>(() => getSavedLanguagePreference());
+
   // 1. Participant Assessments Query
   const { data: assessmentData, isLoading: isAssessmentsLoading } =
     useParticipantAssessmentsQuery();
 
-  // 2. Latest Psychometric Result Query (Real scoring and dimensions)
+  // 2. Latest Psychometric Result Query (Real scoring and dimensions in student's preferred language)
   const { data: latestResult, isLoading: isResultLoading } =
-    useLatestAssessmentResultQuery("en");
+    useLatestAssessmentResultQuery(savedLanguage);
 
-  // 3. Career Pathways Query (Calculated via psychometric matching engine)
-  const { data: pathwaysData } = useCareerPathwaysQuery("en");
+  // 3. Career Pathways Query (Calculated via psychometric matching engine in preferred language)
+  const { data: pathwaysData } = useCareerPathwaysQuery(savedLanguage);
 
   // 4. Growth & Retest Comparison Query
   const { data: comparisonData } =

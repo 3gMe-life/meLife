@@ -1,6 +1,6 @@
 import React from "react";
 import { LongitudinalComparisonResult } from "../../types/assessment.types";
-import { TrendingUp, ArrowRight, Calendar, Sparkles, Award, Clock } from "lucide-react";
+import { TrendingUp, ArrowRight, Calendar, Sparkles, Award, Clock, Info } from "lucide-react";
 
 interface GrowthComparisonCardProps {
   comparison: LongitudinalComparisonResult;
@@ -42,6 +42,16 @@ export function GrowthComparisonCard({ comparison }: GrowthComparisonCardProps) 
             <span>{comparison.daysBetween} Days Between Assessments</span>
           </div>
         </div>
+
+        {/* Version Mismatch Banner */}
+        {comparison.isVersionMismatch && (
+          <div className="p-4 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-start gap-3 text-amber-200">
+            <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <p className="text-xs leading-relaxed font-medium">
+              {comparison.versionNotice || "These assessments used different versions. Score differences should be interpreted with this in mind."}
+            </p>
+          </div>
+        )}
 
         {/* Trajectory Title & Summary */}
         <div>

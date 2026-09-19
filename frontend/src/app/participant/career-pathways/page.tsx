@@ -5,11 +5,17 @@ import { DashboardShell } from "@/features/dashboard/components/shell/DashboardS
 import { ProtectedRouteGuard } from "@/features/dashboard/guards/ProtectedRouteGuard";
 import { useCareerPathwaysQuery } from "@/features/careers/hooks/useCareerPathwaysQuery";
 import { CareerPathwaysListView } from "@/features/careers/components/CareerPathwaysListView";
+import { getSavedLanguagePreference, saveLanguagePreference } from "@/features/assessments/config/assessment-i18n.config";
 import { Compass, RefreshCw } from "lucide-react";
 
 export default function ParticipantCareerPathwaysPage() {
-  const [language, setLanguage] = useState<string>("en");
+  const [language, setLanguage] = useState<string>(() => getSavedLanguagePreference());
   const { data, isLoading, isError, refetch } = useCareerPathwaysQuery(language);
+
+  const handleLanguageChange = (newLang: string) => {
+    setLanguage(newLang);
+    saveLanguagePreference(newLang);
+  };
 
   return (
     <ProtectedRouteGuard allowedRoles={["PARTICIPANT"]}>
@@ -50,7 +56,7 @@ export default function ParticipantCareerPathwaysPage() {
               domainSummaries={data?.domainSummaries || []}
               isAssessed={data?.isAssessed ?? false}
               currentLanguage={language}
-              onLanguageChange={setLanguage}
+              onLanguageChange={handleLanguageChange}
             />
           )}
         </div>

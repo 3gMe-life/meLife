@@ -65,7 +65,7 @@ export class AssessmentRepository {
         category: "Cognitive Aptitude & Core Skills",
         description: "Evaluates foundational cognitive reasoning, numerical aptitude, spatial visualization, and exploratory learning patterns for middle school students.",
         estimatedMinutes: 20,
-        questionCount: 35,
+        questionCount: 68,
         minAge: 10,
         maxAge: 14,
         allowedStages: ["SCHOOL"],

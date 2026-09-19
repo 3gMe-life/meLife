@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   History,
   CheckCircle2,
+  Info,
 } from "lucide-react";
 import type {
   LatestComparisonResponse,
@@ -64,6 +65,16 @@ export function GrowthJourneyCard({
       {/* Case 1: Multiple Attempts & Comparison Available */}
       {hasComparison && comparison ? (
         <div className="space-y-4">
+          {/* Neutral Notice for Version Mismatch */}
+          {comparison.isVersionMismatch && (
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
+              <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed font-medium">
+                {comparison.versionNotice || "These assessments used different versions. Score differences should be interpreted with this in mind."}
+              </p>
+            </div>
+          )}
+
           {/* Comparison Banner */}
           <div className="p-4 rounded-2xl bg-gradient-to-br from-[#E6F7F5] via-white to-[#F0FAF8] dark:from-[#172B2A] dark:via-[#142827] dark:to-[#0D1C1B] border border-[#00BFA5]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
@@ -105,11 +116,13 @@ export function GrowthJourneyCard({
                       {gain.dimensionName}
                     </span>
                     <span className="text-[10px] text-[#728B88] dark:text-[#7D9491] block">
-                      {gain.oldScore}% → {gain.newScore}%
+                      {gain.oldScore}{comparison.isVersionMismatch ? " pts" : "%"} → {gain.newScore}{comparison.isVersionMismatch ? " pts" : "%"}
                     </span>
                   </div>
                   <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 font-mono">
-                    {gain.delta > 0 ? `+${gain.delta}%` : `${gain.delta}%`}
+                    {comparison.isVersionMismatch
+                      ? (gain.delta > 0 ? `+${gain.delta} pts` : `${gain.delta} pts`)
+                      : (gain.delta > 0 ? `+${gain.delta}%` : `${gain.delta}%`)}
                   </span>
                 </div>
               ))}

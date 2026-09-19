@@ -29,6 +29,10 @@ export interface LongitudinalComparisonResultDTO {
   oldCompletedDate: string;
   newCompletedDate: string;
   daysBetween: number;
+  oldVersionCode?: string | null;
+  newVersionCode?: string | null;
+  isVersionMismatch: boolean;
+  versionNotice?: string | null;
   oldArchetype: {
     title: string;
     description: string;
@@ -76,6 +80,25 @@ export class ResultComparisonService {
     const oldData = parsePayload(oldResultEntity);
     const newData = parsePayload(newResultEntity);
 
+    const oldVersionCode: string | null =
+      oldResultEntity.version_code ||
+      oldResultEntity.versionCode ||
+      oldData?.versionCode ||
+      oldData?.version_code ||
+      null;
+    const newVersionCode: string | null =
+      newResultEntity.version_code ||
+      newResultEntity.versionCode ||
+      newData?.versionCode ||
+      newData?.version_code ||
+      null;
+
+    const isVersionMismatch = Boolean(
+      oldVersionCode && newVersionCode && oldVersionCode !== newVersionCode
+    );
+    const versionNotice = isVersionMismatch
+      ? "These assessments used different versions. Score differences should be interpreted with this in mind."
+      : null;
 
     const oldDate = new Date(oldResultEntity.completed_at || oldResultEntity.created_at || Date.now());
     const newDate = new Date(newResultEntity.completed_at || newResultEntity.created_at || Date.now());
@@ -253,8 +276,10 @@ export class ResultComparisonService {
     if (topSkillGain && topSkillGain.delta >= 5) {
       narrativeInsights.push({
         category: "SKILL",
-        title: `${topSkillGain.dimensionName} Strengthened`,
-        description: `Your demonstrated score in ${topSkillGain.dimensionName} increased by +${topSkillGain.delta}%, highlighting strengthened problem-solving agility and applied reasoning habits.`,
+        title: isVersionMismatch ? `${topSkillGain.dimensionName} Score Delta` : `${topSkillGain.dimensionName} Strengthened`,
+        description: isVersionMismatch
+          ? `Score changed by +${topSkillGain.delta} points in ${topSkillGain.dimensionName}. These assessments used different versions. Score differences should be interpreted with this in mind.`
+          : `Your demonstrated score in ${topSkillGain.dimensionName} increased by +${topSkillGain.delta}%, highlighting strengthened problem-solving agility and applied reasoning habits.`,
         dimensionCode: topSkillGain.dimensionCode,
         delta: topSkillGain.delta,
       });
@@ -265,8 +290,10 @@ export class ResultComparisonService {
     if (topInterestGain && topInterestGain.delta >= 5) {
       narrativeInsights.push({
         category: "INTEREST",
-        title: `Expansion in ${topInterestGain.dimensionName}`,
-        description: `Your career curiosity in ${topInterestGain.dimensionName} developed (+${topInterestGain.delta}%), broadening your potential pathways and interdisciplinary affinities.`,
+        title: isVersionMismatch ? `${topInterestGain.dimensionName} Score Delta` : `Expansion in ${topInterestGain.dimensionName}`,
+        description: isVersionMismatch
+          ? `Score changed by +${topInterestGain.delta} points in ${topInterestGain.dimensionName}. These assessments used different versions. Score differences should be interpreted with this in mind.`
+          : `Your career curiosity in ${topInterestGain.dimensionName} developed (+${topInterestGain.delta}%), broadening your potential pathways and interdisciplinary affinities.`,
         dimensionCode: topInterestGain.dimensionCode,
         delta: topInterestGain.delta,
       });
@@ -277,8 +304,10 @@ export class ResultComparisonService {
     if (topAptitudeGain && topAptitudeGain.delta >= 5) {
       narrativeInsights.push({
         category: "APTITUDE",
-        title: `Cognitive Accuracy Calibration: ${topAptitudeGain.dimensionName}`,
-        description: `Your performance in ${topAptitudeGain.dimensionName} showed an improvement of +${topAptitudeGain.delta}%, reflecting stronger pattern recognition and analytical precision.`,
+        title: isVersionMismatch ? `${topAptitudeGain.dimensionName} Score Delta` : `Cognitive Accuracy Calibration: ${topAptitudeGain.dimensionName}`,
+        description: isVersionMismatch
+          ? `Score changed by +${topAptitudeGain.delta} points in ${topAptitudeGain.dimensionName}. These assessments used different versions. Score differences should be interpreted with this in mind.`
+          : `Your performance in ${topAptitudeGain.dimensionName} showed an improvement of +${topAptitudeGain.delta}%, reflecting stronger pattern recognition and analytical precision.`,
         dimensionCode: topAptitudeGain.dimensionCode,
         delta: topAptitudeGain.delta,
       });
@@ -301,15 +330,24 @@ export class ResultComparisonService {
 
     // Growth Trajectory Classification
     let growthTrajectory = "Consolidated & Deepening Strengths";
-    if (hasArchetypeShift && topGains.length >= 2) {
+    if (isVersionMismatch) {
+      growthTrajectory = "Cross-Version Evaluation";
+    } else if (hasArchetypeShift && topGains.length >= 2) {
       growthTrajectory = "Dynamic Growth & Pathway Expansion";
     } else if (topGains.length >= 2) {
       growthTrajectory = "Progressive Skill Acceleration";
     }
 
-    const growthSummary = topGains.length > 0
-      ? `Over the course of ${daysBetween} days between evaluations, your highest developmental progress occurred in ${topGains.map((g) => `${g.dimensionName} (+${g.delta}%)`).join(", ")}. Your current interests and demonstrated strengths have evolved constructively.`
-      : `Your assessment indicators show high stability and well-grounded calibration across all evaluated psychometric constructs over the ${daysBetween}-day interval.`;
+    let growthSummary: string;
+    if (isVersionMismatch) {
+      growthSummary = topGains.length > 0
+        ? `Over the course of ${daysBetween} days between evaluations across different assessment versions (${oldVersionCode || "Previous"} and ${newVersionCode || "Current"}), score changed by ${topGains.map((g) => `${g.dimensionName} (+${g.delta} points)`).join(", ")}. These assessments used different versions. Score differences should be interpreted with this in mind.`
+        : `Over the course of ${daysBetween} days between evaluations across different assessment versions (${oldVersionCode || "Previous"} and ${newVersionCode || "Current"}), assessment indicators were recorded. These assessments used different versions. Score differences should be interpreted with this in mind.`;
+    } else {
+      growthSummary = topGains.length > 0
+        ? `Over the course of ${daysBetween} days between evaluations, your highest developmental progress occurred in ${topGains.map((g) => `${g.dimensionName} (+${g.delta}%)`).join(", ")}. Your current interests and demonstrated strengths have evolved constructively.`
+        : `Your assessment indicators show high stability and well-grounded calibration across all evaluated psychometric constructs over the ${daysBetween}-day interval.`;
+    }
 
     const comparisonResult: LongitudinalComparisonResultDTO = {
       studentId,
@@ -318,6 +356,10 @@ export class ResultComparisonService {
       oldCompletedDate: oldDate.toISOString(),
       newCompletedDate: newDate.toISOString(),
       daysBetween,
+      oldVersionCode,
+      newVersionCode,
+      isVersionMismatch,
+      versionNotice,
       oldArchetype,
       newArchetype,
       hasArchetypeShift,

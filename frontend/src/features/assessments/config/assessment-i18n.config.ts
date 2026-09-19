@@ -312,3 +312,28 @@ export function getRunnerTranslation(key: TranslationKey, languageCode = "en"): 
   const dict = RUNNER_TRANSLATIONS[lang] || RUNNER_TRANSLATIONS.en;
   return dict[key] || RUNNER_TRANSLATIONS.en[key] || key;
 }
+
+/**
+ * Retrieves the student's saved language preference across platform modules.
+ */
+export function getSavedLanguagePreference(): string {
+  if (typeof window !== "undefined") {
+    return (
+      localStorage.getItem("melife_preferred_language") ||
+      localStorage.getItem("preferred_assessment_language") ||
+      "en"
+    );
+  }
+  return "en";
+}
+
+/**
+ * Persists the student's language preference consistently across platform storage keys.
+ */
+export function saveLanguagePreference(lang: string): void {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("melife_preferred_language", lang);
+    localStorage.setItem("preferred_assessment_language", lang);
+  }
+}
+

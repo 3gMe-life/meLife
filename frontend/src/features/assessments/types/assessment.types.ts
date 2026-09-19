@@ -304,6 +304,10 @@ export interface LongitudinalComparisonResult {
   oldCompletedDate: string;
   newCompletedDate: string;
   daysBetween: number;
+  oldVersionCode?: string | null;
+  newVersionCode?: string | null;
+  isVersionMismatch?: boolean;
+  versionNotice?: string | null;
   oldArchetype: {
     title: string;
     description: string;

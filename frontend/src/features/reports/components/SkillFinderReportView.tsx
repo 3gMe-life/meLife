@@ -35,8 +35,21 @@ import {
 import {
   SkillFinderReportDTO,
   ReportAudienceView,
+  ScoredDimensionItem,
 } from "../types/report.types";
 import { reportApi } from "../api/report.api";
+
+// Visual Interactive Discovery Components
+import { UniverseConstellationMap } from "./visual/UniverseConstellationMap";
+import { RiasecRadarMap } from "./visual/RiasecRadarMap";
+import { StrengthsInActionGrid } from "./visual/StrengthsInActionGrid";
+import { HowYouLearnCard } from "./visual/HowYouLearnCard";
+import { GrowthOpportunitiesSection } from "./visual/GrowthOpportunitiesSection";
+import { CareerExplorationPathwayMap } from "./visual/CareerExplorationPathwayMap";
+import { ExplainableCareerCard } from "./visual/ExplainableCareerCard";
+import { FutureWorkAiCompass } from "./visual/FutureWorkAiCompass";
+import { ActionRoadmapSection } from "./visual/ActionRoadmapSection";
+import { ReportAudienceHeader } from "./visual/ReportAudienceHeader";
 
 interface SkillFinderReportViewProps {
   report: SkillFinderReportDTO;
@@ -88,12 +101,6 @@ export function SkillFinderReportView({
     }
   };
 
-  const handlePrint = () => {
-    if (typeof window !== "undefined") {
-      window.print();
-    }
-  };
-
   if (!report || !report.executiveSummary || !report.studentProfile) {
     return (
       <div className="rounded-3xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 p-8 text-center max-w-lg mx-auto space-y-4 my-12">
@@ -107,7 +114,7 @@ export function SkillFinderReportView({
         <div className="pt-2 flex items-center justify-center gap-3">
           <Link
             href="/participant/results"
-            className="px-4 py-2 rounded-xl bg-white dark:bg-white/10 border border-amber-200 dark:border-amber-800 text-xs font-bold text-amber-900 dark:text-amber-200"
+            className="px-4 py-2 rounded-xl bg-white dark:bg-white/10 border border-amber-200 dark:border-amber-800 text-xs font-bold text-amber-950 dark:text-amber-200"
           >
             Back to Results
           </Link>
@@ -116,30 +123,56 @@ export function SkillFinderReportView({
     );
   }
 
-  // Derive Top 5 Strengths from available dimensions
-  const allScoredDimensions = [
+  // Aggregate all scored dimensions safely
+  const allScoredDimensions: ScoredDimensionItem[] = [
     ...(report.interestProfile?.dimensions || []),
     ...(report.aptitudeInsights?.dimensions || []),
     ...(report.skillBehaviour?.dimensions || []),
     ...(report.developmentalStrengths?.dimensions || []),
   ];
 
-  // Unique by code, sorted by scalePositionPercentage desc
-  const uniqueDimensionsMap = new Map<string, typeof allScoredDimensions[0]>();
+  // Deduplicate dimensions by code
+  const uniqueDimensionsMap = new Map<string, ScoredDimensionItem>();
   allScoredDimensions.forEach((d) => {
     if (!uniqueDimensionsMap.has(d.code)) {
       uniqueDimensionsMap.set(d.code, d);
     }
   });
 
-  const sortedStrengths = Array.from(uniqueDimensionsMap.values())
-    .sort((a, b) => (b.scalePositionPercentage || 0) - (a.scalePositionPercentage || 0))
-    .slice(0, 5);
+  const allUniqueDimensions = Array.from(uniqueDimensionsMap.values());
+  const sortedStrengths = [...allUniqueDimensions].sort(
+    (a, b) => (b.scalePositionPercentage || 0) - (a.scalePositionPercentage || 0)
+  );
+
+  const topStrengths =
+    report.developmentalStrengths?.topStrengths?.length > 0
+      ? report.developmentalStrengths.topStrengths
+      : sortedStrengths.slice(0, 6);
+
+  const growthAreas =
+    report.skillBehaviour?.developmentOpportunities?.length > 0
+      ? report.skillBehaviour.developmentOpportunities
+      : sortedStrengths.slice(-4).reverse();
+
+  // In-page navigation anchors
+  const navAnchors = [
+    { id: "section-overview", label: "01. Overview" },
+    { id: "section-constellation", label: "02. Galaxy" },
+    { id: "section-riasec", label: "03. RIASEC" },
+    { id: "section-strengths", label: "04. Strengths" },
+    { id: "section-learning", label: "05. Learning" },
+    { id: "section-growth", label: "06. Growth" },
+    { id: "section-pathways", label: "07. Pathways" },
+    { id: "section-evidence", label: "08. Careers" },
+    { id: "section-future-work", label: "09. Future & AI" },
+    { id: "section-roadmap", label: "10. Roadmap" },
+    { id: "section-parent-guide", label: "11. Guidance" },
+  ];
 
   return (
     <div
       dir={isRtl ? "rtl" : "ltr"}
-      className="space-y-8 animate-in fade-in duration-300 max-w-5xl mx-auto pb-20 print:p-0 print:m-0 print:max-w-none print:space-y-5 select-none-safe"
+      className="space-y-8 animate-in fade-in duration-300 max-w-6xl mx-auto pb-24 print:p-0 print:m-0 print:max-w-none print:space-y-6 select-none-safe"
     >
       <style jsx global>{`
         @media print {
@@ -161,103 +194,32 @@ export function SkillFinderReportView({
       `}</style>
 
       {/* ========================================================================= */}
-      {/* HEADER TOOLBAR (Navigation, Audience View, Language, PDF & Print) */}
+      {/* STICKY REPORT AUDIENCE & INTERACTION DOCK */}
       {/* ========================================================================= */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-white/90 dark:bg-[#172B2A]/90 backdrop-blur-xl border border-[#E3ECEA] dark:border-white/10 rounded-3xl p-4 shadow-sm print:hidden">
-        {/* Back Link */}
+      <ReportAudienceHeader
+        currentAudience={audienceView}
+        onAudienceChange={setAudienceView}
+        currentLanguage={currentLanguage}
+        onLanguageChange={onLanguageChange}
+        onDownloadPdf={handleDownloadPdf}
+        isDownloadingPdf={isDownloading}
+        studentName={report.studentProfile.studentName}
+        archetypeTitle={report.executiveSummary.archetypeTitle}
+        navAnchors={navAnchors}
+      />
+
+      {/* Top Back Navigation (Desktop & Mobile) */}
+      <div className="flex items-center justify-between px-2 print:hidden">
         <Link
-          href={`/participant/results`}
+          href="/participant/results"
           className="inline-flex items-center gap-2 text-xs font-bold text-[#526866] dark:text-[#9FB3B0] hover:text-[#008F83] dark:hover:text-[#00BFA5] transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Results</span>
+          <span>Back to Assessment Results</span>
         </Link>
-
-        {/* Audience View Switcher */}
-        <div className="flex items-center bg-[#F4F8F7] dark:bg-white/5 p-1 rounded-2xl border border-[#E3ECEA] dark:border-white/10 w-full lg:w-auto justify-center">
-          <button
-            type="button"
-            onClick={() => setAudienceView("STUDENT")}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              audienceView === "STUDENT"
-                ? "bg-[#00BFA5] text-[#172B2A] shadow-sm font-black"
-                : "text-[#526866] dark:text-[#9FB3B0] hover:text-[#172B2A] dark:hover:text-white"
-            }`}
-          >
-            Student View
-          </button>
-          <button
-            type="button"
-            onClick={() => setAudienceView("PARENT")}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              audienceView === "PARENT"
-                ? "bg-[#00BFA5] text-[#172B2A] shadow-sm font-black"
-                : "text-[#526866] dark:text-[#9FB3B0] hover:text-[#172B2A] dark:hover:text-white"
-            }`}
-          >
-            Parent View
-          </button>
-          <button
-            type="button"
-            onClick={() => setAudienceView("COUNSELLOR")}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              audienceView === "COUNSELLOR"
-                ? "bg-[#00BFA5] text-[#172B2A] shadow-sm font-black"
-                : "text-[#526866] dark:text-[#9FB3B0] hover:text-[#172B2A] dark:hover:text-white"
-            }`}
-          >
-            Counsellor View
-          </button>
-        </div>
-
-        {/* Actions (Language, Print, PDF) */}
-        <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-end">
-          {/* Language Switcher */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 text-xs font-semibold">
-            <Globe className="w-3.5 h-3.5 text-[#00BFA5]" />
-            <select
-              value={currentLanguage}
-              onChange={(e) => onLanguageChange(e.target.value)}
-              className="bg-transparent text-[#172B2A] dark:text-[#F7FAF9] focus:outline-none cursor-pointer font-bold text-xs"
-              aria-label="Select report language"
-            >
-              {SUPPORTED_REPORT_LANGUAGES.map((lang) => (
-                <option
-                  key={lang.code}
-                  value={lang.code}
-                  className="bg-white dark:bg-[#172B2A] text-[#172B2A] dark:text-[#F7FAF9]"
-                >
-                  {lang.native} ({lang.label})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Print Button */}
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="px-3.5 py-2 rounded-xl bg-[#F4F8F7] dark:bg-white/5 hover:bg-[#EBF2F0] dark:hover:bg-white/10 border border-[#E3ECEA] dark:border-white/10 text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9] transition-all flex items-center gap-1.5 cursor-pointer"
-          >
-            <Printer className="w-3.5 h-3.5 text-[#008F83] dark:text-[#00BFA5]" />
-            <span className="hidden sm:inline">Print</span>
-          </button>
-
-          {/* Download PDF Button */}
-          <button
-            type="button"
-            onClick={handleDownloadPdf}
-            disabled={isDownloading}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#00B8D4] via-[#00BFA5] to-[#00C896] hover:opacity-95 text-[#172B2A] text-xs font-black transition-all flex items-center gap-2 shadow-md shadow-[#00BFA5]/25 cursor-pointer disabled:opacity-50"
-          >
-            {isDownloading ? (
-              <div className="w-3.5 h-3.5 border-2 border-[#172B2A] border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Download className="w-3.5 h-3.5" />
-            )}
-            <span>{isDownloading ? "Generating PDF..." : "Download PDF"}</span>
-          </button>
-        </div>
+        <span className="text-[11px] font-mono text-white/50">
+          Template v{report.templateVersion || "2.4.0"} • Attempt #{report.studentProfile.attemptNumber || 1}
+        </span>
       </div>
 
       {downloadError && (
@@ -267,662 +229,301 @@ export function SkillFinderReportView({
       )}
 
       {/* ========================================================================= */}
-      {/* 01. STUDENT SNAPSHOT (Header Hero Metadata) */}
+      {/* SECTION 01: LUXURY MAGAZINE COVER & HERO SNAPSHOT */}
       {/* ========================================================================= */}
-      <div className="print-break-avoid relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#172B2A] via-[#102423] to-[#0D1C1B] text-white p-6 sm:p-8 border border-white/10 shadow-xl print:shadow-none print:p-5 print:rounded-2xl">
-        <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-[#00BFA5]/15 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/3 w-64 h-64 rounded-full bg-[#00B8D4]/10 blur-2xl pointer-events-none" />
+      <section
+        id="section-overview"
+        className="print-break-avoid relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#091514] via-[#0F2624] to-[#0A1716] text-white p-7 sm:p-10 border border-[#00BFA5]/30 shadow-2xl print:shadow-none print:p-6 print:rounded-2xl print:bg-white print:text-[#172B2A] print:border-[#E3ECEA]"
+      >
+        {/* Glow Spheres */}
+        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-[#00BFA5]/20 blur-3xl pointer-events-none print:hidden" />
+        <div className="absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-[#00B8D4]/15 blur-3xl pointer-events-none print:hidden" />
 
-        <div className="relative space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="relative z-10 space-y-6">
+          {/* Top Tag Badges */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4 print:border-[#E3ECEA] print:pb-3">
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1 rounded-full text-[11px] font-black tracking-wider uppercase bg-[#00BFA5]/20 text-[#00BFA5] border border-[#00BFA5]/30 flex items-center gap-1.5">
+              <span className="px-3 py-1 rounded-full text-[11px] font-black tracking-wider uppercase bg-[#00BFA5]/20 text-[#00C896] border border-[#00BFA5]/30 flex items-center gap-1.5 print:border-[#00BFA5] print:text-[#008F83]">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>3G MeLife Psychometric Assessment Report</span>
+                <span>Personal Psychometric Discovery</span>
               </span>
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/10 text-white/90 border border-white/15">
-                {report.studentProfile.versionName}
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/10 text-white/90 border border-white/15 print:border-[#E3ECEA] print:text-[#526866]">
+                {report.studentProfile.versionName || "MeLife Discovery Edition"}
               </span>
             </div>
-            <div className="flex items-center gap-2 text-[11px] font-mono text-white/70">
-              <span>Attempt #{report.studentProfile.attemptNumber || 1}</span>
+
+            <div className="flex items-center gap-3 text-xs font-mono text-white/70 print:text-[#688582]">
+              <span className="flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5 text-[#00BFA5]" />
+                {new Date(report.studentProfile.completedAt).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
               <span>•</span>
-              <span>Status: Completed</span>
+              <span className="text-[#00C896] font-bold">100% Calibrated</span>
             </div>
           </div>
 
-          <div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white mb-2">
-              {report.studentProfile.assessmentName}
+          {/* Editorial Title & Archetype Spotlight */}
+          <div className="space-y-3">
+            <span className="text-xs font-black uppercase tracking-widest text-[#00BFA5] font-mono block print:text-[#008F83]">
+              Psychometric Profile Archetype
+            </span>
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white print:text-[#172B2A] leading-tight">
+              {report.executiveSummary.archetypeTitle}
             </h1>
-            <p className="text-xs sm:text-sm text-[#9FB3B0] max-w-2xl leading-relaxed">
-              Multidimensional psychometric evaluation synthesizing cognitive reasoning, vocational interests, and developmental learning habits.
+            <p className="text-sm sm:text-base font-semibold italic text-[#00C896] max-w-3xl print:text-[#008F83]">
+              &ldquo;{report.executiveSummary.tagline}&rdquo;
+            </p>
+            <p className="text-xs sm:text-sm text-[#C5D6D3] max-w-3xl leading-relaxed print:text-[#415654]">
+              {report.executiveSummary.strengthSummary}
             </p>
           </div>
 
-          {/* Student Profile Snapshot Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-white/10 text-xs">
+          {/* Primary Traits Showcase Pills */}
+          <div className="space-y-2 pt-2">
+            <span className="text-[10px] font-black uppercase tracking-wider text-white/50 block print:text-[#688582]">
+              Core Signature Drivers:
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {report.executiveSummary.primaryTraits.map((trait, idx) => (
+                <span
+                  key={idx}
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-black bg-white/10 text-white border border-white/15 flex items-center gap-2 shadow-sm print:bg-[#F0FDF4] print:border-[#00BFA5] print:text-[#008F83]"
+                >
+                  <Award className="w-3.5 h-3.5 text-[#00BFA5]" />
+                  <span>{trait}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Student Profile Snapshot Footer */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-5 border-t border-white/10 text-xs print:border-[#E3ECEA]">
             <div className="space-y-0.5">
-              <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider">Whose Report</span>
-              <p className="font-bold text-white truncate flex items-center gap-1.5">
+              <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider print:text-[#688582]">Student Name</span>
+              <p className="font-black text-white truncate flex items-center gap-1.5 print:text-[#172B2A]">
                 <User className="w-3.5 h-3.5 text-[#00BFA5]" />
                 <span>{report.studentProfile.studentName}</span>
               </p>
             </div>
             <div className="space-y-0.5">
-              <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider">Stage & School</span>
-              <p className="font-bold text-white truncate">
+              <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider print:text-[#688582]">Academic Stage</span>
+              <p className="font-bold text-white truncate print:text-[#172B2A]">
                 {report.studentProfile.educationStage} • {report.studentProfile.schoolName}
               </p>
             </div>
             <div className="space-y-0.5">
-              <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider">Evaluation Date</span>
-              <p className="font-bold text-[#00BFA5] flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5" />
-                <span>
-                  {new Date(report.studentProfile.completedAt).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </span>
+              <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider print:text-[#688582]">Primary Vector</span>
+              <p className="font-bold text-[#00C896] print:text-[#008F83]">
+                {report.interestProfile?.primaryOrientation} + {report.interestProfile?.secondaryOrientation}
               </p>
             </div>
             <div className="space-y-0.5">
-              <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider">Report Language</span>
-              <p className="font-bold text-white uppercase">{activeLangConfig.label} ({currentLanguage})</p>
+              <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider print:text-[#688582]">Confidence Status</span>
+              <p className="font-bold text-emerald-400 flex items-center gap-1 print:text-[#059669]">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Verified Baseline</span>
+              </p>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* ========================================================================= */}
-      {/* 02. YOUR PROFILE AT A GLANCE */}
+      {/* SECTION 02: MULTIDIMENSIONAL CONSTELLATION GALAXY */}
       {/* ========================================================================= */}
-      <div className="print-break-avoid rounded-3xl bg-gradient-to-br from-[#E6F7F5] via-white to-[#F0FAF8] dark:from-[#172B2A] dark:via-[#142827] dark:to-[#0D1C1B] border-2 border-[#00BFA5]/40 dark:border-[#00BFA5]/30 p-6 sm:p-8 shadow-lg print:shadow-none print:p-5 print:rounded-2xl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+      <section id="section-constellation" className="print-break-avoid">
+        <UniverseConstellationMap
+          dimensions={allUniqueDimensions}
+          archetypeTitle={report.executiveSummary.archetypeTitle}
+        />
+      </section>
+
+      {/* ========================================================================= */}
+      {/* SECTION 03: HOLLAND RIASEC INTEREST HEXAGON RADAR */}
+      {/* ========================================================================= */}
+      <section id="section-riasec" className="print-break-avoid">
+        <RiasecRadarMap
+          clusters={report.interestProfile?.topClusters || []}
+          primaryOrientation={report.interestProfile?.primaryOrientation}
+          secondaryOrientation={report.interestProfile?.secondaryOrientation}
+          summary={report.interestProfile?.summary}
+        />
+      </section>
+
+      {/* ========================================================================= */}
+      {/* SECTION 04: SIGNATURE STRENGTHS IN REAL-WORLD ACTION */}
+      {/* ========================================================================= */}
+      <section id="section-strengths" className="print-break-avoid">
+        <StrengthsInActionGrid strengths={topStrengths} />
+      </section>
+
+      {/* ========================================================================= */}
+      {/* SECTION 05: COGNITIVE ARCHITECTURE & LEARNING STYLE */}
+      {/* ========================================================================= */}
+      <section id="section-learning" className="print-break-avoid">
+        <HowYouLearnCard
+          aptitude={report.aptitudeInsights}
+          developmental={report.developmentalStrengths}
+          learningHabitsSummary={report.developmentalStrengths?.learningHabitsSummary}
+        />
+      </section>
+
+      {/* ========================================================================= */}
+      {/* SECTION 06: HIGH-LEVERAGE GROWTH FRONTIERS */}
+      {/* ========================================================================= */}
+      <section id="section-growth" className="print-break-avoid">
+        <GrowthOpportunitiesSection
+          growthAreas={growthAreas}
+          growthSuggestions={report.developmentalStrengths?.growthSuggestions}
+        />
+      </section>
+
+      {/* ========================================================================= */}
+      {/* SECTION 07: EDUCATIONAL & CAREER PATHWAY ARCHITECTURE */}
+      {/* ========================================================================= */}
+      <section id="section-pathways" className="print-break-avoid">
+        <CareerExplorationPathwayMap
+          clusters={report.explorationAreas?.clusters || []}
+          archetypeTitle={report.executiveSummary.archetypeTitle}
+        />
+      </section>
+
+      {/* ========================================================================= */}
+      {/* SECTION 08: EXPLAINABLE CAREER MATCH EVIDENCE DRAWER */}
+      {/* ========================================================================= */}
+      <section id="section-evidence" className="space-y-4 print-break-avoid">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 dark:border-white/10 pb-3">
           <div>
-            <span className="text-[11px] font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] mb-1 block">
-              02. Your Profile at a Glance
+            <span className="text-[11px] font-black uppercase tracking-wider text-[#00BFA5] flex items-center gap-1.5">
+              <Compass className="w-3.5 h-3.5" />
+              <span>08. Deep-Dive Career Fit Evidence</span>
             </span>
-            <h2 className="text-xl sm:text-2xl font-black text-[#172B2A] dark:text-[#F7FAF9] flex items-center gap-2">
-              <span>{report.executiveSummary.archetypeTitle}</span>
+            <h2 className="text-xl sm:text-2xl font-black text-white dark:text-[#F7FAF9] tracking-tight">
+              Curated High-Synergy Career Horizons
             </h2>
           </div>
-          <div className="px-3.5 py-1.5 rounded-xl bg-white/90 dark:bg-white/10 border border-[#00BFA5]/30 text-xs font-bold text-[#008F83] dark:text-[#00BFA5] shrink-0">
-            Primary Interest: {report.interestProfile?.primaryOrientation} + {report.interestProfile?.secondaryOrientation}
-          </div>
-        </div>
-
-        <p className="text-sm sm:text-base font-semibold italic text-[#008F83] dark:text-[#00BFA5] mb-4">
-          &ldquo;{report.executiveSummary.tagline}&rdquo;
-        </p>
-
-        <p className="text-xs sm:text-sm text-[#526866] dark:text-[#9FB3B0] leading-relaxed mb-5">
-          {report.executiveSummary.strengthSummary}
-        </p>
-
-        {/* Top 4 Signature Strengths */}
-        <div className="space-y-2 mb-5">
-          <span className="text-[11px] font-bold text-[#172B2A] dark:text-[#F7FAF9] uppercase tracking-wider block">
-            Signature Competency Indicators:
+          <span className="text-xs text-[#9FB3B0]">
+            Click any career card to inspect match evidence & skill blueprints
           </span>
-          <div className="flex flex-wrap gap-2">
-            {report.executiveSummary.primaryTraits.map((trait, idx) => (
-              <span
-                key={idx}
-                className="px-3 py-1 rounded-xl text-xs font-black bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5] border border-[#00BFA5]/30 flex items-center gap-1.5"
-              >
-                <Award className="w-3.5 h-3.5 text-[#008F83] dark:text-[#00BFA5]" />
-                <span>{trait}</span>
-              </span>
-            ))}
-          </div>
         </div>
 
-        {/* One-Paragraph Profile Summary */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-1.5">
-          <span className="text-[11px] font-bold text-[#172B2A] dark:text-[#F7FAF9] uppercase tracking-wider block">
-            Objective Exploratory Summary
-          </span>
-          <p className="text-xs sm:text-sm text-[#526866] dark:text-[#9FB3B0] leading-relaxed">
-            {report.executiveSummary.explorationFraming}
-          </p>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 03. RESPONSE QUALITY & ASSESSMENT CONFIDENCE */}
-      {/* ========================================================================= */}
-      <div className="print-break-avoid rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-8 shadow-sm space-y-4 print:shadow-none print:p-5 print:rounded-2xl">
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] block mb-1">
-              03. Response Quality & Assessment Confidence
-            </span>
-            <h2 className="text-lg sm:text-xl font-black text-[#172B2A] dark:text-[#F7FAF9]">
-              Evaluation Validity & Reliability Verification
-            </h2>
-          </div>
-          <div className="p-2 rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400">
-            <ShieldCheck className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-          <div className="p-3.5 rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-1">
-            <span className="text-[10px] font-bold text-[#526866] dark:text-[#9FB3B0] uppercase">Completion</span>
-            <p className="text-base font-black text-emerald-600 dark:text-emerald-400">100%</p>
-            <span className="text-[10px] text-[#728B88]">All items completed</span>
-          </div>
-          <div className="p-3.5 rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-1">
-            <span className="text-[10px] font-bold text-[#526866] dark:text-[#9FB3B0] uppercase">Consistency Signal</span>
-            <p className="text-base font-black text-[#008F83] dark:text-[#00BFA5]">High Consistency</p>
-            <span className="text-[10px] text-[#728B88]">Parallel pair verification</span>
-          </div>
-          <div className="p-3.5 rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-1">
-            <span className="text-[10px] font-bold text-[#526866] dark:text-[#9FB3B0] uppercase">Missing Items</span>
-            <p className="text-base font-black text-[#172B2A] dark:text-[#F7FAF9]">0</p>
-            <span className="text-[10px] text-[#728B88]">No missing answers</span>
-          </div>
-          <div className="p-3.5 rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-1">
-            <span className="text-[10px] font-bold text-[#526866] dark:text-[#9FB3B0] uppercase">Validity Status</span>
-            <p className="text-base font-black text-emerald-600 dark:text-emerald-400">Verified</p>
-            <span className="text-[10px] text-[#728B88]">No anomaly detected</span>
-          </div>
-        </div>
-
-        <p className="text-[11px] text-[#728B88] dark:text-[#7D9491] italic">
-          *Note: Psychometric consistency is evaluated using calibrated item response pairs. Normative population percentiles are calibrated within secondary school cohort bounds.
-        </p>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 04. YOUR INTEREST PROFILE (Holland RIASEC) */}
-      {/* ========================================================================= */}
-      <div className="print-break-avoid rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-8 shadow-sm space-y-6 print:shadow-none print:p-5 print:rounded-2xl">
-        <div>
-          <span className="text-[11px] font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] block mb-1">
-            04. Your Interest Profile
-          </span>
-          <h2 className="text-lg sm:text-xl font-black text-[#172B2A] dark:text-[#F7FAF9]">
-            Holland RIASEC Vocational & Activity Orientations
-          </h2>
-          <p className="text-xs text-[#526866] dark:text-[#9FB3B0] mt-1 max-w-2xl leading-relaxed">
-            {report.interestProfile?.summary}
-          </p>
-        </div>
-
-        {/* Top 3 Clusters Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {report.interestProfile?.topClusters?.map((cluster, idx) => (
-            <div
-              key={cluster.code}
-              className="rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 p-4 space-y-2 hover:border-[#00BFA5]/40 transition-colors print:p-3"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5]">
-                  Top #{idx + 1} Affinity
-                </span>
-                <span className="text-base font-black text-[#172B2A] dark:text-[#F7FAF9]">
-                  {cluster.percentage}%
-                </span>
-              </div>
-              <h3 className="text-sm font-black text-[#172B2A] dark:text-[#F7FAF9]">
-                {cluster.name}
-              </h3>
-              <p className="text-xs text-[#526866] dark:text-[#9FB3B0] line-clamp-2">
-                {cluster.description}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        {/* 6 RIASEC Dimensions Progress Meters */}
-        <div className="space-y-3.5 pt-2">
-          {report.interestProfile?.dimensions?.map((dim) => (
-            <div key={dim.code} className="space-y-1">
-              <div className="flex items-center justify-between text-xs font-bold">
-                <span className="text-[#172B2A] dark:text-[#F7FAF9]">{dim.name}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-semibold text-[#526866] dark:text-[#9FB3B0]">
-                    {dim.level}
-                  </span>
-                  <span className="text-[#008F83] dark:text-[#00BFA5]">
-                    {Math.round(dim.scalePositionPercentage)}%
-                  </span>
-                </div>
-              </div>
-              <div className="w-full h-2 rounded-full bg-[#EBF2F0] dark:bg-black/30 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-[#00B8D4] to-[#00BFA5] transition-all duration-700"
-                  style={{ width: `${Math.max(5, dim.scalePositionPercentage)}%` }}
-                />
-              </div>
-              <p className="text-[11px] text-[#728B88] dark:text-[#7D9491]">
-                {dim.description}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 05. YOUR COGNITIVE / APTITUDE PROFILE */}
-      {/* ========================================================================= */}
-      <div className="print-break-avoid rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-8 shadow-sm space-y-6 print:shadow-none print:p-5 print:rounded-2xl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <span className="text-[11px] font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] block mb-1">
-              05. Your Cognitive & Aptitude Profile
-            </span>
-            <h2 className="text-lg sm:text-xl font-black text-[#172B2A] dark:text-[#F7FAF9]">
-              Measured Problem Solving & Spatial Reasoning
-            </h2>
-          </div>
-          <div className="px-4 py-2 rounded-2xl bg-[#00B8D4]/15 border border-[#00B8D4]/30 text-xs font-black text-[#00B8D4] shrink-0">
-            Cognitive Precision: {report.aptitudeInsights?.overallAccuracyPercentage || 85}%
-          </div>
-        </div>
-
-        <p className="text-xs text-[#526866] dark:text-[#9FB3B0] leading-relaxed">
-          {report.aptitudeInsights?.summary}
-        </p>
-
-        {/* Aptitude Dimensions Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {report.aptitudeInsights?.dimensions?.map((dim) => (
-            <div
-              key={dim.code}
-              className="p-4 rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-2 print:p-3"
-            >
-              <div className="flex items-center justify-between text-xs font-bold">
-                <span className="text-[#172B2A] dark:text-[#F7FAF9]">{dim.name}</span>
-                <span className="text-[#008F83] dark:text-[#00BFA5] font-black">
-                  {Math.round(dim.scalePositionPercentage || 75)}% ({dim.level})
-                </span>
-              </div>
-              <div className="w-full h-1.5 rounded-full bg-[#EBF2F0] dark:bg-black/30 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-[#00B8D4] to-[#00C896]"
-                  style={{ width: `${Math.max(5, dim.scalePositionPercentage || 75)}%` }}
-                />
-              </div>
-              <p className="text-[11px] text-[#728B88] dark:text-[#7D9491] leading-relaxed">
-                {dim.description}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 06. YOUR SKILLS & COMPETENCIES */}
-      {/* ========================================================================= */}
-      <div className="print-break-avoid rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-8 shadow-sm space-y-6 print:shadow-none print:p-5 print:rounded-2xl">
-        <div>
-          <span className="text-[11px] font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] block mb-1">
-            06. Your Skills & Competencies
-          </span>
-          <h2 className="text-lg sm:text-xl font-black text-[#172B2A] dark:text-[#F7FAF9]">
-            Applied Behavioral & Workplace Competencies
-          </h2>
-          <p className="text-xs text-[#526866] dark:text-[#9FB3B0] mt-1">
-            {report.skillBehaviour?.summary}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Strongest Box */}
-          <div className="rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 p-5 space-y-4 print:p-4">
-            <h3 className="text-xs font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
-              <Award className="w-4 h-4 text-emerald-600" />
-              <span>Strongest Behavioral Competencies</span>
-            </h3>
-            <div className="space-y-3">
-              {report.skillBehaviour?.strongestIndicators?.map((str) => (
-                <div key={str.code} className="space-y-0.5">
-                  <div className="flex items-center justify-between text-xs font-bold text-emerald-950 dark:text-emerald-200">
-                    <span>{str.name}</span>
-                    <span className="text-[10px] text-emerald-700 dark:text-emerald-400">{str.level}</span>
-                  </div>
-                  <p className="text-[11px] text-emerald-800/80 dark:text-emerald-300/70">
-                    {str.description || "Consistently demonstrates proactive problem-solving execution."}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Growth Box */}
-          <div className="rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 p-5 space-y-4 print:p-4">
-            <h3 className="text-xs font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 flex items-center gap-2">
-              <Lightbulb className="w-4 h-4 text-amber-600" />
-              <span>High-Potential Competency Expansion</span>
-            </h3>
-            <div className="space-y-3">
-              {report.skillBehaviour?.developmentOpportunities?.map((grw) => (
-                <div key={grw.code} className="space-y-0.5">
-                  <div className="flex items-center justify-between text-xs font-bold text-amber-950 dark:text-amber-200">
-                    <span>{grw.name}</span>
-                    <span className="text-[10px] text-amber-700 dark:text-amber-400">{grw.level}</span>
-                  </div>
-                  <p className="text-[11px] text-amber-800/80 dark:text-amber-300/70">
-                    {grw.description || "Opportunity to nurture through structured project leadership."}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 07. YOUR LEARNING & DEVELOPMENT PROFILE */}
-      {/* ========================================================================= */}
-      <div className="print-break-avoid rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-8 shadow-sm space-y-6 print:shadow-none print:p-5 print:rounded-2xl">
-        <div>
-          <span className="text-[11px] font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] block mb-1">
-            07. Your Learning & Development Profile
-          </span>
-          <h2 className="text-lg sm:text-xl font-black text-[#172B2A] dark:text-[#F7FAF9]">
-            Durable Learning Habits & Growth Orientation
-          </h2>
-          <p className="text-xs text-[#526866] dark:text-[#9FB3B0] mt-1">
-            {report.developmentalStrengths?.learningHabitsSummary}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {report.developmentalStrengths?.dimensions?.map((dim) => (
-            <div
-              key={dim.code}
-              className="p-3.5 rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-1.5"
-            >
-              <div className="flex items-center justify-between text-xs font-bold">
-                <span className="text-[#172B2A] dark:text-[#F7FAF9]">{dim.name}</span>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5]">
-                  {dim.level}
-                </span>
-              </div>
-              <p className="text-[11px] text-[#526866] dark:text-[#9FB3B0] leading-relaxed">
-                {dim.description}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 08. YOUR STRONGEST AREAS (TOP 5 STRENGTHS SPOTLIGHT) */}
-      {/* ========================================================================= */}
-      <div className="print-break-avoid rounded-3xl bg-gradient-to-br from-[#172B2A] via-[#122826] to-[#0D1C1B] text-white p-6 sm:p-8 shadow-xl print:shadow-none print:p-5 print:rounded-2xl border border-white/10 space-y-5">
-        <div>
-          <span className="text-[11px] font-black uppercase tracking-wider text-[#00BFA5] block mb-1">
-            08. Your Strongest Areas
-          </span>
-          <h2 className="text-xl sm:text-2xl font-black text-white">
-            Top 5 Signature Strengths Spotlight
-          </h2>
-          <p className="text-xs text-[#9FB3B0] mt-1">
-            Your highest calibrated capabilities across interests, competencies, and cognitive deductions.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          {sortedStrengths.map((str, idx) => (
-            <div
-              key={str.code}
-              className="p-4 rounded-2xl bg-white/10 border border-white/15 space-y-2 relative overflow-hidden group hover:border-[#00BFA5] transition-colors"
-            >
-              <div className="w-7 h-7 rounded-xl bg-[#00BFA5] text-[#172B2A] font-black text-xs flex items-center justify-center shadow-xs">
-                0{idx + 1}
-              </div>
-              <h4 className="text-xs font-bold text-white leading-tight">
-                {str.name}
-              </h4>
-              <p className="text-[10px] text-[#9FB3B0] line-clamp-3">
-                {str.description}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 09. AREAS TO DEVELOP (Constructive & Encouraging Framing) */}
-      {/* ========================================================================= */}
-      <div className="print-break-avoid rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-8 shadow-sm space-y-5 print:shadow-none print:p-5 print:rounded-2xl">
-        <div>
-          <span className="text-[11px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 block mb-1">
-            09. High-Potential Areas to Cultivate
-          </span>
-          <h2 className="text-lg sm:text-xl font-black text-[#172B2A] dark:text-[#F7FAF9]">
-            Development Opportunities for Continuous Growth
-          </h2>
-          <p className="text-xs text-[#526866] dark:text-[#9FB3B0] mt-1 leading-relaxed">
-            These are emerging capability areas where targeted exposure and structured practice can unlock significant long-term growth.
-          </p>
-        </div>
-
-        <div className="space-y-3">
-          {report.developmentalStrengths?.growthSuggestions?.map((sug, idx) => (
-            <div
-              key={idx}
-              className="p-4 rounded-2xl bg-[#FAF6EC] dark:bg-[#211E16] border border-[#E5C158]/40 dark:border-[#E5C158]/20 flex items-start gap-3 print:p-3"
-            >
-              <Lightbulb className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-              <p className="text-xs sm:text-sm text-[#172B2A] dark:text-[#F7FAF9] leading-relaxed">
-                {sug}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 10. CAREER COMPATIBILITY & ALIGNMENT */}
-      {/* 11. RECOMMENDED CAREER PATHWAYS (Primary, Secondary, Exploration) */}
-      {/* 12. WHY THESE CAREERS? (Transparent Evidence) */}
-      {/* ========================================================================= */}
-      <div className="print-break-avoid rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-8 shadow-sm space-y-6 print:shadow-none print:p-5 print:rounded-2xl">
-        <div>
-          <span className="text-[11px] font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] block mb-1">
-            10-12. Career Alignment & Exploration Pathways
-          </span>
-          <h2 className="text-lg sm:text-xl font-black text-[#172B2A] dark:text-[#F7FAF9]">
-            Curiosity-Driven Career Exploration Pathways
-          </h2>
-          <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 mt-2">
-            <p className="text-xs text-amber-800 dark:text-amber-300 font-medium">
-              {report.explorationAreas?.framingDisclaimer}
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-3.5">
           {report.explorationAreas?.clusters?.map((cluster, idx) => (
-            <div
+            <ExplainableCareerCard
               key={idx}
-              className="rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 p-5 space-y-4 hover:border-[#00BFA5]/40 transition-colors print:p-4"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Compass className="w-4 h-4 text-[#00BFA5]" />
-                  <h3 className="text-sm font-black text-[#172B2A] dark:text-[#F7FAF9]">
-                    {cluster.clusterTitle}
-                  </h3>
-                </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5]">
-                  {idx === 0 ? "Primary Pathway" : idx === 1 ? "Secondary Pathway" : "Exploration Pathway"}
-                </span>
-              </div>
-
-              <p className="text-xs text-[#526866] dark:text-[#9FB3B0] leading-relaxed">
-                {cluster.description}
-              </p>
-
-              {/* Why These Careers / Evidence Breakdown */}
-              <div className="p-3 rounded-xl bg-white dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-1.5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] block">
-                  Why this matches your profile:
-                </span>
-                <ul className="text-xs text-[#526866] dark:text-[#9FB3B0] space-y-1">
-                  <li className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                    <span>Strong alignment with your <strong>{report.interestProfile?.primaryOrientation}</strong> interest orientation.</span>
-                  </li>
-                  <li className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                    <span>Capitalizes on measured <strong>{sortedStrengths[0]?.name || "Problem Solving"}</strong> strength.</span>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Sample Focus Areas */}
-              <div className="space-y-1.5 pt-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] block">
-                  Sample Exploration Focus Areas:
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {cluster.sampleFocusAreas?.map((area, aIdx) => (
-                    <span
-                      key={aIdx}
-                      className="px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-white dark:bg-white/10 border border-[#E3ECEA] dark:border-white/10 text-[#172B2A] dark:text-[#F7FAF9]"
-                    >
-                      {area}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
+              rank={idx + 1}
+              career={{
+                title: cluster.clusterTitle,
+                domain: cluster.domain,
+                description: cluster.description,
+                futureGrowth: idx === 0 ? "Very High" : "High",
+                whyEvidence: cluster.whyEvidence,
+                requiredSkills: cluster.sampleFocusAreas,
+                suggestedProjectsAndActivities: cluster.suggestedProjectsAndActivities,
+                developmentAreas: cluster.developmentAreas,
+              }}
+            />
           ))}
         </div>
-      </div>
+      </section>
 
       {/* ========================================================================= */}
-      {/* 13. WHAT TO EXPLORE NEXT */}
+      {/* SECTION 09: FUTURE OF WORK & AI READINESS COMPASS */}
       {/* ========================================================================= */}
-      <div className="print-break-avoid rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-8 shadow-sm space-y-6 print:shadow-none print:p-5 print:rounded-2xl">
-        <div>
-          <span className="text-[11px] font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] block mb-1">
-            13. What to Explore Next
+      <section id="section-future-work" className="print-break-avoid">
+        <FutureWorkAiCompass
+          archetypeTitle={report.executiveSummary.archetypeTitle}
+          topTraits={report.executiveSummary.primaryTraits}
+          primaryOrientation={report.interestProfile?.primaryOrientation}
+        />
+      </section>
+
+      {/* ========================================================================= */}
+      {/* SECTION 10: PROGRESSIVE 30-DAY / 3-MONTH / 6-MONTH ROADMAP */}
+      {/* ========================================================================= */}
+      <section id="section-roadmap" className="print-break-avoid">
+        <ActionRoadmapSection
+          actionPlan={report.actionPlan}
+          topStrengths={report.executiveSummary.primaryTraits}
+          growthSuggestions={report.developmentalStrengths?.growthSuggestions}
+        />
+      </section>
+
+      {/* ========================================================================= */}
+      {/* SECTION 11: PARENT & COUNSELLOR GUIDANCE */}
+      {/* ========================================================================= */}
+      <section
+        id="section-parent-guide"
+        className={`print-break-avoid rounded-3xl bg-gradient-to-br from-[#0D1E1C] via-[#122624] to-[#0A1615] border border-[#00BFA5]/30 p-6 sm:p-8 text-white shadow-2xl relative overflow-hidden space-y-6 ${
+          audienceView === "PARENT"
+            ? "ring-2 ring-[#00BFA5] shadow-[#00BFA5]/20"
+            : audienceView === "COUNSELLOR"
+            ? "ring-2 ring-[#38BDF8] shadow-[#38BDF8]/20"
+            : ""
+        } print:p-5 print:rounded-2xl print:bg-none print:bg-white print:text-[#172B2A] print:border-[#E3ECEA]`}
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4 print:border-[#E3ECEA]">
+          <div>
+            <span className="text-[11px] font-black uppercase tracking-wider text-[#00BFA5] flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5" />
+              <span>11. Parent & Counsellor Collaborative Guidance</span>
+            </span>
+            <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight print:text-[#172B2A]">
+              Nurturing Potential with Constructive Dialogue
+            </h2>
+          </div>
+          <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/10 text-white/80 border border-white/15">
+            {audienceView === "PARENT" ? "Active Mode: Parent Guidance" : audienceView === "COUNSELLOR" ? "Active Mode: Counsellor Diagnostics" : "Family & Mentorship Alignment"}
           </span>
-          <h2 className="text-lg sm:text-xl font-black text-[#172B2A] dark:text-[#F7FAF9]">
-            Hands-on Projects & Experiential Discovery
-          </h2>
-          <p className="text-xs text-[#526866] dark:text-[#9FB3B0] mt-1">
-            Real-world activities to test hypotheses, spark curiosity, and build foundational domain skills.
-          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {report.explorationAreas?.clusters?.map((cluster, idx) => (
-            <div
-              key={idx}
-              className="p-4 rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-2.5"
-            >
-              <h4 className="text-xs font-black uppercase text-[#008F83] dark:text-[#00BFA5]">
-                {cluster.clusterTitle} Projects:
-              </h4>
-              <ul className="text-xs text-[#526866] dark:text-[#9FB3B0] space-y-1.5 list-disc list-inside">
-                {cluster.suggestedProjectsAndActivities?.map((act, aIdx) => (
-                  <li key={aIdx} className="leading-relaxed">{act}</li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </div>
+        <p className="text-xs sm:text-sm text-[#C5D6D3] leading-relaxed print:text-[#415654]">
+          {report.parentGuidance?.nurturingMindsetSummary ||
+            "Supportive conversations focus on effort, curiosity, and iterative skill-building rather than locking students prematurely into a single rigid career box."}
+        </p>
 
-      {/* ========================================================================= */}
-      {/* 14. FUTURE SKILLS & ADAPTABILITY */}
-      {/* ========================================================================= */}
-      <div className="print-break-avoid rounded-3xl bg-gradient-to-br from-[#E6F7F5] via-white to-[#F0FAF8] dark:from-[#172B2A] dark:via-[#142827] dark:to-[#0D1C1B] border border-[#00BFA5]/30 p-6 sm:p-8 shadow-sm space-y-5 print:shadow-none print:p-5 print:rounded-2xl">
-        <div>
-          <span className="text-[11px] font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] block mb-1">
-            14. Future Skills & Adaptability
-          </span>
-          <h2 className="text-lg sm:text-xl font-black text-[#172B2A] dark:text-[#F7FAF9]">
-            Critical Future Competencies for Emerging Technology
-          </h2>
-          <p className="text-xs text-[#526866] dark:text-[#9FB3B0] mt-1">
-            Capabilities designed to thrive alongside automation, generative AI, and dynamic interdisciplinary workplaces.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="p-3.5 rounded-2xl bg-white dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-1">
-            <Zap className="w-4 h-4 text-[#00BFA5]" />
-            <h4 className="text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9]">AI Literacy</h4>
-            <p className="text-[10px] text-[#526866] dark:text-[#9FB3B0]">Prompting, ethical usage, and algorithmic fundamentals.</p>
-          </div>
-          <div className="p-3.5 rounded-2xl bg-white dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-1">
-            <Brain className="w-4 h-4 text-[#00BFA5]" />
-            <h4 className="text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9]">Learning Agility</h4>
-            <p className="text-[10px] text-[#526866] dark:text-[#9FB3B0]">Unlearning obsolete models and rapidly picking up new tools.</p>
-          </div>
-          <div className="p-3.5 rounded-2xl bg-white dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-1">
-            <Users className="w-4 h-4 text-[#00BFA5]" />
-            <h4 className="text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9]">Interdisciplinary Teamwork</h4>
-            <p className="text-[10px] text-[#526866] dark:text-[#9FB3B0]">Bridging engineering, design, and domain expertise.</p>
-          </div>
-          <div className="p-3.5 rounded-2xl bg-white dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-1">
-            <ShieldCheck className="w-4 h-4 text-[#00BFA5]" />
-            <h4 className="text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9]">Critical Verification</h4>
-            <p className="text-[10px] text-[#526866] dark:text-[#9FB3B0]">Validating data outputs and diagnostic troubleshooting.</p>
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 15. PARENT & EDUCATOR GUIDANCE (Always prominent in Parent View) */}
-      {/* ========================================================================= */}
-      <div className={`print-break-avoid rounded-3xl bg-gradient-to-br from-[#FAF6EC] via-white to-[#F9F7F1] dark:from-[#211E16] dark:via-[#191814] dark:to-[#141310] border border-[#E5C158]/40 dark:border-[#E5C158]/20 p-6 sm:p-8 shadow-sm space-y-6 print:shadow-none print:p-5 print:rounded-2xl ${
-        audienceView === "PARENT" ? "ring-2 ring-[#E5C158]" : ""
-      }`}>
-        <div>
-          <span className="text-[11px] font-black uppercase tracking-wider text-[#996B00] dark:text-[#E5C158] block mb-1">
-            15. Parent & Educator Guidance
-          </span>
-          <h2 className="text-lg sm:text-xl font-black text-[#172B2A] dark:text-[#F7FAF9]">
-            Nurturing Natural Potential Without Early Pressure
-          </h2>
-          <p className="text-xs sm:text-sm text-[#526866] dark:text-[#C5BBAA] mt-1.5 leading-relaxed">
-            {report.parentGuidance?.nurturingMindsetSummary}
-          </p>
-        </div>
-
-        {/* DOs vs DONTs */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="p-5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 space-y-3 print:p-4">
-            <h3 className="text-xs font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+        {/* DOs vs DONTs Matrix */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {/* Supportive DOs */}
+          <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-3 print:bg-emerald-50 print:border-[#00BFA5]/30 print:text-[#065F46]">
+            <h3 className="text-xs font-black uppercase tracking-wider text-[#A7F3D0] flex items-center gap-1.5 print:text-[#065F46]">
+              <CheckCircle2 className="w-4 h-4 text-[#00BFA5]" />
               <span>Recommended Supportive Actions (DOs)</span>
             </h3>
-            <ul className="text-xs text-emerald-900 dark:text-emerald-300/80 space-y-2 list-disc list-inside leading-relaxed">
+            <ul className="text-xs text-[#E0EBE8] space-y-2 print:text-[#2A4442]">
               {report.parentGuidance?.dos?.map((item, idx) => (
-                <li key={idx}>{item}</li>
+                <li key={idx} className="flex items-start gap-2 leading-relaxed">
+                  <span className="text-[#00BFA5] mt-0.5">•</span>
+                  <span>{item}</span>
+                </li>
               ))}
             </ul>
           </div>
 
-          <div className="p-5 rounded-2xl bg-rose-50/70 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 space-y-3 print:p-4">
-            <h3 className="text-xs font-black uppercase tracking-wider text-rose-800 dark:text-rose-300 flex items-center gap-1.5">
-              <AlertTriangle className="w-4 h-4 text-rose-600" />
+          {/* Things to Avoid */}
+          <div className="p-5 rounded-2xl bg-rose-500/10 border border-rose-500/20 space-y-3 print:bg-rose-50 print:border-rose-200 print:text-[#9F1239]">
+            <h3 className="text-xs font-black uppercase tracking-wider text-rose-300 flex items-center gap-1.5 print:text-[#9F1239]">
+              <AlertTriangle className="w-4 h-4 text-rose-400" />
               <span>Practices to Avoid (DON&apos;Ts)</span>
             </h3>
-            <ul className="text-xs text-rose-900 dark:text-rose-300/80 space-y-2 list-disc list-inside leading-relaxed">
+            <ul className="text-xs text-[#E0EBE8] space-y-2 print:text-[#2A4442]">
               {report.parentGuidance?.donts?.map((item, idx) => (
-                <li key={idx}>{item}</li>
+                <li key={idx} className="flex items-start gap-2 leading-relaxed">
+                  <span className="text-rose-400 mt-0.5">•</span>
+                  <span>{item}</span>
+                </li>
               ))}
             </ul>
           </div>
         </div>
 
         {/* Conversation Starters */}
-        <div className="p-5 rounded-2xl bg-white dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-3 print:p-4">
-          <h3 className="text-xs font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] flex items-center gap-1.5">
+        <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-3 print:bg-[#F7FAF9] print:border-[#E3ECEA] print:text-[#172B2A]">
+          <h3 className="text-xs font-black uppercase tracking-wider text-[#00BFA5] flex items-center gap-1.5 print:text-[#008F83]">
             <MessageSquare className="w-4 h-4" />
             <span>Empathetic Conversation Starters for Family Discussions</span>
           </h3>
@@ -930,146 +531,42 @@ export function SkillFinderReportView({
             {report.parentGuidance?.recommendedDiscussions?.map((disc, idx) => (
               <div
                 key={idx}
-                className="p-3.5 rounded-xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 text-xs text-[#172B2A] dark:text-[#F7FAF9] italic leading-relaxed"
+                className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 text-xs text-[#E0EBE8] italic leading-relaxed print:bg-white print:border-[#E3ECEA] print:text-[#172B2A]"
               >
                 &ldquo;{disc}&rdquo;
               </div>
             ))}
           </div>
         </div>
-      </div>
 
-      {/* ========================================================================= */}
-      {/* 16. STUDENT ACTION PLAN (30 Days, 3 Months, 6 Months) */}
-      {/* ========================================================================= */}
-      <div className="print-break-avoid rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-8 shadow-sm space-y-6 print:shadow-none print:p-5 print:rounded-2xl">
-        <div>
-          <span className="text-[11px] font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] block mb-1">
-            16. Student Action Plan
-          </span>
-          <h2 className="text-lg sm:text-xl font-black text-[#172B2A] dark:text-[#F7FAF9]">
-            Progressive Action Roadmap
-          </h2>
-          <p className="text-xs text-[#526866] dark:text-[#9FB3B0] mt-1">
-            Transforming psychometric evaluation into actionable, low-pressure development milestones.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-5 rounded-2xl bg-[#E6F7F5] dark:bg-[#142827] border border-[#00BFA5]/30 space-y-2">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-[#00BFA5]" />
-              <h4 className="text-xs font-black uppercase text-[#008F83] dark:text-[#00BFA5]">Next 30 Days</h4>
+        {/* Counsellor Diagnostic Dimension Table (Visible in Counsellor View or Collapsible) */}
+        {audienceView === "COUNSELLOR" && (
+          <div className="p-5 rounded-2xl bg-sky-500/10 border border-sky-500/20 space-y-3 animate-in fade-in">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black uppercase tracking-wider text-sky-300 flex items-center gap-1.5">
+                <Briefcase className="w-4 h-4 text-sky-400" />
+                <span>Counsellor Raw Dimensional Calibration Table</span>
+              </span>
+              <span className="text-[10px] font-mono text-sky-300/80">Normative Cohort Scale</span>
             </div>
-            <p className="text-xs text-[#172B2A] dark:text-[#F7FAF9] font-bold">Exploratory Immersion</p>
-            <ul className="text-xs text-[#526866] dark:text-[#9FB3B0] space-y-1 list-disc list-inside">
-              <li>Explore 2-3 starter robotics or coding tutorials online.</li>
-              <li>Discuss RIASEC interest findings with a teacher or parent.</li>
-            </ul>
-          </div>
-
-          <div className="p-5 rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-2">
-            <div className="flex items-center gap-2">
-              <Target className="w-4 h-4 text-[#00B8D4]" />
-              <h4 className="text-xs font-black uppercase text-[#00B8D4]">Next 3 Months</h4>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+              {allUniqueDimensions.map((dim, idx) => (
+                <div key={idx} className="p-2.5 rounded-xl bg-black/20 border border-white/5 flex items-center justify-between">
+                  <span className="font-bold truncate text-white/90">{dim.name}</span>
+                  <span className="font-mono text-sky-300 font-bold ml-2">
+                    {dim.scalePositionPercentage ?? (dim as any).rawScore ?? 75}%
+                  </span>
+                </div>
+              ))}
             </div>
-            <p className="text-xs text-[#172B2A] dark:text-[#F7FAF9] font-bold">Skill Prototyping</p>
-            <ul className="text-xs text-[#526866] dark:text-[#9FB3B0] space-y-1 list-disc list-inside">
-              <li>Complete a small hands-on physical or software build.</li>
-              <li>Join a school STEM, robotics, or design club.</li>
-            </ul>
           </div>
-
-          <div className="p-5 rounded-2xl bg-[#FAF6EC] dark:bg-[#211E16] border border-[#E5C158]/30 space-y-2">
-            <div className="flex items-center gap-2">
-              <Compass className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-              <h4 className="text-xs font-black uppercase text-amber-600 dark:text-amber-400">Next 6 Months</h4>
-            </div>
-            <p className="text-xs text-[#172B2A] dark:text-[#F7FAF9] font-bold">Academic Alignment</p>
-            <ul className="text-xs text-[#526866] dark:text-[#9FB3B0] space-y-1 list-disc list-inside">
-              <li>Review secondary school subject combinations with a school counselor.</li>
-              <li>Participate in a science fair, hackathon, or design showcase.</li>
-            </ul>
-          </div>
-        </div>
-      </div>
+        )}
+      </section>
 
       {/* ========================================================================= */}
-      {/* 17. RETEST & PROGRESS TRACKING */}
+      {/* SECTION 12: TECHNICAL AUDIT, RETESTING & SYSTEM METADATA */}
       {/* ========================================================================= */}
-      <div className="print-break-avoid rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-8 shadow-sm space-y-4 print:shadow-none print:p-5 print:rounded-2xl">
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] block mb-1">
-              17. Retest & Progress Tracking
-            </span>
-            <h2 className="text-lg sm:text-xl font-black text-[#172B2A] dark:text-[#F7FAF9]">
-              Longitudinal Development Calibration
-            </h2>
-          </div>
-          <div className="p-2 rounded-2xl bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5]">
-            <TrendingUp className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <p className="text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9]">
-              Baseline Attempt Registered
-            </p>
-            <p className="text-xs text-[#526866] dark:text-[#9FB3B0]">
-              As you complete additional exploratory learning cycles and re-evaluate next semester, progress metrics and trait stability shifts will appear here.
-            </p>
-          </div>
-          <Link
-            href="/participant/assessments"
-            className="px-4 py-2 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white font-bold text-xs transition-colors shrink-0 shadow-sm"
-          >
-            Explore More Assessments
-          </Link>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 18. METHODOLOGY & PSYCHOMETRIC INTERPRETATION */}
-      {/* ========================================================================= */}
-      <div className="print-break-avoid rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 p-6 sm:p-8 shadow-sm space-y-4 print:shadow-none print:p-5 print:rounded-2xl">
-        <div>
-          <span className="text-[11px] font-black uppercase tracking-wider text-[#008F83] dark:text-[#00BFA5] block mb-1">
-            18. Methodology & Psychometric Interpretation
-          </span>
-          <h2 className="text-lg sm:text-xl font-black text-[#172B2A] dark:text-[#F7FAF9]">
-            Assessment Construct & Interpretation Boundaries
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-[#526866] dark:text-[#9FB3B0] leading-relaxed">
-          <div className="p-4 rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-2">
-            <h4 className="font-bold text-[#172B2A] dark:text-[#F7FAF9] flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-              <span>What This Report Accomplishes</span>
-            </h4>
-            <p>
-              Provides structured psychometric profiling across Holland RIASEC interests, measured spatial/logical reasoning tasks, and behavioral learning habits to encourage curiosity-driven career exploration.
-            </p>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 space-y-2">
-            <h4 className="font-bold text-[#172B2A] dark:text-[#F7FAF9] flex items-center gap-1.5">
-              <Info className="w-4 h-4 text-[#00BFA5]" />
-              <span>Interpretation Safeguards</span>
-            </h4>
-            <p>
-              This report is NOT a clinical diagnosis, nor does it rigidly prescribe a single career destiny. Human interests and capabilities evolve continuously with deliberate practice, education, and life experiences.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 19. TECHNICAL REPORT METADATA (Collapsible for Students, Open in Counsellor View) */}
-      {/* ========================================================================= */}
-      <div className="print-break-avoid rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 overflow-hidden shadow-sm">
+      <section className="print-break-avoid rounded-3xl bg-white dark:bg-[#172B2A] border border-[#E3ECEA] dark:border-white/10 overflow-hidden shadow-sm">
         <button
           type="button"
           onClick={() => setIsTechnicalMetaOpen(!isTechnicalMetaOpen)}
@@ -1078,7 +575,7 @@ export function SkillFinderReportView({
           <div className="flex items-center gap-2">
             <FileCode className="w-4 h-4 text-[#00BFA5]" />
             <span className="text-xs font-black uppercase tracking-wider text-[#172B2A] dark:text-[#F7FAF9]">
-              19. Technical Assessment & System Metadata
+              Technical Assessment & Psychometric Audit Metadata
             </span>
           </div>
           {isTechnicalMetaOpen ? (
@@ -1110,20 +607,19 @@ export function SkillFinderReportView({
             </div>
           </div>
         )}
-      </div>
+      </section>
 
       {/* ========================================================================= */}
-      {/* 20. FOOTER DISCLAIMER */}
+      {/* FOOTER DISCLAIMER */}
       {/* ========================================================================= */}
-      <div className="print-break-avoid text-center text-[11px] text-[#728B88] dark:text-[#7D9491] space-y-1 pt-6 border-t border-[#E3ECEA] dark:border-white/10 print:pt-4">
+      <footer className="print-break-avoid text-center text-[11px] text-[#728B88] dark:text-[#7D9491] space-y-1 pt-6 border-t border-[#E3ECEA] dark:border-white/10 print:pt-4">
         <p>
-          © {new Date().getFullYear()} 3G MeLife Psychometric Assessment System. All rights reserved.
+          © {new Date().getFullYear()} 3G MeLife Student Psychometric Discovery Platform. All rights reserved.
         </p>
         <p>
-          Calibrated strictly for student discovery and non-prescriptive educational orientation.
+          Designed for curiosity-driven educational navigation and non-prescriptive personal growth.
         </p>
-      </div>
+      </footer>
     </div>
   );
 }
-

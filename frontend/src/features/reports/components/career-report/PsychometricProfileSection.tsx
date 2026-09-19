@@ -1,6 +1,9 @@
+"use client";
+
 import React from "react";
 import { ReportPsychometricProfileData } from "../../types/career-report.types";
 import { Brain, Hammer, Search, Palette, HeartHandshake, TrendingUp, Layers, Sparkles, Compass } from "lucide-react";
+import { RiasecRadarMap } from "../visual/RiasecRadarMap";
 
 interface PsychometricProfileSectionProps {
   data: ReportPsychometricProfileData;
@@ -62,96 +65,14 @@ const CLUSTER_CONFIG: Record<
 
 export const PsychometricProfileSection: React.FC<PsychometricProfileSectionProps> = ({ data }) => {
   return (
-    <div id="section-psychometrics" className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 md:p-8 shadow-sm transition-all">
-      {/* Header */}
-      <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-50 dark:bg-teal-950/80 text-teal-600 dark:text-teal-400">
-          <Brain className="h-5 w-5" />
-        </div>
-        <div>
-          <div className="text-[10px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400">
-            Section 03
-          </div>
-          <h2 className="text-lg md:text-xl font-black text-slate-900 dark:text-white">
-            Psychometric Interest Architecture (RIASEC)
-          </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Multidimensional occupational interest scores across 6 core domains
-          </p>
-        </div>
-      </div>
-
-      {/* Dominant Orientations Callout Banner */}
-      <div className="mt-6 rounded-2xl border border-teal-500/20 bg-gradient-to-r from-teal-500/10 via-sky-500/5 to-transparent p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400">
-            <Sparkles className="h-3.5 w-3.5" /> Dominant Occupational Orientations
-          </div>
-          <div className="text-base md:text-xl font-black text-slate-900 dark:text-white">
-            Primary: <span className="text-teal-600 dark:text-teal-400">{data.primaryOrientation}</span>
-          </div>
-          <div className="text-xs text-slate-600 dark:text-slate-400">
-            Secondary Complement: <span className="font-bold text-slate-800 dark:text-slate-200">{data.secondaryOrientation}</span>
-          </div>
-        </div>
-
-        <div className="max-w-md text-xs text-slate-600 dark:text-slate-300 leading-relaxed border-l-2 border-teal-500/30 pl-3">
-          {data.summary}
-        </div>
-      </div>
-
-      {/* 6 RIASEC Dimensional Cards Grid */}
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {(data.interestClusters || []).map((cluster) => {
-          const cfg = CLUSTER_CONFIG[cluster.key] || CLUSTER_CONFIG.builder;
-
-          return (
-            <div
-              key={cluster.key}
-              className={`rounded-2xl border ${cfg.border} ${cfg.bg} p-5 transition-all hover:shadow-md hover:scale-[1.01] flex flex-col justify-between`}
-            >
-              <div>
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <div className={`flex h-8 w-8 items-center justify-center rounded-xl border ${cfg.badge}`}>
-                      {cfg.icon}
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                        {cluster.name}
-                      </h3>
-                      <span className="text-[10px] font-mono font-semibold text-slate-400">Code: {cluster.code}</span>
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <span className="text-lg font-black text-slate-900 dark:text-white">
-                      {cluster.percentage}%
-                    </span>
-                  </div>
-                </div>
-
-                {/* Progress bar */}
-                <div className="mt-3.5 h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-                  <div
-                    className={`h-full rounded-full ${cfg.bar} transition-all duration-700`}
-                    style={{ width: `${Math.min(100, Math.max(8, cluster.percentage))}%` }}
-                  />
-                </div>
-
-                <div className="mt-3">
-                  <div className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
-                    {cluster.clusterTitle}
-                  </div>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                    {cluster.description}
-                  </p>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+    <div id="section-psychometrics" className="space-y-6">
+      {/* Interactive Hexagon Radar Map */}
+      <RiasecRadarMap
+        clusters={data.interestClusters || []}
+        primaryOrientation={data.primaryOrientation}
+        secondaryOrientation={data.secondaryOrientation}
+        summary={data.summary}
+      />
     </div>
   );
 };

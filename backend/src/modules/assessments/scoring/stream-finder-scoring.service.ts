@@ -108,6 +108,7 @@ export interface StreamFinderResultDTO {
 
   language: string;
   createdAt: string;
+  completedAt: string;
 }
 
 export class StreamFinderScoringService {
@@ -465,6 +466,7 @@ export class StreamFinderScoringService {
 
       language: options?.languageCode || "en",
       createdAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
     };
   }
 }
