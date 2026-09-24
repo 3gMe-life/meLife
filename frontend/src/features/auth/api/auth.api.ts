@@ -75,7 +75,10 @@ export const authApi = {
   async applyCounsellor(payload: CounsellorApplicationPayload): Promise<AuthResponse> {
     const res = await fetchApi<AuthResponse>("/auth/apply/counsellor", {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        ...payload,
+        email: payload.professionalEmail || (payload as any).email,
+      }),
     });
     storeAuthToken(res);
     return res;
@@ -87,7 +90,10 @@ export const authApi = {
   async applyInstitution(payload: InstitutionApplicationPayload): Promise<AuthResponse> {
     const res = await fetchApi<AuthResponse>("/auth/apply/institution", {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        ...payload,
+        email: payload.officialEmail || (payload as any).email,
+      }),
     });
     storeAuthToken(res);
     return res;

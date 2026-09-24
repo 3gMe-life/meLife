@@ -1,8 +1,13 @@
 "use client";
 
 import React from "react";
-import CounsellorDashboardPage from "../dashboard/page";
+import { CounsellorLayout } from "@/features/counsellors/components/shell/CounsellorLayout";
+import { CounsellorStudentsView } from "@/features/counsellors/components/CounsellorStudentsView";
 
 export default function CounsellorStudentsPage() {
-  return <CounsellorDashboardPage />;
+  return (
+    <CounsellorLayout>
+      <CounsellorStudentsView />
+    </CounsellorLayout>
+  );
 }

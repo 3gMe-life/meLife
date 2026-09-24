@@ -15,6 +15,8 @@ import {
   ConsentPermission,
   SessionStatus,
   NotificationDTO,
+  CounsellorOverviewDTO,
+  CounsellorSessionFilterParams,
 } from "./counselling.types";
 import { SkillFinderFullResultDTO } from "../scoring/scoring.types";
 
@@ -267,7 +269,10 @@ export class CounsellingService {
    * Helper to resolve counsellor profile from user ID or counsellor ID.
    */
   private async resolveCounsellor(idOrUserId: string) {
-    const counsellor = await counsellingRepository.findCounsellorById(idOrUserId);
+    let counsellor = await counsellingRepository.findCounsellorById(idOrUserId);
+    if (!counsellor) {
+      counsellor = await counsellingRepository.findOrCreateCounsellorProfile(idOrUserId);
+    }
     if (!counsellor) {
       throw AppError.notFound("Counsellor profile not found", "COUNSELLOR_NOT_FOUND");
     }
@@ -275,14 +280,41 @@ export class CounsellingService {
   }
 
   /**
-   * Retrieves all sessions assigned to a counsellor.
+   * Retrieves all sessions assigned to a counsellor with optional search, status, and filter params.
    */
   async getCounsellorSessions(
     counsellorUserIdOrId: string,
-    status?: string
+    filters?: string | CounsellorSessionFilterParams
   ): Promise<CounsellingSessionDTO[]> {
     const counsellor = await this.resolveCounsellor(counsellorUserIdOrId);
-    return counsellingRepository.findSessionsByCounsellorId(counsellor.id, status);
+    return counsellingRepository.findSessionsByCounsellorId(counsellor.id, filters);
+  }
+
+  /**
+   * Retrieves single session detail with strict counsellor authorization.
+   * Validates that the requested session is assigned to the authenticated counsellor.
+   */
+  async getSessionDetailForCounsellor(
+    counsellorUserIdOrId: string,
+    sessionId: string
+  ): Promise<CounsellingSessionDTO & { notes?: CounsellingNoteDTO | null }> {
+    const counsellor = await this.resolveCounsellor(counsellorUserIdOrId);
+    const session = await counsellingRepository.findSessionById(sessionId);
+
+    if (!session) {
+      throw AppError.notFound("Session not found", "SESSION_NOT_FOUND");
+    }
+
+    if (session.counsellorId !== counsellor.id) {
+      throw AppError.forbidden("Unauthorized: Session is not assigned to this counsellor", "SESSION_FORBIDDEN");
+    }
+
+    const notes = await counsellingRepository.findCounsellingNotesBySessionId(sessionId);
+
+    return {
+      ...session,
+      notes,
+    };
   }
 
   /**
@@ -357,35 +389,71 @@ export class CounsellingService {
   /**
    * Retrieves aggregated statistics & upcoming queue for the Counsellor Portal.
    */
-  async getCounsellorOverview(counsellorUserIdOrId: string): Promise<{
-    stats: {
-      upcomingSessionsCount: number;
-      pendingRequestsCount: number;
-      completedSessionsCount: number;
-      totalAssignedStudentsCount: number;
-    };
-    counsellorProfile: CounsellorDetailDTO;
-    upcomingSessions: CounsellingSessionDTO[];
-    pendingRequests: CounsellingSessionDTO[];
-  }> {
+  async getCounsellorOverview(counsellorUserIdOrId: string): Promise<CounsellorOverviewDTO> {
     const counsellor = await this.resolveCounsellor(counsellorUserIdOrId);
     const stats = await counsellingRepository.getCounsellorOverviewStats(counsellor.id);
+    const todaySessions = await counsellingRepository.findTodaySessionsByCounsellorId(counsellor.id);
     const allSessions = await counsellingRepository.findSessionsByCounsellorId(counsellor.id);
 
     const upcomingSessions = allSessions
-      .filter((s) => s.status === "CONFIRMED")
-      .slice(0, 5);
+      .filter((s) => s.status === "CONFIRMED" && s.sessionDate >= new Date().toISOString().split("T")[0])
+      .slice(0, 10);
 
     const pendingRequests = allSessions
       .filter((s) => s.status === "PENDING")
-      .slice(0, 5);
+      .slice(0, 10);
 
     return {
       stats,
       counsellorProfile: counsellor,
+      todaySessions,
       upcomingSessions,
       pendingRequests,
     };
+  }
+
+  /**
+   * Updates counsellor profile details.
+   */
+  async updateCounsellorProfile(
+    counsellorUserIdOrId: string,
+    data: {
+      bio?: string;
+      qualification?: string;
+      experienceYears?: number;
+      specialisations?: string[];
+      languages?: string[];
+      guidanceAreas?: string[];
+      profileImage?: string | null;
+    }
+  ): Promise<CounsellorDetailDTO> {
+    const counsellor = await this.resolveCounsellor(counsellorUserIdOrId);
+    await counsellingRepository.updateCounsellorProfile(counsellor.id, data);
+    return this.getCounsellorDetail(counsellor.id);
+  }
+
+  /**
+   * Retrieves availability schedule for a counsellor.
+   */
+  async getCounsellorAvailability(counsellorUserIdOrId: string) {
+    const counsellor = await this.resolveCounsellor(counsellorUserIdOrId);
+    return counsellingRepository.getCounsellorAvailability(counsellor.id);
+  }
+
+  /**
+   * Updates weekly availability schedule for a counsellor.
+   */
+  async updateCounsellorAvailability(counsellorUserIdOrId: string, slots: any[]) {
+    const counsellor = await this.resolveCounsellor(counsellorUserIdOrId);
+    return counsellingRepository.replaceCounsellorAvailability(counsellor.id, slots);
+  }
+
+  /**
+   * Retrieves reviews and student feedback for a counsellor.
+   */
+  async getCounsellorReviews(counsellorUserIdOrId: string) {
+    const counsellor = await this.resolveCounsellor(counsellorUserIdOrId);
+    return counsellingRepository.getCounsellorReviews(counsellor.id);
   }
 
   /**

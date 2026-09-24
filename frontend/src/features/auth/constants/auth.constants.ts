@@ -72,11 +72,30 @@ export const DASHBOARD_ROUTES: Record<string, string> = {
   INSTITUTION_ADMIN: "/institution/dashboard",
   PLATFORM_ADMIN: "/admin/dashboard",
   COMPANY_ADMIN: "/company/dashboard",
-  SUPER_ADMIN: "/super-admin/dashboard",
+  SUPER_ADMIN: "/admin/dashboard",
+  COUNSELLOR_PENDING: "/counsellor/application-pending",
   DEFAULT: "/participant/dashboard",
 };
 
-export const resolveDashboardRoute = (role?: string): string => {
+export const resolveDashboardRoute = (
+  role?: string,
+  userStatus?: string,
+  counsellorApplication?: { status: string } | null
+): string => {
+  // 1. Counsellor applicant pending verification check
+  if (
+    counsellorApplication?.status === "PENDING" ||
+    (userStatus === "PENDING_VERIFICATION" && counsellorApplication)
+  ) {
+    return DASHBOARD_ROUTES.COUNSELLOR_PENDING;
+  }
+
+  // 2. Counsellor applicant rejected check
+  if (counsellorApplication?.status === "REJECTED") {
+    return DASHBOARD_ROUTES.COUNSELLOR_PENDING;
+  }
+
+  // 3. Role-based routing for active personas
   if (!role) return DASHBOARD_ROUTES.DEFAULT;
   const normalized = role.toUpperCase().trim();
   return DASHBOARD_ROUTES[normalized] || DASHBOARD_ROUTES.DEFAULT;

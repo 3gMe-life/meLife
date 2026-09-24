@@ -86,12 +86,10 @@ export function GuardianStep() {
       {
         onSuccess: () => {
           setOnboardingModalOpen(false);
-          router.push("/participant/dashboard");
+          router.replace("/participant/dashboard");
         },
-        onError: () => {
-          // If backend onboarding endpoint is not ready yet, close modal cleanly
-          setOnboardingModalOpen(false);
-          router.push("/participant/dashboard");
+        onError: (err) => {
+          setServerError(err.message || "Failed to complete educational calibration. Please try again.");
         },
       }
     );

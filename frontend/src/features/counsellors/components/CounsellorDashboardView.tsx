@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import {
   Calendar,
   Clock,
@@ -8,16 +9,11 @@ import {
   FileText,
   ShieldCheck,
   CheckCircle2,
-  XCircle,
   Users,
   Brain,
-  AlertCircle,
-  ExternalLink,
-  ChevronRight,
-  TrendingUp,
-  Award,
-  Sparkles,
-  ShieldAlert,
+  Star,
+  UserCheck,
+  ArrowRight,
 } from "lucide-react";
 import {
   CounsellingSessionDTO,
@@ -31,9 +27,14 @@ import {
 } from "../hooks/useCounsellorQueries";
 import { StudentPsychometricSummaryModal } from "./StudentPsychometricSummaryModal";
 import { SessionNotesModal } from "./SessionNotesModal";
+import { PageHeader } from "@/features/dashboard/components/common/PageHeader";
+import { MetricCard } from "@/features/dashboard/components/common/MetricCard";
+import { DashboardCard } from "@/features/dashboard/components/common/DashboardCard";
+import { EmptyState } from "@/features/dashboard/components/common/EmptyState";
+import { LoadingState, ErrorState } from "@/features/dashboard/components/common/LoadingState";
 
 export const CounsellorDashboardView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"pending" | "upcoming" | "students">(
+  const [activeTab, setActiveTab] = useState<"pending" | "today" | "upcoming" | "students">(
     "pending"
   );
   const [selectedStudentForSummary, setSelectedStudentForSummary] = useState<{
@@ -43,20 +44,61 @@ export const CounsellorDashboardView: React.FC = () => {
   const [selectedSessionForNotes, setSelectedSessionForNotes] =
     useState<CounsellingSessionDTO | null>(null);
 
-  const { data: overview, isLoading: isLoadingOverview } = useCounsellorOverview();
-  const { data: allSessions = [], isLoading: isLoadingSessions } = useCounsellorSessions();
-  const { data: assignedStudents = [], isLoading: isLoadingStudents } = useAssignedStudents();
+  const {
+    data: overview,
+    isLoading: isLoadingOverview,
+    isError: isErrorOverview,
+    refetch: refetchOverview,
+  } = useCounsellorOverview();
+
+  const {
+    data: allSessions = [],
+    isLoading: isLoadingSessions,
+    isError: isErrorSessions,
+    refetch: refetchSessions,
+  } = useCounsellorSessions();
+
+  const {
+    data: assignedStudents = [],
+    isLoading: isLoadingStudents,
+    isError: isErrorStudents,
+    refetch: refetchStudents,
+  } = useAssignedStudents();
+
   const updateStatusMutation = useUpdateSessionStatus();
 
+  if (isLoadingOverview && isLoadingSessions) {
+    return <LoadingState />;
+  }
+
+  if ((isErrorOverview && isErrorSessions) || (isErrorSessions && isErrorStudents)) {
+    return (
+      <ErrorState
+        message="Unable to load counsellor dashboard data. Please verify your connection."
+        onRetry={() => {
+          refetchOverview();
+          refetchSessions();
+          refetchStudents();
+        }}
+      />
+    );
+  }
+
   const stats = overview?.stats || {
+    todaySessionsCount: 0,
     upcomingSessionsCount: 0,
     pendingRequestsCount: 0,
     completedSessionsCount: 0,
+    availableSlotsCount: 0,
     totalAssignedStudentsCount: 0,
   };
 
-  const pendingSessions = allSessions.filter((s) => s.status === "PENDING");
-  const upcomingSessions = allSessions.filter(
+  const counsellorProfile = overview?.counsellorProfile;
+  const todaySessions = overview?.todaySessions || allSessions.filter(
+    (s) => s.sessionDate === new Date().toISOString().split("T")[0] && s.status !== "CANCELLED" && s.status !== "REJECTED"
+  );
+  const pendingSessions = overview?.pendingRequests || allSessions.filter((s) => s.status === "PENDING");
+  const upcomingSessions = overview?.upcomingSessions || allSessions.filter(
     (s) => s.status === "CONFIRMED" || s.status === "COMPLETED"
   );
 
@@ -70,434 +112,673 @@ export const CounsellorDashboardView: React.FC = () => {
       status,
       meetingLink,
     });
+    refetchOverview();
+    refetchSessions();
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      {/* Header Banner */}
-      <div className="mb-8 rounded-3xl bg-slate-900 p-6 text-white shadow-xl dark:bg-slate-950 md:p-8">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-indigo-500/20 px-3 py-1 text-xs font-semibold text-indigo-300 ring-1 ring-inset ring-indigo-500/30">
-              <Award className="h-3.5 w-3.5 text-indigo-400" />
-              <span>Counsellor Guidance Portal</span>
-            </div>
-            <h1 className="mt-2 text-2xl font-extrabold sm:text-3xl">
-              Welcome, {overview?.counsellorProfile?.name || "Career Counsellor"}
-            </h1>
-            <p className="mt-1 text-xs text-slate-400">
-              Review session requests, access safe student psychometric summaries, and manage guidance roadmaps.
-            </p>
+    <div className="space-y-6 select-none">
+      {/* 1. Page Header */}
+      <PageHeader
+        title={`Welcome, ${counsellorProfile?.name || "Career Counsellor"}`}
+        subtitle="Manage guidance sessions, review student psychometric summaries, and coordinate scheduled mentorship."
+        badge={counsellorProfile?.qualification || "Certified Counsellor"}
+        badgeColor="emerald"
+        actionElement={
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/counsellor/calendar"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white text-xs font-bold transition-all shadow-md shadow-[#00BFA5]/20 cursor-pointer"
+            >
+              <Calendar className="w-4 h-4" />
+              <span>Manage Availability</span>
+            </Link>
           </div>
+        }
+      />
 
-          <div className="flex items-center gap-3">
-            <span className="rounded-2xl border border-slate-700 bg-slate-800/80 px-4 py-2 text-xs font-medium text-slate-300">
-              {overview?.counsellorProfile?.qualification || "Certified Psychologist"}
-            </span>
-          </div>
-        </div>
-
-        {/* 4 Metric Stats Cards */}
-        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <div className="rounded-2xl border border-slate-800 bg-slate-800/60 p-4">
-            <span className="text-xs font-medium text-slate-400">Pending Requests</span>
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className="text-2xl font-extrabold text-amber-400">
-                {stats.pendingRequestsCount}
-              </span>
-              <span className="text-[11px] text-slate-500">Need Review</span>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-800 bg-slate-800/60 p-4">
-            <span className="text-xs font-medium text-slate-400">Upcoming Confirmed</span>
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className="text-2xl font-extrabold text-indigo-400">
-                {stats.upcomingSessionsCount}
-              </span>
-              <span className="text-[11px] text-slate-500">Sessions</span>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-800 bg-slate-800/60 p-4">
-            <span className="text-xs font-medium text-slate-400">Completed Sessions</span>
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className="text-2xl font-extrabold text-emerald-400">
-                {stats.completedSessionsCount}
-              </span>
-              <span className="text-[11px] text-slate-500">Concluded</span>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-800 bg-slate-800/60 p-4">
-            <span className="text-xs font-medium text-slate-400">Assigned Students</span>
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className="text-2xl font-extrabold text-purple-400">
-                {stats.totalAssignedStudentsCount}
-              </span>
-              <span className="text-[11px] text-slate-500">Total Mentored</span>
-            </div>
-          </div>
-        </div>
+      {/* 2. Real-Time Metrics Grid (6 Metrics) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+        <MetricCard
+          id="metric-today"
+          title="Today's Sessions"
+          value={stats.todaySessionsCount ?? stats.todaySessions ?? 0}
+          subtitle="Scheduled today"
+          iconName="Clock"
+          accentColor="indigo"
+        />
+        <MetricCard
+          id="metric-upcoming"
+          title="Upcoming"
+          value={stats.upcomingSessionsCount ?? stats.upcomingSessions ?? 0}
+          subtitle="Confirmed upcoming"
+          iconName="Calendar"
+          accentColor="teal"
+        />
+        <MetricCard
+          id="metric-pending"
+          title="Pending Requests"
+          value={stats.pendingRequestsCount ?? stats.pendingRequests ?? 0}
+          subtitle="Awaiting response"
+          iconName="Users"
+          accentColor={(stats.pendingRequestsCount || 0) > 0 ? "amber" : "blue"}
+        />
+        <MetricCard
+          id="metric-completed"
+          title="Completed"
+          value={stats.completedSessionsCount ?? stats.completedSessions ?? 0}
+          subtitle="Guidance sessions"
+          iconName="CheckSquare"
+          accentColor="emerald"
+        />
+        <MetricCard
+          id="metric-slots"
+          title="Available Slots"
+          value={stats.availableSlotsCount ?? stats.availableSlots ?? 0}
+          subtitle="Weekly remaining"
+          iconName="Layers"
+          accentColor="indigo"
+        />
+        <MetricCard
+          id="metric-students"
+          title="Student Count"
+          value={stats.totalAssignedStudentsCount ?? stats.studentCount ?? 0}
+          subtitle="Associated students"
+          iconName="GraduationCap"
+          accentColor="teal"
+        />
       </div>
 
-      {/* Tabs Navigation */}
-      <div className="mb-6 flex items-center justify-between border-b border-slate-200 pb-2 dark:border-slate-800">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setActiveTab("pending")}
-            className={`relative flex items-center gap-2 pb-2.5 text-sm font-bold transition ${
-              activeTab === "pending"
-                ? "text-indigo-600 dark:text-indigo-400"
-                : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
-            }`}
-          >
-            <span>Pending Requests</span>
-            {pendingSessions.length > 0 && (
-              <span className="flex h-5 items-center justify-center rounded-full bg-amber-100 px-2 text-[11px] font-extrabold text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-                {pendingSessions.length}
+      {/* 3. Main Tabs & Interactive Workspace */}
+      <DashboardCard
+        title="Guidance Operations"
+        subtitle="Review incoming consultation requests, manage active bookings, and access student dossiers"
+        headerAction={
+          <div className="flex items-center p-1 rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 text-xs font-bold overflow-x-auto">
+            <button
+              type="button"
+              onClick={() => setActiveTab("pending")}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === "pending"
+                  ? "bg-white dark:bg-[#172B2A] text-[#172B2A] dark:text-[#F7FAF9] shadow-xs"
+                  : "text-[#526866] dark:text-[#9FB3B0] hover:text-[#172B2A] dark:hover:text-white"
+              }`}
+            >
+              <span>Pending Requests</span>
+              {pendingSessions.length > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 text-[10px] font-black border border-amber-500/30">
+                  {pendingSessions.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("today")}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === "today"
+                  ? "bg-white dark:bg-[#172B2A] text-[#172B2A] dark:text-[#F7FAF9] shadow-xs"
+                  : "text-[#526866] dark:text-[#9FB3B0] hover:text-[#172B2A] dark:hover:text-white"
+              }`}
+            >
+              <span>Today&apos;s Schedule</span>
+              {todaySessions.length > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full bg-[#00BFA5]/20 text-[#008F83] dark:text-[#00BFA5] text-[10px] font-black border border-[#00BFA5]/30">
+                  {todaySessions.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("upcoming")}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === "upcoming"
+                  ? "bg-white dark:bg-[#172B2A] text-[#172B2A] dark:text-[#F7FAF9] shadow-xs"
+                  : "text-[#526866] dark:text-[#9FB3B0] hover:text-[#172B2A] dark:hover:text-white"
+              }`}
+            >
+              <span>Upcoming</span>
+              <span className="text-[10px] text-[#7D9491] font-normal">
+                ({upcomingSessions.length})
               </span>
-            )}
-            {activeTab === "pending" && (
-              <span className="absolute bottom-0 left-0 h-0.5 w-full bg-indigo-600 dark:bg-indigo-400" />
-            )}
-          </button>
+            </button>
 
-          <button
-            onClick={() => setActiveTab("upcoming")}
-            className={`relative pb-2.5 text-sm font-bold transition ${
-              activeTab === "upcoming"
-                ? "text-indigo-600 dark:text-indigo-400"
-                : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
-            }`}
-          >
-            <span>Confirmed & Past Sessions</span>
-            {activeTab === "upcoming" && (
-              <span className="absolute bottom-0 left-0 h-0.5 w-full bg-indigo-600 dark:bg-indigo-400" />
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab("students")}
-            className={`relative pb-2.5 text-sm font-bold transition ${
-              activeTab === "students"
-                ? "text-indigo-600 dark:text-indigo-400"
-                : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
-            }`}
-          >
-            <span>Assigned Students Directory</span>
-            {activeTab === "students" && (
-              <span className="absolute bottom-0 left-0 h-0.5 w-full bg-indigo-600 dark:bg-indigo-400" />
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Tab 1: Pending Requests */}
-      {activeTab === "pending" && (
-        <div className="space-y-4">
-          {isLoadingSessions ? (
-            <div className="space-y-3">
-              {[1, 2].map((n) => (
-                <div
-                  key={n}
-                  className="h-28 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-850"
-                />
-              ))}
-            </div>
-          ) : pendingSessions.length === 0 ? (
-            <div className="rounded-3xl border border-slate-200 bg-white p-12 text-center dark:border-slate-800 dark:bg-slate-900">
-              <CheckCircle2 className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600" />
-              <h3 className="mt-3 text-base font-bold text-slate-900 dark:text-white">
-                No pending requests
-              </h3>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                You have reviewed and responded to all incoming student session requests.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {pendingSessions.map((session) => (
-                <div
-                  key={session.id}
-                  className="flex flex-col justify-between rounded-3xl border border-amber-200/70 bg-amber-50/20 p-5 shadow-xs transition hover:shadow-md dark:border-amber-900/40 dark:bg-amber-950/10 md:flex-row md:items-center"
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                        PENDING APPROVAL
-                      </span>
-                      <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-                        {session.sessionType.replace("_", " ")} ({session.durationMinutes} mins)
-                      </span>
-                    </div>
-
-                    <h3 className="mt-2 text-base font-bold text-slate-900 dark:text-white">
-                      {session.studentName || "Student"}
-                    </h3>
-
-                    <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="h-3.5 w-3.5 text-indigo-500" />
-                        <span>{session.sessionDate}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Clock className="h-3.5 w-3.5 text-indigo-500" />
-                        <span>{session.sessionTime}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-                        <ShieldCheck className="h-3.5 w-3.5" />
-                        <span>Profile Sharing Consent Active</span>
-                      </div>
-                    </div>
-
-                    {session.studentNotes && (
-                      <p className="mt-2.5 text-xs italic text-slate-600 dark:text-slate-300">
-                        &quot;{session.studentNotes}&quot;
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Accept / Decline CTA Buttons */}
-                  <div className="mt-4 flex items-center gap-2.5 md:mt-0">
-                    <button
-                      onClick={() =>
-                        setSelectedStudentForSummary({
-                          id: session.studentId,
-                          name: session.studentName || "Student",
-                        })
-                      }
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                    >
-                      <Brain className="h-3.5 w-3.5 text-indigo-500" />
-                      <span>Preview Psychometrics</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleUpdateStatus(session.id, "REJECTED")}
-                      className="rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:border-rose-900/50 dark:bg-slate-800 dark:text-rose-400"
-                    >
-                      Decline
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        handleUpdateStatus(
-                          session.id,
-                          "CONFIRMED",
-                          `https://meet.3gmelife.com/session-${session.id.slice(0, 8)}`
-                        )
-                      }
-                      className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-indigo-500"
-                    >
-                      Accept & Confirm
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab 2: Confirmed & Past Sessions */}
-      {activeTab === "upcoming" && (
-        <div className="space-y-4">
-          {isLoadingSessions ? (
-            <div className="space-y-3">
-              {[1, 2].map((n) => (
-                <div
-                  key={n}
-                  className="h-28 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-850"
-                />
-              ))}
-            </div>
-          ) : upcomingSessions.length === 0 ? (
-            <div className="rounded-3xl border border-slate-200 bg-white p-12 text-center dark:border-slate-800 dark:bg-slate-900">
-              <Calendar className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600" />
-              <h3 className="mt-3 text-base font-bold text-slate-900 dark:text-white">
-                No active or concluded sessions
-              </h3>
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {upcomingSessions.map((session) => {
-                const isConfirmed = session.status === "CONFIRMED";
-                const isCompleted = session.status === "COMPLETED";
-
-                return (
+            <button
+              type="button"
+              onClick={() => setActiveTab("students")}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === "students"
+                  ? "bg-white dark:bg-[#172B2A] text-[#172B2A] dark:text-[#F7FAF9] shadow-xs"
+                  : "text-[#526866] dark:text-[#9FB3B0] hover:text-[#172B2A] dark:hover:text-white"
+              }`}
+            >
+              <span>Students</span>
+              <span className="text-[10px] text-[#7D9491] font-normal">
+                ({assignedStudents.length})
+              </span>
+            </button>
+          </div>
+        }
+      >
+        {/* TAB 1: PENDING SESSIONS */}
+        {activeTab === "pending" && (
+          <div className="space-y-4">
+            {isLoadingSessions ? (
+              <div className="space-y-3">
+                {[1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="h-28 rounded-2xl bg-[#EBF2F0] dark:bg-white/5 animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : pendingSessions.length === 0 ? (
+              <EmptyState
+                title="No Pending Session Requests"
+                description="All student appointment requests have been processed. New session requests will appear here in real-time."
+                actionText="View Confirmed Sessions"
+                onActionClick={() => setActiveTab("upcoming")}
+                icon={<CheckCircle2 className="w-6 h-6 text-[#00BFA5]" />}
+              />
+            ) : (
+              <div className="space-y-3">
+                {pendingSessions.map((session) => (
                   <div
                     key={session.id}
-                    className="flex flex-col justify-between rounded-3xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900"
+                    className="p-5 rounded-2xl bg-[#F7FAF9] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 hover:border-[#00BFA5]/50 transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-4"
                   >
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <span
-                          className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
-                            isConfirmed
-                              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400"
-                              : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                          }`}
-                        >
-                          {session.status}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+                          Pending Approval
                         </span>
-                        <span className="text-xs font-medium text-slate-500">
-                          {session.sessionType.replace("_", " ")}
+                        <span className="text-xs font-semibold text-[#526866] dark:text-[#9FB3B0]">
+                          {session.sessionType.replace("_", " ")} • {session.durationMinutes} mins
                         </span>
                       </div>
 
-                      <h3 className="mt-2.5 text-base font-bold text-slate-900 dark:text-white">
-                        {session.studentName || "Student"}
-                      </h3>
+                      <h4 className="text-base font-black text-[#172B2A] dark:text-[#F7FAF9]">
+                        {session.studentName || "Student Applicant"}
+                      </h4>
 
-                      <div className="mt-2 flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-                        <span>📅 {session.sessionDate}</span>
-                        <span>•</span>
-                        <span>⏰ {session.sessionTime}</span>
+                      <div className="flex flex-wrap items-center gap-4 text-xs text-[#526866] dark:text-[#9FB3B0]">
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-[#00BFA5]" />
+                          <span>{session.sessionDate}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-[#00B8D4]" />
+                          <span>{session.sessionTime}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[#008F83] dark:text-[#00C896]">
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                          <span>Profile Sharing Consent Active</span>
+                        </div>
                       </div>
+
+                      {session.studentNotes && (
+                        <p className="text-xs text-[#526866] dark:text-[#9FB3B0] italic bg-white/70 dark:bg-black/20 p-2.5 rounded-xl border border-[#E3ECEA] dark:border-white/5 max-w-xl">
+                          &quot;{session.studentNotes}&quot;
+                        </p>
+                      )}
                     </div>
 
-                    <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3.5 dark:border-slate-800">
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap">
                       <button
+                        type="button"
                         onClick={() =>
                           setSelectedStudentForSummary({
                             id: session.studentId,
                             name: session.studentName || "Student",
                           })
                         }
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+                        className="px-3 py-2 rounded-xl bg-white dark:bg-white/10 hover:bg-[#EBF2F0] dark:hover:bg-white/20 border border-[#E3ECEA] dark:border-white/10 text-xs font-semibold text-[#172B2A] dark:text-[#F7FAF9] flex items-center gap-1.5 transition-colors cursor-pointer"
                       >
-                        <Brain className="h-3.5 w-3.5" />
-                        <span>View Safe Summary</span>
+                        <Brain className="w-3.5 h-3.5 text-[#00BFA5]" />
+                        <span>View Dossier</span>
                       </button>
 
-                      <div className="flex items-center gap-2">
-                        {isConfirmed && session.meetingLink && (
-                          <a
-                            href={session.meetingLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500"
-                          >
-                            <Video className="h-3.5 w-3.5" />
-                            <span>Start Call</span>
-                          </a>
-                        )}
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateStatus(session.id, "REJECTED")}
+                        className="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-semibold transition-colors cursor-pointer"
+                      >
+                        Decline
+                      </button>
 
-                        <button
-                          onClick={() => setSelectedSessionForNotes(session)}
-                          className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                        >
-                          <FileText className="h-3.5 w-3.5" />
-                          <span>{session.notesAdded ? "Edit Notes" : "Add Notes"}</span>
-                        </button>
-
-                        {isConfirmed && (
-                          <button
-                            onClick={() => handleUpdateStatus(session.id, "COMPLETED")}
-                            className="rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300"
-                          >
-                            Mark Completed
-                          </button>
-                        )}
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleUpdateStatus(
+                            session.id,
+                            "CONFIRMED",
+                            `https://meet.3gmelife.com/session-${session.id.slice(0, 8)}`
+                          )
+                        }
+                        className="px-4 py-2 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white text-xs font-bold transition-all shadow-md shadow-[#00BFA5]/25 cursor-pointer"
+                      >
+                        Accept & Confirm
+                      </button>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
-      {/* Tab 3: Assigned Students Directory */}
-      {activeTab === "students" && (
-        <div className="space-y-4">
-          {isLoadingStudents ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((n) => (
-                <div
-                  key={n}
-                  className="h-20 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-850"
-                />
-              ))}
-            </div>
-          ) : assignedStudents.length === 0 ? (
-            <div className="rounded-3xl border border-slate-200 bg-white p-12 text-center dark:border-slate-800 dark:bg-slate-900">
-              <Users className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600" />
-              <h3 className="mt-3 text-base font-bold text-slate-900 dark:text-white">
-                No assigned students yet
-              </h3>
-            </div>
-          ) : (
-            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
-              <table className="w-full text-left text-xs">
-                <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-850 dark:text-slate-400">
-                  <tr>
-                    <th className="px-5 py-3.5">Student Name</th>
-                    <th className="px-5 py-3.5">Grade / School</th>
-                    <th className="px-5 py-3.5">Assessment Status</th>
-                    <th className="px-5 py-3.5">Consent Status</th>
-                    <th className="px-5 py-3.5">Sessions</th>
-                    <th className="px-5 py-3.5 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {assignedStudents.map((stu) => (
-                    <tr key={stu.student_id} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/50">
-                      <td className="px-5 py-4 font-bold text-slate-900 dark:text-white">
-                        {stu.student_name}
-                      </td>
-                      <td className="px-5 py-4 text-slate-600 dark:text-slate-300">
-                        {stu.grade_level ? `Grade ${stu.grade_level}` : "N/A"} •{" "}
-                        {stu.school_name || "School"}
-                      </td>
-                      <td className="px-5 py-4">
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                            stu.is_assessed
-                              ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-400"
-                              : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-                          }`}
-                        >
-                          {stu.is_assessed ? "Assessed" : "Pending"}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4">
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                            stu.has_consent
-                              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400"
-                              : "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400"
-                          }`}
-                        >
-                          {stu.has_consent ? "Active" : "Revoked"}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4 font-semibold text-slate-700 dark:text-slate-300">
-                        {stu.session_count} session(s)
-                      </td>
-                      <td className="px-5 py-4 text-right">
+        {/* TAB 2: TODAY'S SCHEDULE */}
+        {activeTab === "today" && (
+          <div className="space-y-4">
+            {isLoadingSessions ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="h-36 rounded-2xl bg-[#EBF2F0] dark:bg-white/5 animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : todaySessions.length === 0 ? (
+              <EmptyState
+                title="No Sessions Scheduled Today"
+                description="You have no appointments booked for today. Review upcoming sessions or adjust your availability schedule."
+                actionText="View Upcoming Sessions"
+                onActionClick={() => setActiveTab("upcoming")}
+                icon={<Clock className="w-6 h-6 text-[#00BFA5]" />}
+              />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {todaySessions.map((session) => {
+                  const isConfirmed = session.status === "CONFIRMED";
+                  const isPending = session.status === "PENDING";
+                  return (
+                    <div
+                      key={session.id}
+                      className="p-5 rounded-2xl bg-[#F7FAF9] dark:bg-white/5 border border-[#00BFA5]/30 dark:border-[#00BFA5]/30 shadow-xs flex flex-col justify-between space-y-4"
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span
+                            className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${
+                              isConfirmed
+                                ? "bg-[#00C896]/15 text-[#008F83] dark:text-[#00C896] border-[#00C896]/30"
+                                : isPending
+                                ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30"
+                                : "bg-[#526866]/15 text-[#526866] dark:text-[#9FB3B0] border-[#526866]/30"
+                            }`}
+                          >
+                            {session.status} • Today
+                          </span>
+                          <span className="text-xs font-semibold text-[#526866] dark:text-[#9FB3B0]">
+                            {session.sessionType.replace("_", " ")}
+                          </span>
+                        </div>
+
+                        <h4 className="text-base font-black text-[#172B2A] dark:text-[#F7FAF9]">
+                          {session.studentName || "Student"}
+                        </h4>
+
+                        <div className="flex items-center gap-3 text-xs text-[#526866] dark:text-[#9FB3B0]">
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5 text-[#00B8D4]" />
+                            <span className="font-bold text-[#172B2A] dark:text-[#F7FAF9]">{session.sessionTime}</span>
+                          </div>
+                          <span>•</span>
+                          <span>{session.durationMinutes} mins</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 pt-3 border-t border-[#E3ECEA] dark:border-white/10 flex-wrap">
                         <button
+                          type="button"
                           onClick={() =>
                             setSelectedStudentForSummary({
-                              id: stu.student_id,
-                              name: stu.student_name,
+                              id: session.studentId,
+                              name: session.studentName || "Student",
                             })
                           }
-                          className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-600 shadow-xs hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-indigo-400"
+                          className="text-xs font-bold text-[#008F83] dark:text-[#00BFA5] hover:underline flex items-center gap-1 cursor-pointer"
                         >
-                          View Summary
+                          <Brain className="w-3.5 h-3.5" />
+                          <span>Student Summary</span>
                         </button>
-                      </td>
+
+                        <div className="flex items-center gap-2">
+                          {isConfirmed && session.meetingLink && (
+                            <a
+                              href={session.meetingLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-1.5 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white text-xs font-bold flex items-center gap-1 transition-all shadow-xs cursor-pointer"
+                            >
+                              <Video className="w-3.5 h-3.5" />
+                              <span>Join Meet</span>
+                            </a>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => setSelectedSessionForNotes(session)}
+                            className="px-3 py-1.5 rounded-xl bg-white dark:bg-white/10 hover:bg-[#EBF2F0] dark:hover:bg-white/20 border border-[#E3ECEA] dark:border-white/10 text-xs font-semibold text-[#172B2A] dark:text-[#F7FAF9] flex items-center gap-1 transition-colors cursor-pointer"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-[#728B88]" />
+                            <span>{session.notesAdded ? "Edit Notes" : "Add Notes"}</span>
+                          </button>
+
+                          {isConfirmed && (
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateStatus(session.id, "COMPLETED")}
+                              className="px-3 py-1.5 rounded-xl bg-[#00C896]/15 hover:bg-[#00C896]/25 border border-[#00C896]/30 text-[#008F83] dark:text-[#00C896] text-xs font-bold transition-colors cursor-pointer"
+                            >
+                              Conclude
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 3: CONFIRMED & UPCOMING SESSIONS */}
+        {activeTab === "upcoming" && (
+          <div className="space-y-4">
+            {isLoadingSessions ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="h-36 rounded-2xl bg-[#EBF2F0] dark:bg-white/5 animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : upcomingSessions.length === 0 ? (
+              <EmptyState
+                title="No Confirmed Sessions"
+                description="You currently have no scheduled appointments. Once you accept a pending request, meeting links and notes will appear here."
+                actionText="Check Pending Requests"
+                onActionClick={() => setActiveTab("pending")}
+                icon={<Calendar className="w-6 h-6 text-[#00BFA5]" />}
+              />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {upcomingSessions.map((session) => {
+                  const isConfirmed = session.status === "CONFIRMED";
+                  return (
+                    <div
+                      key={session.id}
+                      className="p-5 rounded-2xl bg-[#F7FAF9] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 flex flex-col justify-between space-y-4 hover:border-[#00BFA5]/40 transition-colors"
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span
+                            className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${
+                              isConfirmed
+                                ? "bg-[#00C896]/15 text-[#008F83] dark:text-[#00C896] border-[#00C896]/30"
+                                : "bg-[#526866]/15 text-[#526866] dark:text-[#9FB3B0] border-[#526866]/30"
+                            }`}
+                          >
+                            {session.status}
+                          </span>
+                          <span className="text-xs text-[#526866] dark:text-[#9FB3B0]">
+                            {session.sessionType.replace("_", " ")}
+                          </span>
+                        </div>
+
+                        <h4 className="text-base font-black text-[#172B2A] dark:text-[#F7FAF9]">
+                          {session.studentName || "Student"}
+                        </h4>
+
+                        <div className="flex items-center gap-3 text-xs text-[#526866] dark:text-[#9FB3B0]">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5 text-[#00BFA5]" />
+                            <span>{session.sessionDate}</span>
+                          </div>
+                          <span>•</span>
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5 text-[#00B8D4]" />
+                            <span>{session.sessionTime}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 pt-3 border-t border-[#E3ECEA] dark:border-white/10 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedStudentForSummary({
+                              id: session.studentId,
+                              name: session.studentName || "Student",
+                            })
+                          }
+                          className="text-xs font-bold text-[#008F83] dark:text-[#00BFA5] hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <Brain className="w-3.5 h-3.5" />
+                          <span>Student Summary</span>
+                        </button>
+
+                        <div className="flex items-center gap-2">
+                          {isConfirmed && session.meetingLink && (
+                            <a
+                              href={session.meetingLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-1.5 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white text-xs font-bold flex items-center gap-1 transition-all shadow-xs cursor-pointer"
+                            >
+                              <Video className="w-3.5 h-3.5" />
+                              <span>Join Meet</span>
+                            </a>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => setSelectedSessionForNotes(session)}
+                            className="px-3 py-1.5 rounded-xl bg-white dark:bg-white/10 hover:bg-[#EBF2F0] dark:hover:bg-white/20 border border-[#E3ECEA] dark:border-white/10 text-xs font-semibold text-[#172B2A] dark:text-[#F7FAF9] flex items-center gap-1 transition-colors cursor-pointer"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-[#728B88]" />
+                            <span>{session.notesAdded ? "Edit Notes" : "Add Notes"}</span>
+                          </button>
+
+                          {isConfirmed && (
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateStatus(session.id, "COMPLETED")}
+                              className="px-3 py-1.5 rounded-xl bg-[#00C896]/15 hover:bg-[#00C896]/25 border border-[#00C896]/30 text-[#008F83] dark:text-[#00C896] text-xs font-bold transition-colors cursor-pointer"
+                            >
+                              Conclude
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 3: ASSIGNED STUDENTS DIRECTORY */}
+        {activeTab === "students" && (
+          <div className="space-y-4">
+            {isLoadingStudents ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="h-16 rounded-2xl bg-[#EBF2F0] dark:bg-white/5 animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : assignedStudents.length === 0 ? (
+              <EmptyState
+                title="No Assigned Students"
+                description="Students who book appointments with you will automatically appear in your active mentorship roster."
+                icon={<Users className="w-6 h-6 text-[#00BFA5]" />}
+              />
+            ) : (
+              <div className="overflow-x-auto rounded-2xl border border-[#E3ECEA] dark:border-white/10">
+                <table className="w-full text-left text-xs text-[#172B2A] dark:text-[#F7FAF9]">
+                  <thead className="bg-[#F4F8F7] dark:bg-white/5 text-[11px] font-bold uppercase tracking-wider text-[#526866] dark:text-[#9FB3B0] border-b border-[#E3ECEA] dark:border-white/10">
+                    <tr>
+                      <th className="px-5 py-3.5">Student Name</th>
+                      <th className="px-5 py-3.5">Grade / Institution</th>
+                      <th className="px-5 py-3.5">Assessment</th>
+                      <th className="px-5 py-3.5">Consent</th>
+                      <th className="px-5 py-3.5">Total Sessions</th>
+                      <th className="px-5 py-3.5 text-right">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-[#E3ECEA]/60 dark:divide-white/5">
+                    {assignedStudents.map((stu) => (
+                      <tr
+                        key={stu.student_id}
+                        className="hover:bg-[#F4F8F7]/50 dark:hover:bg-white/5 transition-colors"
+                      >
+                        <td className="px-5 py-4 font-bold text-[#172B2A] dark:text-[#F7FAF9]">
+                          {stu.student_name}
+                        </td>
+                        <td className="px-5 py-4 text-[#526866] dark:text-[#9FB3B0]">
+                          {stu.grade_level ? `Grade ${stu.grade_level}` : "Grade N/A"} •{" "}
+                          {stu.school_name || "Enrolled Institution"}
+                        </td>
+                        <td className="px-5 py-4">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                              stu.is_assessed
+                                ? "bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5] border-[#00BFA5]/30"
+                                : "bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/30"
+                            }`}
+                          >
+                            {stu.is_assessed ? "Completed" : "Pending"}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                              stu.has_consent
+                                ? "bg-[#00C896]/15 text-[#008F83] dark:text-[#00C896] border-[#00C896]/30"
+                                : "bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30"
+                            }`}
+                          >
+                            {stu.has_consent ? "Active" : "Revoked"}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 font-semibold text-[#526866] dark:text-[#9FB3B0]">
+                          {stu.session_count} session(s)
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSelectedStudentForSummary({
+                                id: stu.student_id,
+                                name: stu.student_name,
+                              })
+                            }
+                            className="px-3 py-1.5 rounded-xl bg-white dark:bg-white/10 hover:bg-[#EBF2F0] dark:hover:bg-white/20 border border-[#E3ECEA] dark:border-white/10 text-xs font-bold text-[#008F83] dark:text-[#00BFA5] transition-colors cursor-pointer"
+                          >
+                            Dossier
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </DashboardCard>
+
+      {/* 4. Quick Actions & Management Shortcuts */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <Link
+          href="/counsellor/calendar"
+          className="p-4 rounded-2xl bg-[#F7FAF9] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 hover:border-[#00BFA5]/50 transition-all group flex items-center justify-between"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-[#00BFA5]/15 text-[#008F83] dark:text-[#00BFA5] group-hover:scale-110 transition-transform">
+              <Calendar className="w-5 h-5" />
             </div>
-          )}
-        </div>
-      )}
+            <div>
+              <h4 className="text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9]">
+                Manage Schedule
+              </h4>
+              <p className="text-[11px] text-[#526866] dark:text-[#9FB3B0]">
+                Set weekly availability slots
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-[#7D9491] group-hover:text-[#00BFA5] group-hover:translate-x-0.5 transition-all" />
+        </Link>
+
+        <Link
+          href="/counsellor/sessions"
+          className="p-4 rounded-2xl bg-[#F7FAF9] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 hover:border-[#00BFA5]/50 transition-all group flex items-center justify-between"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-[#00B8D4]/15 text-[#00B8D4] group-hover:scale-110 transition-transform">
+              <Clock className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9]">
+                Session History
+              </h4>
+              <p className="text-[11px] text-[#526866] dark:text-[#9FB3B0]">
+                Past notes and records
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-[#7D9491] group-hover:text-[#00B8D4] group-hover:translate-x-0.5 transition-all" />
+        </Link>
+
+        <Link
+          href="/counsellor/reviews"
+          className="p-4 rounded-2xl bg-[#F7FAF9] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 hover:border-[#00BFA5]/50 transition-all group flex items-center justify-between"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
+              <Star className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9]">
+                Student Reviews
+              </h4>
+              <p className="text-[11px] text-[#526866] dark:text-[#9FB3B0]">
+                Mentorship ratings & feedback
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-[#7D9491] group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all" />
+        </Link>
+
+        <Link
+          href="/counsellor/profile"
+          className="p-4 rounded-2xl bg-[#F7FAF9] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 hover:border-[#00BFA5]/50 transition-all group flex items-center justify-between"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform">
+              <UserCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9]">
+                Profile & Bio
+              </h4>
+              <p className="text-[11px] text-[#526866] dark:text-[#9FB3B0]">
+                Credentials & specialisations
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-[#7D9491] group-hover:text-purple-500 group-hover:translate-x-0.5 transition-all" />
+        </Link>
+      </div>
 
       {/* Safe Psychometrics Drawer Modal */}
       <StudentPsychometricSummaryModal

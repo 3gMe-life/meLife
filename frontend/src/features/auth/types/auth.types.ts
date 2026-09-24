@@ -62,11 +62,20 @@ export interface StudentOnboardingPayload {
   guardianEmail?: string;
 }
 
+export interface CounsellorApplicationInfo {
+  id: string;
+  status: "PENDING" | "APPROVED" | "REJECTED" | string;
+  qualification?: string | null;
+  organization?: string | null;
+  submittedAt: string;
+}
+
 export interface UserProfile {
   id: string;
   email: string;
   firstName: string;
   lastName: string;
+  status?: string;
   role: UserRole;
   isOnboarded?: boolean;
   createdAt: string;
@@ -78,10 +87,12 @@ export interface AuthResponse {
     user?: UserProfile;
     role?: UserRole;
     permissions?: string[];
+    dashboardFeatures?: string[];
     token?: string;
     accessToken?: string;
     message?: string;
     requiresOnboarding?: boolean;
+    counsellorApplication?: CounsellorApplicationInfo | null;
     applicationType?: "COUNSELLOR" | "INSTITUTION";
     status?: "PENDING";
   };
@@ -97,11 +108,13 @@ export interface CurrentUserResponse {
     user: UserProfile;
     role?: UserRole;
     permissions?: string[];
+    dashboardFeatures?: string[];
     onboarding?: {
       completed: boolean;
       educationStage?: string | null;
       gradeLevel?: string | null;
       dateOfBirth?: string | null;
     };
+    counsellorApplication?: CounsellorApplicationInfo | null;
   };
 }

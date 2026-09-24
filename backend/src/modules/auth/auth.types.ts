@@ -54,13 +54,23 @@ export interface GoogleAuthRequestDTO {
   registrationPath?: RegistrationPath;
 }
 
+export interface CounsellorApplicationInfo {
+  id: string;
+  status: "PENDING" | "APPROVED" | "REJECTED" | string;
+  qualification?: string | null;
+  organization?: string | null;
+  submittedAt: string;
+}
+
 export interface AuthResult {
   user: PublicUser;
   role: UserRole;
   permissions: string[];
+  dashboardFeatures?: string[];
   accessToken: string;
   refreshToken: string;
   requiresOnboarding?: boolean;
+  counsellorApplication?: CounsellorApplicationInfo | null;
   message?: string;
 }
 
@@ -75,6 +85,7 @@ export interface MeResponseDTO {
   user: PublicUser;
   role: UserRole;
   permissions: string[];
+  dashboardFeatures?: string[];
   institution: null | { id: string; name: string };
   relationships: Record<string, unknown>;
   onboarding: {
@@ -83,4 +94,5 @@ export interface MeResponseDTO {
     gradeLevel?: string | null;
     dateOfBirth?: string | null;
   };
+  counsellorApplication?: CounsellorApplicationInfo | null;
 }

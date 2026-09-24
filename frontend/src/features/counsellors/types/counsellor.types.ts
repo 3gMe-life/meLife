@@ -63,6 +63,21 @@ export interface CreateBookingRequestDTO {
   grantConsent?: boolean;
 }
 
+export type AssessmentStatus = "COMPLETED" | "IN_PROGRESS" | "NOT_STARTED";
+export type ReportStatus = "AVAILABLE" | "PENDING" | "NOT_AVAILABLE";
+
+export interface CounsellorSessionFilterParams {
+  status?: string;
+  search?: string;
+  dateFilter?: "ALL" | "TODAY" | "THIS_WEEK" | "THIS_MONTH" | "UPCOMING" | "PAST";
+  assessmentStatus?: "ALL" | AssessmentStatus;
+  reportStatus?: "ALL" | ReportStatus;
+  sortBy?: "date" | "student" | "status";
+  sortOrder?: "asc" | "desc";
+  page?: number;
+  limit?: number;
+}
+
 export interface CounsellingSessionDTO {
   id: string;
   studentId: string;
@@ -81,6 +96,8 @@ export interface CounsellingSessionDTO {
   studentNotes: string | null;
   hasConsent: boolean;
   notesAdded?: boolean;
+  assessmentStatus?: AssessmentStatus;
+  reportStatus?: ReportStatus;
   createdAt: string;
   updatedAt: string;
 }
@@ -144,13 +161,68 @@ export interface NotificationDTO {
   title: string;
   message: string;
   type: string;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
   isRead: boolean;
   createdAt: string;
+}
+
+export interface CounsellorReviewDTO {
+  id: string;
+  studentName: string;
+  rating: number;
+  comment: string;
+  date: string;
+  sessionType?: string;
+}
+
+export interface AssignedStudentDTO {
+  student_id: string;
+  student_name: string;
+  student_email: string;
+  education_stage?: string | null;
+  grade_level?: string | null;
+  school_name?: string | null;
+  has_consent: boolean;
+  is_assessed: boolean;
+  session_count: number;
+  latest_session_date?: string | null;
 }
 
 export interface CounsellorFilterParams {
   search?: string;
   specialisation?: string;
   language?: string;
+}
+
+export interface CounsellorOverviewStatsDTO {
+  todaySessionsCount: number;
+  upcomingSessionsCount: number;
+  pendingRequestsCount: number;
+  completedSessionsCount: number;
+  availableSlotsCount: number;
+  totalAssignedStudentsCount: number;
+  todaySessions?: number;
+  upcomingSessions?: number;
+  pendingRequests?: number;
+  completedSessions?: number;
+  availableSlots?: number;
+  studentCount?: number;
+}
+
+export interface CounsellorOverviewDTO {
+  stats: CounsellorOverviewStatsDTO;
+  counsellorProfile: CounsellorDetailDTO;
+  todaySessions: CounsellingSessionDTO[];
+  upcomingSessions: CounsellingSessionDTO[];
+  pendingRequests: CounsellingSessionDTO[];
+}
+
+export interface UpdateCounsellorProfileDTO {
+  bio?: string;
+  qualification?: string;
+  experienceYears?: number;
+  specialisations?: string[];
+  languages?: string[];
+  guidanceAreas?: string[];
+  profileImage?: string | null;
 }

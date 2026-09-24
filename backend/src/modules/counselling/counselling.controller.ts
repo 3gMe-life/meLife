@@ -155,7 +155,7 @@ export class CounsellingController {
 
   /**
    * GET /api/v1/counselling/counsellor/sessions
-   * Retrieves appointments assigned to the authenticated counsellor.
+   * Retrieves appointments assigned to the authenticated counsellor with advanced filtering.
    */
   async getCounsellorSessions(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -164,11 +164,52 @@ export class CounsellingController {
       }
 
       const status = req.query.status as string;
-      const sessions = await counsellingService.getCounsellorSessions(req.user.id, status);
+      const search = req.query.search as string;
+      const dateFilter = req.query.dateFilter as any;
+      const assessmentStatus = req.query.assessmentStatus as any;
+      const reportStatus = req.query.reportStatus as any;
+      const sortBy = req.query.sortBy as any;
+      const sortOrder = req.query.sortOrder as any;
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+
+      const sessions = await counsellingService.getCounsellorSessions(req.user.id, {
+        status,
+        search,
+        dateFilter,
+        assessmentStatus,
+        reportStatus,
+        sortBy,
+        sortOrder,
+        page,
+        limit,
+      });
 
       res.status(HttpStatus.OK).json({
         success: true,
         data: sessions,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /api/v1/counselling/sessions/:id
+   * Retrieves single session detail with strict counsellor authorization.
+   */
+  async getSessionDetail(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        throw AppError.unauthorized("Authentication required", "AUTH_UNAUTHORIZED");
+      }
+
+      const sessionId = String(req.params.id);
+      const session = await counsellingService.getSessionDetailForCounsellor(req.user.id, sessionId);
+
+      res.status(HttpStatus.OK).json({
+        success: true,
+        data: session,
       });
     } catch (err) {
       next(err);
@@ -246,6 +287,103 @@ export class CounsellingController {
       res.status(HttpStatus.OK).json({
         success: true,
         data: summary,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * PUT /api/v1/counselling/counsellor/profile
+   * Updates counsellor profile details.
+   */
+  async updateCounsellorProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        throw AppError.unauthorized("Authentication required", "AUTH_UNAUTHORIZED");
+      }
+
+      const { bio, qualification, experienceYears, specialisations, languages, guidanceAreas, profileImage } = req.body;
+      const updated = await counsellingService.updateCounsellorProfile(req.user.id, {
+        bio,
+        qualification,
+        experienceYears,
+        specialisations,
+        languages,
+        guidanceAreas,
+        profileImage,
+      });
+
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: "Counsellor profile updated successfully",
+        data: updated,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /api/v1/counselling/counsellor/availability
+   * Retrieves current counsellor availability schedule.
+   */
+  async getCounsellorAvailability(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        throw AppError.unauthorized("Authentication required", "AUTH_UNAUTHORIZED");
+      }
+
+      const availability = await counsellingService.getCounsellorAvailability(req.user.id);
+      res.status(HttpStatus.OK).json({
+        success: true,
+        data: availability,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * PUT /api/v1/counselling/counsellor/availability
+   * Replaces current counsellor weekly availability schedule.
+   */
+  async updateCounsellorAvailability(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        throw AppError.unauthorized("Authentication required", "AUTH_UNAUTHORIZED");
+      }
+
+      const { availability } = req.body;
+      if (!Array.isArray(availability)) {
+        throw AppError.badRequest("Availability must be an array of schedule slots");
+      }
+
+      const updated = await counsellingService.updateCounsellorAvailability(req.user.id, availability);
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: "Availability schedule updated successfully",
+        data: updated,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /api/v1/counselling/counsellor/reviews
+   * Retrieves student reviews and feedback for current counsellor.
+   */
+  async getCounsellorReviews(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        throw AppError.unauthorized("Authentication required", "AUTH_UNAUTHORIZED");
+      }
+
+      const reviews = await counsellingService.getCounsellorReviews(req.user.id);
+      res.status(HttpStatus.OK).json({
+        success: true,
+        data: reviews,
       });
     } catch (err) {
       next(err);

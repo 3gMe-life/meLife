@@ -32,9 +32,10 @@ const bootstrap = async () => {
     // 1. Connect to PostgreSQL database
     await connectDatabase();
 
-    // 2. Initialize Auth, User, Role, Permission & Session schema
+    // 2. Initialize Auth, User, Role, Permission, Session & Dashboard Features schema
     await authRepository.initSchema();
     await authRepository.seedRolePermissions();
+    await authRepository.seedDashboardFeatures();
 
     // 3. Initialize participant schema & migrations
     await participantRepository.initSchema();

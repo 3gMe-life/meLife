@@ -18,7 +18,19 @@ export function useRegisterStudentMutation() {
     mutationFn: (payload) => authApi.registerStudent(payload),
     onSuccess: (data) => {
       if (data?.data?.user) {
-        queryClient.setQueryData(["currentUser"], { success: true, data: { user: data.data.user } });
+        queryClient.setQueryData(["currentUser"], {
+          success: true,
+          data: {
+            user: data.data.user,
+            role: data.data.role,
+            permissions: data.data.permissions || [],
+            onboarding: {
+              completed: !data.data.requiresOnboarding,
+            },
+            counsellorApplication: data.data.counsellorApplication || null,
+          },
+        });
+        queryClient.invalidateQueries({ queryKey: ["currentUser"] });
       }
     },
   });
@@ -31,7 +43,19 @@ export function useRegisterParentMutation() {
     mutationFn: (payload) => authApi.registerParent(payload),
     onSuccess: (data) => {
       if (data?.data?.user) {
-        queryClient.setQueryData(["currentUser"], { success: true, data: { user: data.data.user } });
+        queryClient.setQueryData(["currentUser"], {
+          success: true,
+          data: {
+            user: data.data.user,
+            role: data.data.role,
+            permissions: data.data.permissions || [],
+            onboarding: {
+              completed: !data.data.requiresOnboarding,
+            },
+            counsellorApplication: data.data.counsellorApplication || null,
+          },
+        });
+        queryClient.invalidateQueries({ queryKey: ["currentUser"] });
       }
     },
   });
@@ -54,8 +78,27 @@ export function useStudentOnboardingMutation() {
 
   return useMutation<AuthResponse, Error, StudentOnboardingPayload>({
     mutationFn: (payload) => authApi.submitStudentOnboarding(payload),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      // 1. Synchronously update currentUser cache with completed onboarding state
+      queryClient.setQueryData(["currentUser"], (old: any) => {
+        if (!old?.data) return old;
+        return {
+          ...old,
+          data: {
+            ...old.data,
+            onboarding: {
+              ...old.data.onboarding,
+              completed: true,
+              educationStage: variables.educationStage,
+            },
+          },
+        };
+      });
+
+      // 2. Invalidate all participant queries so fresh server data is fetched cleanly
       queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+      queryClient.invalidateQueries({ queryKey: ["participantAssessments"] });
+      queryClient.invalidateQueries({ queryKey: ["participantProfile"] });
     },
   });
 }

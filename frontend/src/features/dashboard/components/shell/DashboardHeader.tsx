@@ -21,6 +21,38 @@ export function DashboardHeader({
 }: DashboardHeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
+  const getHomeRoute = (r: UserRole) => {
+    switch (r) {
+      case "CAREER_COUNSELLOR":
+        return "/counsellor/dashboard";
+      case "SUPER_ADMIN":
+      case "PLATFORM_ADMIN":
+        return "/admin/dashboard";
+      case "INSTITUTION_ADMIN":
+        return "/institution/dashboard";
+      case "PARENT_GUARDIAN":
+        return "/parent/dashboard";
+      default:
+        return "/participant/dashboard";
+    }
+  };
+
+  const getPortalLabel = (r: UserRole) => {
+    switch (r) {
+      case "CAREER_COUNSELLOR":
+        return "Counsellor Portal";
+      case "SUPER_ADMIN":
+      case "PLATFORM_ADMIN":
+        return "Admin Portal";
+      case "INSTITUTION_ADMIN":
+        return "Institution Portal";
+      case "PARENT_GUARDIAN":
+        return "Parent Portal";
+      default:
+        return "Student Portal";
+    }
+  };
+
   return (
     <header className="mx-4 sm:mx-6 lg:mx-8 mt-3.5 sm:mt-4 mb-1 h-16 sm:h-[68px] px-4 sm:px-6 bg-white/95 dark:bg-[#112423]/95 backdrop-blur-xl border border-[#E3ECEA] dark:border-white/10 rounded-2xl sm:rounded-[22px] shadow-sm shadow-[#172B2A]/5 dark:shadow-black/25 sticky top-3 sm:top-4 z-30 flex items-center justify-between text-[#172B2A] dark:text-[#F7FAF9] select-none transition-all duration-200">
       {/* 1. Left: Brand Logo & Mobile Trigger */}
@@ -37,7 +69,7 @@ export function DashboardHeader({
 
         {/* 3G MeLife Brand Logo */}
         <Link
-          href="/participant/dashboard"
+          href={getHomeRoute(role)}
           className="flex items-center gap-2.5 group shrink-0"
         >
           <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#00B8D4] via-[#00BFA5] to-[#00C896] flex items-center justify-center font-black text-xs text-[#172B2A] shadow-xs group-hover:scale-105 transition-transform duration-200">
@@ -49,7 +81,7 @@ export function DashboardHeader({
               <span className="w-1.5 h-1.5 rounded-full bg-[#00BFA5]" />
             </span>
             <span className="text-[9px] font-bold text-[#008F83] dark:text-[#00BFA5] tracking-wider uppercase leading-tight mt-0.5">
-              Student Portal
+              {getPortalLabel(role)}
             </span>
           </div>
         </Link>

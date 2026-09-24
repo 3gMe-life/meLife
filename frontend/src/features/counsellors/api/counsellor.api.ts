@@ -2,6 +2,7 @@ import { fetchApi } from "@/services/api/client";
 import {
   CounsellorCardDTO,
   CounsellorDetailDTO,
+  CounsellorAvailability,
   CounsellingSessionDTO,
   CounsellingNoteDTO,
   SaveCounsellingNoteDTO,
@@ -11,6 +12,11 @@ import {
   ConsentPermission,
   SessionStatus,
   CounsellorFilterParams,
+  CounsellorSessionFilterParams,
+  CounsellorOverviewDTO,
+  UpdateCounsellorProfileDTO,
+  AssignedStudentDTO,
+  CounsellorReviewDTO,
 } from "../types/counsellor.types";
 
 interface ApiResponse<T> {
@@ -91,30 +97,88 @@ export const counsellorApi = {
   /**
    * Counsellor Portal: Fetches dashboard overview statistics and pending queue.
    */
-  async getCounsellorOverview(): Promise<{
-    stats: {
-      upcomingSessionsCount: number;
-      pendingRequestsCount: number;
-      completedSessionsCount: number;
-      totalAssignedStudentsCount: number;
-    };
-    counsellorProfile: CounsellorDetailDTO;
-    upcomingSessions: CounsellingSessionDTO[];
-    pendingRequests: CounsellingSessionDTO[];
-  }> {
-    const res = await fetchApi<ApiResponse<any>>("/counselling/counsellor/overview");
+  async getCounsellorOverview(): Promise<CounsellorOverviewDTO> {
+    const res = await fetchApi<ApiResponse<CounsellorOverviewDTO>>("/counselling/counsellor/overview");
     return res.data;
   },
 
   /**
-   * Counsellor Portal: Fetches assigned appointments.
+   * Counsellor Portal: Updates counsellor personal & professional profile.
    */
-  async getCounsellorSessions(status?: string): Promise<CounsellingSessionDTO[]> {
-    const query = status && status !== "ALL" ? `?status=${status}` : "";
+  async updateCounsellorProfile(dto: UpdateCounsellorProfileDTO): Promise<CounsellorDetailDTO> {
+    const res = await fetchApi<ApiResponse<CounsellorDetailDTO>>("/counselling/counsellor/profile", {
+      method: "PUT",
+      body: JSON.stringify(dto),
+    });
+    return res.data;
+  },
+
+  /**
+   * Counsellor Portal: Fetches recurring availability schedule.
+   */
+  async getCounsellorAvailability(): Promise<CounsellorAvailability[]> {
+    const res = await fetchApi<ApiResponse<CounsellorAvailability[]>>("/counselling/counsellor/availability");
+    return res.data || [];
+  },
+
+  /**
+   * Counsellor Portal: Updates weekly availability schedule.
+   */
+  async updateCounsellorAvailability(availability: CounsellorAvailability[]): Promise<CounsellorAvailability[]> {
+    const res = await fetchApi<ApiResponse<CounsellorAvailability[]>>("/counselling/counsellor/availability", {
+      method: "PUT",
+      body: JSON.stringify({ availability }),
+    });
+    return res.data || [];
+  },
+
+  /**
+   * Counsellor Portal: Fetches student reviews and feedback.
+   */
+  async getCounsellorReviews(): Promise<CounsellorReviewDTO[]> {
+    const res = await fetchApi<ApiResponse<CounsellorReviewDTO[]>>("/counselling/counsellor/reviews");
+    return res.data || [];
+  },
+
+  /**
+   * Counsellor Portal: Fetches assigned appointments with advanced search and filters.
+   */
+  async getCounsellorSessions(
+    filters?: string | CounsellorSessionFilterParams
+  ): Promise<CounsellingSessionDTO[]> {
+    const params = new URLSearchParams();
+
+    if (typeof filters === "string") {
+      if (filters && filters !== "ALL") params.append("status", filters);
+    } else if (filters) {
+      if (filters.status && filters.status !== "ALL") params.append("status", filters.status);
+      if (filters.search) params.append("search", filters.search);
+      if (filters.dateFilter && filters.dateFilter !== "ALL") params.append("dateFilter", filters.dateFilter);
+      if (filters.assessmentStatus && filters.assessmentStatus !== "ALL") params.append("assessmentStatus", filters.assessmentStatus);
+      if (filters.reportStatus && filters.reportStatus !== "ALL") params.append("reportStatus", filters.reportStatus);
+      if (filters.sortBy) params.append("sortBy", filters.sortBy);
+      if (filters.sortOrder) params.append("sortOrder", filters.sortOrder);
+      if (filters.page) params.append("page", String(filters.page));
+      if (filters.limit) params.append("limit", String(filters.limit));
+    }
+
+    const query = params.toString() ? `?${params.toString()}` : "";
     const res = await fetchApi<ApiResponse<CounsellingSessionDTO[]>>(
       `/counselling/counsellor/sessions${query}`
     );
     return res.data || [];
+  },
+
+  /**
+   * Counsellor Portal: Fetches single session details with notes and status.
+   */
+  async getSessionById(
+    sessionId: string
+  ): Promise<CounsellingSessionDTO & { notes?: CounsellingNoteDTO | null }> {
+    const res = await fetchApi<ApiResponse<CounsellingSessionDTO & { notes?: CounsellingNoteDTO | null }>>(
+      `/counselling/counsellor/sessions/${sessionId}`
+    );
+    return res.data;
   },
 
   /**
@@ -138,8 +202,8 @@ export const counsellorApi = {
   /**
    * Counsellor Portal: Fetches list of assigned students.
    */
-  async getAssignedStudents(): Promise<any[]> {
-    const res = await fetchApi<ApiResponse<any[]>>("/counselling/counsellor/students");
+  async getAssignedStudents(): Promise<AssignedStudentDTO[]> {
+    const res = await fetchApi<ApiResponse<AssignedStudentDTO[]>>("/counselling/counsellor/students");
     return res.data || [];
   },
 
@@ -192,7 +256,7 @@ export const counsellorApi = {
    * Marks a notification as read.
    */
   async markNotificationAsRead(notificationId: string): Promise<void> {
-    await fetchApi<ApiResponse<any>>(`/notifications/${notificationId}/read`, {
+    await fetchApi<ApiResponse<unknown>>(`/notifications/${notificationId}/read`, {
       method: "PATCH",
     });
   },

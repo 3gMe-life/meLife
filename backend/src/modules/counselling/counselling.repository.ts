@@ -4,6 +4,7 @@ import { hashPassword } from "../../common/utils/crypto";
 import { SEED_COUNSELLORS } from "./counselling.seed-data";
 import {
   CounsellorEntity,
+  CounsellorAvailability,
   CounsellingSessionDTO,
   CounsellingNoteDTO,
   ConsentPermission,
@@ -11,6 +12,7 @@ import {
   NotificationType,
   SessionStatus,
   SessionType,
+  CounsellorSessionFilterParams,
 } from "./counselling.types";
 
 export class CounsellingRepository {
@@ -128,6 +130,44 @@ export class CounsellingRepository {
         CREATE INDEX IF NOT EXISTS idx_counselling_sessions_student ON counselling_sessions(student_id);
         CREATE INDEX IF NOT EXISTS idx_counselling_sessions_counsellor ON counselling_sessions(counsellor_id);
         CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id, is_read);
+      `);
+
+      // Auto-provision profile records for any users with CAREER_COUNSELLOR role lacking a counsellors row
+      await client.query(`
+        INSERT INTO counsellors (
+          user_id, qualification, experience_years, bio,
+          specialisations, languages, guidance_areas,
+          rating, review_count, reviews, approval_status
+        )
+        SELECT
+          u.id,
+          COALESCE(ca.qualification, 'Certified Career Guidance Counsellor'),
+          1,
+          COALESCE(
+            CASE WHEN ca.organization IS NOT NULL THEN 'Career Guidance Specialist at ' || ca.organization ELSE NULL END,
+            'Certified Career and Education Guidance Counsellor at MeLife.'
+          ),
+          '["Career Guidance", "Cognitive Aptitude Alignment", "Higher Education Advisory"]'::jsonb,
+          '["English"]'::jsonb,
+          '["Stream Selection", "Psychometric Assessment Debriefing", "Career Roadmaps"]'::jsonb,
+          5.0, 0, '[]'::jsonb, 'APPROVED'
+        FROM users u
+        JOIN user_roles ur ON u.id = ur.user_id
+        JOIN roles r ON ur.role_id = r.id AND r.name = 'CAREER_COUNSELLOR'
+        LEFT JOIN counsellor_applications ca ON u.id = ca.user_id
+        ON CONFLICT (user_id) DO NOTHING;
+      `);
+
+      // Auto-provision default availability slots for any counsellors missing them
+      await client.query(`
+        INSERT INTO counsellor_availability (counsellor_id, day, start_time, end_time, is_active)
+        SELECT c.id, d.day, '09:00', '17:00', true
+        FROM counsellors c
+        CROSS JOIN (
+          VALUES ('Monday'), ('Tuesday'), ('Wednesday'), ('Thursday'), ('Friday')
+        ) AS d(day)
+        LEFT JOIN counsellor_availability ca ON c.id = ca.counsellor_id AND ca.day = d.day
+        WHERE ca.id IS NULL;
       `);
 
       await client.query("COMMIT");
@@ -385,6 +425,86 @@ export class CounsellingRepository {
   }
 
   /**
+   * Lazily provisions or retrieves a counsellor profile for an authenticated user.
+   * If the user exists and has a CAREER_COUNSELLOR role or application, safely creates the profile and availability slots.
+   */
+  async findOrCreateCounsellorProfile(idOrUserId: string): Promise<any | null> {
+    if (!idOrUserId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrUserId)) {
+      return null;
+    }
+
+    const existing = await this.findCounsellorById(idOrUserId);
+    if (existing) {
+      return existing;
+    }
+
+    // Check if user exists in database
+    const userRes = await pool.query(
+      `SELECT u.id, u.first_name, u.last_name, u.email,
+              ca.qualification as app_qualification, ca.organization as app_organization
+       FROM users u
+       LEFT JOIN counsellor_applications ca ON u.id = ca.user_id
+       WHERE u.id = $1
+       ORDER BY ca.created_at DESC
+       LIMIT 1`,
+      [idOrUserId]
+    );
+
+    if (!userRes.rows[0]) {
+      return null;
+    }
+
+    const user = userRes.rows[0];
+    const qualification = user.app_qualification || "Certified Career Guidance Counsellor";
+    const bio = user.app_organization
+      ? `Career & Educational Guidance Specialist at ${user.app_organization}.`
+      : "Certified Career and Education Guidance Counsellor at MeLife.";
+    const specialisations = ["Career Guidance", "Cognitive Aptitude Alignment", "Higher Education Advisory"];
+    const languages = ["English"];
+    const guidanceAreas = ["Stream Selection", "Psychometric Assessment Debriefing", "Career Roadmaps"];
+
+    // Upsert counsellor profile safely
+    const counsellorRes = await pool.query(
+      `INSERT INTO counsellors (
+         user_id, qualification, experience_years, bio,
+         specialisations, languages, guidance_areas,
+         rating, review_count, reviews, approval_status
+       )
+       VALUES ($1, $2, 1, $3, $4, $5, $6, 5.0, 0, '[]'::jsonb, 'APPROVED')
+       ON CONFLICT (user_id) DO UPDATE
+       SET updated_at = NOW()
+       RETURNING id`,
+      [
+        user.id,
+        qualification,
+        bio,
+        JSON.stringify(specialisations),
+        JSON.stringify(languages),
+        JSON.stringify(guidanceAreas),
+      ]
+    );
+
+    const counsellorId = counsellorRes.rows[0]?.id;
+
+    // Ensure default weekly availability slots exist
+    if (counsellorId) {
+      const defaultDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+      for (const day of defaultDays) {
+        await pool.query(
+          `INSERT INTO counsellor_availability (counsellor_id, day, start_time, end_time, is_active)
+           SELECT $1, $2, '09:00', '17:00', true
+           WHERE NOT EXISTS (
+             SELECT 1 FROM counsellor_availability WHERE counsellor_id = $1 AND day = $2
+           )`,
+          [counsellorId, day]
+        );
+      }
+    }
+
+    return this.findCounsellorById(user.id);
+  }
+
+  /**
    * Creates a new appointment / counselling session.
    */
   async createSession(data: {
@@ -434,9 +554,9 @@ export class CounsellingRepository {
   }
 
   /**
-   * Retrieves a single session by session ID.
+   * Retrieves a single session by session ID with student assessment & report status.
    */
-  async findSessionById(sessionId: string): Promise<any | null> {
+  async findSessionById(sessionId: string): Promise<CounsellingSessionDTO | null> {
     if (!sessionId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId)) {
       return null;
     }
@@ -457,7 +577,18 @@ export class CounsellingRepository {
              EXISTS(
                SELECT 1 FROM counselling_notes cn
                WHERE cn.session_id = s.id
-             ) as notes_added
+             ) as notes_added,
+             CASE
+               WHEN EXISTS(SELECT 1 FROM assessment_results ar WHERE ar.participant_id = s.student_id) THEN 'COMPLETED'
+               WHEN EXISTS(SELECT 1 FROM assessment_attempts aa WHERE aa.participant_id = s.student_id AND aa.status = 'IN_PROGRESS') THEN 'IN_PROGRESS'
+               ELSE 'NOT_STARTED'
+             END as assessment_status,
+             CASE
+               WHEN EXISTS(SELECT 1 FROM assessment_reports rep WHERE rep.participant_id = s.student_id AND rep.status IN ('READY', 'GENERATED', 'COMPLETED'))
+                 OR EXISTS(SELECT 1 FROM career_reports cr WHERE cr.student_id = s.student_id AND cr.status IN ('READY', 'GENERATED', 'COMPLETED')) THEN 'AVAILABLE'
+               WHEN EXISTS(SELECT 1 FROM assessment_results ar WHERE ar.participant_id = s.student_id) THEN 'PENDING'
+               ELSE 'NOT_AVAILABLE'
+             END as report_status
       FROM counselling_sessions s
       JOIN users stu ON s.student_id = stu.id
       JOIN counsellors c ON s.counsellor_id = c.id
@@ -488,6 +619,8 @@ export class CounsellingRepository {
       studentNotes: r.student_notes,
       hasConsent: Boolean(r.has_consent),
       notesAdded: Boolean(r.notes_added),
+      assessmentStatus: r.assessment_status,
+      reportStatus: r.report_status,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
     };
@@ -543,12 +676,15 @@ export class CounsellingRepository {
   }
 
   /**
-   * Retrieves all sessions assigned to a counsellor.
+   * Retrieves all sessions assigned to a counsellor with student assessment/report status & advanced filtering.
    */
   async findSessionsByCounsellorId(
     counsellorId: string,
-    status?: string
+    filtersOrStatus?: string | CounsellorSessionFilterParams
   ): Promise<CounsellingSessionDTO[]> {
+    const filters: CounsellorSessionFilterParams =
+      typeof filtersOrStatus === "string" ? { status: filtersOrStatus } : filtersOrStatus || {};
+
     let query = `
       SELECT s.id, s.student_id, s.counsellor_id, s.session_type, s.duration_minutes,
              TO_CHAR(s.session_date, 'YYYY-MM-DD') as session_date, s.session_time,
@@ -565,7 +701,18 @@ export class CounsellingRepository {
              EXISTS(
                SELECT 1 FROM counselling_notes cn
                WHERE cn.session_id = s.id
-             ) as notes_added
+             ) as notes_added,
+             CASE
+               WHEN EXISTS(SELECT 1 FROM assessment_results ar WHERE ar.participant_id = s.student_id) THEN 'COMPLETED'
+               WHEN EXISTS(SELECT 1 FROM assessment_attempts aa WHERE aa.participant_id = s.student_id AND aa.status = 'IN_PROGRESS') THEN 'IN_PROGRESS'
+               ELSE 'NOT_STARTED'
+             END as assessment_status,
+             CASE
+               WHEN EXISTS(SELECT 1 FROM assessment_reports rep WHERE rep.participant_id = s.student_id AND rep.status IN ('READY', 'GENERATED', 'COMPLETED'))
+                 OR EXISTS(SELECT 1 FROM career_reports cr WHERE cr.student_id = s.student_id AND cr.status IN ('READY', 'GENERATED', 'COMPLETED')) THEN 'AVAILABLE'
+               WHEN EXISTS(SELECT 1 FROM assessment_results ar WHERE ar.participant_id = s.student_id) THEN 'PENDING'
+               ELSE 'NOT_AVAILABLE'
+             END as report_status
       FROM counselling_sessions s
       JOIN users stu ON s.student_id = stu.id
       JOIN counsellors c ON s.counsellor_id = c.id
@@ -574,12 +721,95 @@ export class CounsellingRepository {
     `;
 
     const values: any[] = [counsellorId];
-    if (status && status !== "ALL") {
-      query += ` AND s.status = $2`;
-      values.push(status);
+    let paramIndex = 2;
+
+    // 1. Status Filter
+    if (filters.status && filters.status !== "ALL") {
+      if (filters.status === "TODAY") {
+        query += ` AND s.session_date = CURRENT_DATE`;
+      } else if (filters.status === "UPCOMING") {
+        query += ` AND s.session_date >= CURRENT_DATE AND s.status = 'CONFIRMED'`;
+      } else {
+        query += ` AND s.status = $${paramIndex}`;
+        values.push(filters.status);
+        paramIndex++;
+      }
     }
 
-    query += ` ORDER BY s.session_date ASC, s.session_time ASC`;
+    // 2. Search Keyword Filter
+    if (filters.search && filters.search.trim()) {
+      const sTerm = `%${filters.search.trim().toLowerCase()}%`;
+      query += ` AND (
+        LOWER(stu.first_name || ' ' || stu.last_name) LIKE $${paramIndex}
+        OR LOWER(stu.email) LIKE $${paramIndex}
+        OR LOWER(s.session_type) LIKE $${paramIndex}
+        OR LOWER(COALESCE(s.student_notes, '')) LIKE $${paramIndex}
+      )`;
+      values.push(sTerm);
+      paramIndex++;
+    }
+
+    // 3. Date Filter
+    if (filters.dateFilter && filters.dateFilter !== "ALL") {
+      if (filters.dateFilter === "TODAY") {
+        query += ` AND s.session_date = CURRENT_DATE`;
+      } else if (filters.dateFilter === "THIS_WEEK") {
+        query += ` AND s.session_date >= date_trunc('week', CURRENT_DATE)::date AND s.session_date < (date_trunc('week', CURRENT_DATE) + interval '7 days')::date`;
+      } else if (filters.dateFilter === "THIS_MONTH") {
+        query += ` AND s.session_date >= date_trunc('month', CURRENT_DATE)::date AND s.session_date < (date_trunc('month', CURRENT_DATE) + interval '1 month')::date`;
+      } else if (filters.dateFilter === "UPCOMING") {
+        query += ` AND s.session_date >= CURRENT_DATE`;
+      } else if (filters.dateFilter === "PAST") {
+        query += ` AND s.session_date < CURRENT_DATE`;
+      }
+    }
+
+    // 4. Assessment Status Filter
+    if (filters.assessmentStatus && filters.assessmentStatus !== "ALL") {
+      if (filters.assessmentStatus === "COMPLETED") {
+        query += ` AND EXISTS(SELECT 1 FROM assessment_results ar WHERE ar.participant_id = s.student_id)`;
+      } else if (filters.assessmentStatus === "IN_PROGRESS") {
+        query += ` AND EXISTS(SELECT 1 FROM assessment_attempts aa WHERE aa.participant_id = s.student_id AND aa.status = 'IN_PROGRESS') AND NOT EXISTS(SELECT 1 FROM assessment_results ar WHERE ar.participant_id = s.student_id)`;
+      } else if (filters.assessmentStatus === "NOT_STARTED") {
+        query += ` AND NOT EXISTS(SELECT 1 FROM assessment_results ar WHERE ar.participant_id = s.student_id) AND NOT EXISTS(SELECT 1 FROM assessment_attempts aa WHERE aa.participant_id = s.student_id)`;
+      }
+    }
+
+    // 5. Report Status Filter
+    if (filters.reportStatus && filters.reportStatus !== "ALL") {
+      if (filters.reportStatus === "AVAILABLE") {
+        query += ` AND (EXISTS(SELECT 1 FROM assessment_reports rep WHERE rep.participant_id = s.student_id AND rep.status IN ('READY', 'GENERATED', 'COMPLETED')) OR EXISTS(SELECT 1 FROM career_reports cr WHERE cr.student_id = s.student_id AND cr.status IN ('READY', 'GENERATED', 'COMPLETED')))`;
+      } else if (filters.reportStatus === "PENDING") {
+        query += ` AND EXISTS(SELECT 1 FROM assessment_results ar WHERE ar.participant_id = s.student_id) AND NOT EXISTS(SELECT 1 FROM assessment_reports rep WHERE rep.participant_id = s.student_id AND rep.status IN ('READY', 'GENERATED', 'COMPLETED')) AND NOT EXISTS(SELECT 1 FROM career_reports cr WHERE cr.student_id = s.student_id AND cr.status IN ('READY', 'GENERATED', 'COMPLETED'))`;
+      } else if (filters.reportStatus === "NOT_AVAILABLE") {
+        query += ` AND NOT EXISTS(SELECT 1 FROM assessment_results ar WHERE ar.participant_id = s.student_id)`;
+      }
+    }
+
+    // 6. Sorting
+    const sortOrder = filters.sortOrder === "desc" ? "DESC" : "ASC";
+    if (filters.sortBy === "student") {
+      query += ` ORDER BY stu.first_name ${sortOrder}, stu.last_name ${sortOrder}`;
+    } else if (filters.sortBy === "status") {
+      query += ` ORDER BY s.status ${sortOrder}, s.session_date DESC`;
+    } else {
+      // Default: sort by session_date, session_time
+      query += ` ORDER BY s.session_date ${sortOrder}, s.session_time ${sortOrder}`;
+    }
+
+    // 7. Pagination
+    if (filters.limit && filters.limit > 0) {
+      query += ` LIMIT $${paramIndex}`;
+      values.push(filters.limit);
+      paramIndex++;
+
+      if (filters.page && filters.page > 1) {
+        const offset = (filters.page - 1) * filters.limit;
+        query += ` OFFSET $${paramIndex}`;
+        values.push(offset);
+        paramIndex++;
+      }
+    }
 
     const res = await pool.query(query, values);
     return res.rows.map((r) => ({
@@ -600,6 +830,8 @@ export class CounsellingRepository {
       studentNotes: r.student_notes,
       hasConsent: Boolean(r.has_consent),
       notesAdded: Boolean(r.notes_added),
+      assessmentStatus: r.assessment_status,
+      reportStatus: r.report_status,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
     }));
@@ -791,31 +1023,226 @@ export class CounsellingRepository {
   }
 
   /**
-   * Retrieves aggregated statistics for a counsellor's portal.
+   * Retrieves today's sessions scheduled for the authenticated counsellor.
+   */
+  async findTodaySessionsByCounsellorId(counsellorId: string): Promise<CounsellingSessionDTO[]> {
+    const query = `
+      SELECT s.id, s.student_id, s.counsellor_id, s.session_type, s.duration_minutes,
+             TO_CHAR(s.session_date, 'YYYY-MM-DD') as session_date, s.session_time,
+             s.status, s.meeting_link, s.student_notes, s.created_at, s.updated_at,
+             stu.first_name as student_first_name, stu.last_name as student_last_name, stu.email as student_email,
+             c.qualification as counsellor_qualification, c.profile_image as counsellor_profile_image,
+             cu.first_name as counsellor_first_name, cu.last_name as counsellor_last_name,
+             EXISTS(
+               SELECT 1 FROM student_counsellor_consent con
+               WHERE con.student_id = s.student_id
+                 AND con.counsellor_id = s.counsellor_id
+                 AND con.permission = 'VIEW_ASSESSMENT_SUMMARY'
+             ) as has_consent,
+             EXISTS(
+               SELECT 1 FROM counselling_notes cn
+               WHERE cn.session_id = s.id
+             ) as notes_added
+      FROM counselling_sessions s
+      JOIN users stu ON s.student_id = stu.id
+      JOIN counsellors c ON s.counsellor_id = c.id
+      JOIN users cu ON c.user_id = cu.id
+      WHERE s.counsellor_id = $1
+        AND s.session_date = CURRENT_DATE
+        AND s.status NOT IN ('CANCELLED', 'REJECTED')
+      ORDER BY s.session_time ASC
+    `;
+
+    const res = await pool.query(query, [counsellorId]);
+    return res.rows.map((r) => ({
+      id: r.id,
+      studentId: r.student_id,
+      studentName: `${r.student_first_name} ${r.student_last_name}`.trim(),
+      studentEmail: r.student_email,
+      counsellorId: r.counsellor_id,
+      counsellorName: `${r.counsellor_first_name} ${r.counsellor_last_name}`.trim(),
+      counsellorQualification: r.counsellor_qualification,
+      counsellorProfileImage: r.counsellor_profile_image,
+      sessionType: r.session_type,
+      durationMinutes: r.duration_minutes,
+      sessionDate: r.session_date,
+      sessionTime: r.session_time,
+      status: r.status,
+      meetingLink: r.meeting_link,
+      studentNotes: r.student_notes,
+      hasConsent: Boolean(r.has_consent),
+      notesAdded: Boolean(r.notes_added),
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    }));
+  }
+
+  /**
+   * Retrieves aggregated 6-metric statistics for a counsellor's portal.
+   * Accurately calculates available slots based on weekly availability schedule minus active bookings.
+   * Student count is derived strictly from distinct students who booked with this counsellor.
    */
   async getCounsellorOverviewStats(counsellorId: string): Promise<{
+    todaySessionsCount: number;
     upcomingSessionsCount: number;
     pendingRequestsCount: number;
     completedSessionsCount: number;
+    availableSlotsCount: number;
     totalAssignedStudentsCount: number;
+    todaySessions: number;
+    upcomingSessions: number;
+    pendingRequests: number;
+    completedSessions: number;
+    availableSlots: number;
+    studentCount: number;
   }> {
     const query = `
       SELECT
-        COUNT(CASE WHEN status = 'CONFIRMED' AND session_date >= CURRENT_DATE THEN 1 END)::int as upcoming_count,
+        COUNT(CASE WHEN session_date = CURRENT_DATE AND status IN ('CONFIRMED', 'PENDING') THEN 1 END)::int as today_count,
+        COUNT(CASE WHEN session_date >= CURRENT_DATE AND status = 'CONFIRMED' THEN 1 END)::int as upcoming_count,
         COUNT(CASE WHEN status = 'PENDING' THEN 1 END)::int as pending_count,
         COUNT(CASE WHEN status = 'COMPLETED' THEN 1 END)::int as completed_count,
+        GREATEST(
+          0,
+          (SELECT COUNT(*)::int FROM counsellor_availability WHERE counsellor_id = $1 AND is_active = true) -
+          (SELECT COUNT(*)::int FROM counselling_sessions
+           WHERE counsellor_id = $1
+             AND session_date >= date_trunc('week', CURRENT_DATE)::date
+             AND session_date < (date_trunc('week', CURRENT_DATE) + interval '7 days')::date
+             AND status IN ('CONFIRMED', 'PENDING'))
+        )::int as available_slots_count,
         COUNT(DISTINCT student_id)::int as total_students_count
       FROM counselling_sessions
       WHERE counsellor_id = $1
     `;
     const res = await pool.query(query, [counsellorId]);
     const row = res.rows[0];
+
+    const todaySessionsCount = row?.today_count || 0;
+    const upcomingSessionsCount = row?.upcoming_count || 0;
+    const pendingRequestsCount = row?.pending_count || 0;
+    const completedSessionsCount = row?.completed_count || 0;
+    const availableSlotsCount = row?.available_slots_count ?? 0;
+    const totalAssignedStudentsCount = row?.total_students_count || 0;
+
     return {
-      upcomingSessionsCount: row?.upcoming_count || 0,
-      pendingRequestsCount: row?.pending_count || 0,
-      completedSessionsCount: row?.completed_count || 0,
-      totalAssignedStudentsCount: row?.total_students_count || 0,
+      todaySessionsCount,
+      upcomingSessionsCount,
+      pendingRequestsCount,
+      completedSessionsCount,
+      availableSlotsCount,
+      totalAssignedStudentsCount,
+      todaySessions: todaySessionsCount,
+      upcomingSessions: upcomingSessionsCount,
+      pendingRequests: pendingRequestsCount,
+      completedSessions: completedSessionsCount,
+      availableSlots: availableSlotsCount,
+      studentCount: totalAssignedStudentsCount,
     };
+  }
+
+  /**
+   * Updates counsellor's own profile without modifying admin verification status.
+   */
+  async updateCounsellorProfile(
+    counsellorId: string,
+    data: {
+      bio?: string;
+      qualification?: string;
+      experienceYears?: number;
+      specialisations?: string[];
+      languages?: string[];
+      guidanceAreas?: string[];
+      profileImage?: string | null;
+    }
+  ): Promise<any> {
+    const query = `
+      UPDATE counsellors
+      SET bio = COALESCE($1, bio),
+          qualification = COALESCE($2, qualification),
+          experience_years = COALESCE($3, experience_years),
+          specialisations = COALESCE($4::jsonb, specialisations),
+          languages = COALESCE($5::jsonb, languages),
+          guidance_areas = COALESCE($6::jsonb, guidance_areas),
+          profile_image = COALESCE($7, profile_image),
+          updated_at = NOW()
+      WHERE id = $8
+      RETURNING *
+    `;
+    const res = await pool.query(query, [
+      data.bio || null,
+      data.qualification || null,
+      data.experienceYears !== undefined ? data.experienceYears : null,
+      data.specialisations ? JSON.stringify(data.specialisations) : null,
+      data.languages ? JSON.stringify(data.languages) : null,
+      data.guidanceAreas ? JSON.stringify(data.guidanceAreas) : null,
+      data.profileImage !== undefined ? data.profileImage : null,
+      counsellorId,
+    ]);
+    return res.rows[0] || null;
+  }
+
+  /**
+   * Retrieves active availability slots for a counsellor.
+   */
+  async getCounsellorAvailability(counsellorId: string): Promise<CounsellorAvailability[]> {
+    const query = `
+      SELECT id, counsellor_id as "counsellorId", day, start_time as "startTime", end_time as "endTime", is_active as "isActive"
+      FROM counsellor_availability
+      WHERE counsellor_id = $1
+      ORDER BY
+        CASE day
+          WHEN 'Monday' THEN 1
+          WHEN 'Tuesday' THEN 2
+          WHEN 'Wednesday' THEN 3
+          WHEN 'Thursday' THEN 4
+          WHEN 'Friday' THEN 5
+          WHEN 'Saturday' THEN 6
+          WHEN 'Sunday' THEN 7
+          ELSE 8
+        END, start_time ASC
+    `;
+    const res = await pool.query(query, [counsellorId]);
+    return res.rows;
+  }
+
+  /**
+   * Replaces weekly recurring availability slots for a counsellor.
+   */
+  async replaceCounsellorAvailability(
+    counsellorId: string,
+    slots: CounsellorAvailability[]
+  ): Promise<CounsellorAvailability[]> {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("DELETE FROM counsellor_availability WHERE counsellor_id = $1", [counsellorId]);
+
+      for (const slot of slots) {
+        await client.query(
+          `INSERT INTO counsellor_availability (counsellor_id, day, start_time, end_time, is_active)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [counsellorId, slot.day, slot.startTime, slot.endTime, slot.isActive !== false]
+        );
+      }
+
+      await client.query("COMMIT");
+      return this.getCounsellorAvailability(counsellorId);
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Retrieves review list for a counsellor from their profile and completed sessions.
+   */
+  async getCounsellorReviews(counsellorId: string): Promise<any[]> {
+    const counsellor = await this.findCounsellorById(counsellorId);
+    if (!counsellor) return [];
+    return counsellor.reviews || [];
   }
 
   /**

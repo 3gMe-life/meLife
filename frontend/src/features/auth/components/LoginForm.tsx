@@ -71,7 +71,9 @@ export function LoginForm() {
     loginMutation.mutate(validation.data, {
       onSuccess: (response) => {
         const role = response?.data?.user?.role || response?.data?.role;
-        const targetPath = resolveDashboardRoute(role);
+        const userStatus = response?.data?.user?.status;
+        const counsellorApplication = response?.data?.counsellorApplication;
+        const targetPath = resolveDashboardRoute(role, userStatus, counsellorApplication);
         router.push(targetPath);
       },
       onError: (err) => {
@@ -88,7 +90,9 @@ export function LoginForm() {
       {
         onSuccess: (response) => {
           const role = response?.data?.user?.role || response?.data?.role;
-          const targetPath = resolveDashboardRoute(role);
+          const userStatus = response?.data?.user?.status;
+          const counsellorApplication = response?.data?.counsellorApplication;
+          const targetPath = resolveDashboardRoute(role, userStatus, counsellorApplication);
           router.push(targetPath);
         },
         onError: (err) => {

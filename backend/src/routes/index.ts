@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { healthRoutes } from "./health.routes";
 import { authRouter } from "../modules/auth/auth.routes";
+import { adminRouter } from "../modules/admin/admin.routes";
 import { studentRouter } from "../modules/students/student.routes";
 import { participantRouter } from "../modules/participants/participant.routes";
 import { assessmentRouter } from "../modules/assessments/assessment.routes";
@@ -17,6 +18,9 @@ const apiRouter = Router();
 
 // Mount system health routes
 apiRouter.use(healthRoutes);
+
+// Mount administrative management module routes (/api/v1/admin)
+apiRouter.use("/admin", adminRouter);
 
 // Mount authentication module routes (/api/v1/auth)
 apiRouter.use("/auth", authRouter);
@@ -40,9 +44,10 @@ apiRouter.use("/careers", careerRouter);
 // Mount career exploration reports module routes (/api/v1/career-reports)
 apiRouter.use("/career-reports", careerReportRouter);
 
-// Mount counsellor directory & connect routes (/api/v1/counsellors & /api/v1/counselling)
+// Mount counsellor directory & connect routes (/api/v1/counsellors & /api/v1/counselling & /api/v1/counsellor)
 apiRouter.use("/counsellors", counsellorsRouter);
 apiRouter.use("/counselling", counsellingRouter);
+apiRouter.use("/counsellor", counsellingRouter);
 
 // Mount user notifications routes (/api/v1/notifications)
 apiRouter.use("/notifications", notificationRouter);

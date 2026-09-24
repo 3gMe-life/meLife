@@ -61,6 +61,9 @@ authRouter.post(
   "/apply/counsellor",
   (req: Request, _res: Response, next: NextFunction) => {
     req.body.registrationPath = "COUNSELLOR";
+    if (!req.body.email && req.body.professionalEmail) {
+      req.body.email = req.body.professionalEmail;
+    }
     next();
   },
   validateBody(registerSchema),
@@ -71,6 +74,14 @@ authRouter.post(
   "/apply/institution",
   (req: Request, _res: Response, next: NextFunction) => {
     req.body.registrationPath = "INSTITUTION";
+    if (!req.body.email && req.body.officialEmail) {
+      req.body.email = req.body.officialEmail;
+    }
+    if (req.body.contactName) {
+      const parts = req.body.contactName.trim().split(" ");
+      if (!req.body.firstName) req.body.firstName = parts[0] || "Admin";
+      if (!req.body.lastName) req.body.lastName = parts.slice(1).join(" ") || "Contact";
+    }
     next();
   },
   validateBody(registerSchema),

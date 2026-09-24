@@ -8,7 +8,8 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "seed:admin": "tsx scripts/seed-admin-user.ts"
   },
   "keywords": [
     "psychometrics",

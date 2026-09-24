@@ -135,6 +135,29 @@ export class UserRepository {
   }
 
   /**
+   * Retrieves all enabled dashboard feature keys for a user across their assigned roles.
+   */
+  async getUserDashboardFeatures(
+    userId: string,
+    client?: PoolClient
+  ): Promise<string[]> {
+    if (!userId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+      return [];
+    }
+    const db = client || pool;
+    const query = `
+      SELECT DISTINCT df.key
+      FROM user_roles ur
+      JOIN role_dashboard_features rdf ON ur.role_id = rdf.role_id
+      JOIN dashboard_features df ON rdf.feature_id = df.id
+      WHERE ur.user_id = $1 AND rdf.is_enabled = true AND df.is_active = true
+      ORDER BY df.key ASC
+    `;
+    const res = await db.query(query, [userId]);
+    return res.rows.map((r) => String(r.key));
+  }
+
+  /**
    * Retrieves a complete user along with their roles and permissions.
    */
   async findUserWithRolesAndPermissions(

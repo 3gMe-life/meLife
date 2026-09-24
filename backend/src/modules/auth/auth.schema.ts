@@ -23,7 +23,20 @@ export const registerSchema = z
       .string()
       .trim()
       .email("Please provide a valid email address")
-      .max(255, "Email cannot exceed 255 characters"),
+      .max(255, "Email cannot exceed 255 characters")
+      .optional(),
+    professionalEmail: z
+      .string()
+      .trim()
+      .email("Please provide a valid professional email address")
+      .max(255)
+      .optional(),
+    officialEmail: z
+      .string()
+      .trim()
+      .email("Please provide a valid official email address")
+      .max(255)
+      .optional(),
     password: z
       .string()
       .min(10, "Password must be at least 10 characters long")
@@ -41,6 +54,16 @@ export const registerSchema = z
     contactName: z.string().trim().max(100).optional(),
     phoneNumber: z.string().trim().max(30).optional(),
   })
+  .refine(
+    (data) => {
+      const email = data.email || data.professionalEmail || data.officialEmail;
+      return Boolean(email);
+    },
+    {
+      message: "Please provide a valid email address",
+      path: ["email"],
+    }
+  )
   .refine(
     (data) => {
       // Password is required for non-institution direct account signups

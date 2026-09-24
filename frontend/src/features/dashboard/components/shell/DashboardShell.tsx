@@ -21,7 +21,7 @@ export function DashboardShell({
   const { data } = useCurrentUserQuery();
 
   const user = data?.data?.user;
-  const role = data?.data?.role || "PARTICIPANT";
+  const role = data?.data?.role || (user as any)?.role || "PARTICIPANT";
   const educationStage = data?.data?.onboarding?.educationStage;
 
   return (

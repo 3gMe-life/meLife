@@ -200,7 +200,7 @@ function WizardForm({ initialProfile }: WizardFormProps) {
 
     try {
       await onboardingMutation.mutateAsync(formData);
-      router.push("/participant/dashboard");
+      router.replace("/participant/dashboard");
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : "Failed to save participant profile";
       setServerError(errorMsg);

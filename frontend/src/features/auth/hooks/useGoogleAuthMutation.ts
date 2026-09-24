@@ -16,9 +16,14 @@ export function useGoogleAuthMutation() {
           data: {
             user: data.data.user,
             role: data.data.role,
-            permissions: data.data.permissions,
+            permissions: data.data.permissions || [],
+            onboarding: {
+              completed: !data.data.requiresOnboarding,
+            },
+            counsellorApplication: data.data.counsellorApplication || null,
           },
         });
+        queryClient.invalidateQueries({ queryKey: ["currentUser"] });
       }
     },
   });

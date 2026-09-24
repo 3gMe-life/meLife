@@ -65,6 +65,7 @@ export class AuthController {
           permissions: result.permissions,
           accessToken: result.accessToken,
           requiresOnboarding: result.requiresOnboarding,
+          counsellorApplication: result.counsellorApplication,
         },
       });
     } catch (err) {
@@ -93,6 +94,7 @@ export class AuthController {
             permissions: result.permissions,
             accessToken: result.accessToken,
             requiresOnboarding: result.requiresOnboarding,
+            counsellorApplication: result.counsellorApplication,
           },
         });
         return;

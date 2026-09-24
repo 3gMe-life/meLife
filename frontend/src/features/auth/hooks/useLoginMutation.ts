@@ -11,7 +11,19 @@ export function useLoginMutation() {
     mutationFn: (payload) => authApi.login(payload),
     onSuccess: (data) => {
       if (data?.data?.user) {
-        queryClient.setQueryData(["currentUser"], { success: true, data: { user: data.data.user } });
+        queryClient.setQueryData(["currentUser"], {
+          success: true,
+          data: {
+            user: data.data.user,
+            role: data.data.role,
+            permissions: data.data.permissions || [],
+            onboarding: {
+              completed: !data.data.requiresOnboarding,
+            },
+            counsellorApplication: data.data.counsellorApplication || null,
+          },
+        });
+        queryClient.invalidateQueries({ queryKey: ["currentUser"] });
       }
     },
   });

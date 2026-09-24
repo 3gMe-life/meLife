@@ -6,6 +6,9 @@ import {
   ConsentPermission,
   SessionStatus,
   SaveCounsellingNoteDTO,
+  CounsellorSessionFilterParams,
+  UpdateCounsellorProfileDTO,
+  CounsellorAvailability,
 } from "../types/counsellor.types";
 
 export const counsellorKeys = {
@@ -16,7 +19,8 @@ export const counsellorKeys = {
   detail: (id: string) => [...counsellorKeys.details(), id] as const,
   studentSessions: () => ["student-counselling-sessions"] as const,
   counsellorOverview: () => ["counsellor-overview"] as const,
-  counsellorSessions: (status?: string) => ["counsellor-sessions", status] as const,
+  counsellorSessions: (filters?: string | CounsellorSessionFilterParams) => ["counsellor-sessions", filters] as const,
+  sessionDetail: (sessionId: string) => ["counsellor-session-detail", sessionId] as const,
   assignedStudents: () => ["counsellor-assigned-students"] as const,
   studentSummary: (studentId: string) => ["counsellor-student-summary", studentId] as const,
   sessionNotes: (sessionId: string) => ["counselling-session-notes", sessionId] as const,
@@ -69,12 +73,24 @@ export function useCounsellorOverview() {
 }
 
 /**
- * Hook to fetch counsellor's appointments.
+ * Hook to fetch counsellor's appointments with advanced filtering & search.
  */
-export function useCounsellorSessions(status?: string) {
+export function useCounsellorSessions(filters?: string | CounsellorSessionFilterParams) {
   return useQuery({
-    queryKey: counsellorKeys.counsellorSessions(status),
-    queryFn: () => counsellorApi.getCounsellorSessions(status),
+    queryKey: counsellorKeys.counsellorSessions(filters),
+    queryFn: () => counsellorApi.getCounsellorSessions(filters),
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch single session detail for counsellor with security authorization.
+ */
+export function useSessionDetail(sessionId: string, enabled = true) {
+  return useQuery({
+    queryKey: counsellorKeys.sessionDetail(sessionId),
+    queryFn: () => counsellorApi.getSessionById(sessionId),
+    enabled: Boolean(sessionId) && enabled,
     staleTime: 30 * 1000,
   });
 }
@@ -203,3 +219,53 @@ export function useMarkNotificationRead() {
     },
   });
 }
+
+/**
+ * Hook to fetch counsellor availability.
+ */
+export function useCounsellorAvailability() {
+  return useQuery({
+    queryKey: ["counsellor-availability"],
+    queryFn: () => counsellorApi.getCounsellorAvailability(),
+    staleTime: 60 * 1000,
+  });
+}
+
+/**
+ * Mutation: Update counsellor weekly availability.
+ */
+export function useUpdateCounsellorAvailability() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (availability: any[]) => counsellorApi.updateCounsellorAvailability(availability),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["counsellor-availability"] });
+      queryClient.invalidateQueries({ queryKey: counsellorKeys.counsellorOverview() });
+    },
+  });
+}
+
+/**
+ * Hook to fetch counsellor reviews.
+ */
+export function useCounsellorReviews() {
+  return useQuery({
+    queryKey: ["counsellor-reviews"],
+    queryFn: () => counsellorApi.getCounsellorReviews(),
+    staleTime: 60 * 1000,
+  });
+}
+
+/**
+ * Mutation: Update counsellor personal & professional profile.
+ */
+export function useUpdateCounsellorProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: any) => counsellorApi.updateCounsellorProfile(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: counsellorKeys.counsellorOverview() });
+    },
+  });
+}
+

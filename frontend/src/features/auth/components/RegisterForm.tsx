@@ -54,11 +54,21 @@ export function RegisterForm() {
           }
 
           const role = response?.data?.user?.role || response?.data?.role;
+          const userStatus = response?.data?.user?.status;
+          const counsellorApplication = response?.data?.counsellorApplication;
 
-          if (selectedPath === "STUDENT" || role === "PARTICIPANT") {
+          if (
+            counsellorApplication?.status === "PENDING" ||
+            (userStatus === "PENDING_VERIFICATION" && counsellorApplication)
+          ) {
+            router.push("/counsellor/application-pending");
+            return;
+          }
+
+          if (selectedPath === "STUDENT" || (role === "PARTICIPANT" && !counsellorApplication)) {
             setOnboardingModalOpen(true);
           } else {
-            const targetPath = resolveDashboardRoute(role);
+            const targetPath = resolveDashboardRoute(role, userStatus, counsellorApplication);
             router.push(targetPath);
           }
         },

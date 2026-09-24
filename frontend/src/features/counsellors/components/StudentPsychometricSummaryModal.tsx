@@ -214,7 +214,20 @@ export const StudentPsychometricSummaryModal: React.FC<
           </div>
         ) : null}
 
-        <div className="mt-6 flex justify-end">
+        <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4 dark:border-slate-800">
+          {summary?.isAssessed ? (
+            <a
+              href={`/participant/reports`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-indigo-500 transition"
+            >
+              <span>View Comprehensive Report</span>
+            </a>
+          ) : (
+            <div />
+          )}
+
           <button
             onClick={onClose}
             className="rounded-xl bg-slate-100 px-5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-750"

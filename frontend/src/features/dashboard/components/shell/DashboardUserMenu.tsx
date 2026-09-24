@@ -133,25 +133,39 @@ export function DashboardUserMenu({ user, role = "PARTICIPANT" }: DashboardUserM
           {/* Menu Items */}
           <div className="space-y-0.5 text-xs font-medium">
             <Link
-              href="/participant/settings"
+              href={
+                role === "CAREER_COUNSELLOR"
+                  ? "/counsellor/profile"
+                  : role === "SUPER_ADMIN" || role === "PLATFORM_ADMIN"
+                  ? "/admin/dashboard"
+                  : "/participant/settings"
+              }
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-[#526866] dark:text-[#9FB3B0] hover:text-[#172B2A] dark:hover:text-[#F7FAF9] hover:bg-[#EBF2F0] dark:hover:bg-white/10 transition-colors"
             >
               <User className="w-4 h-4 text-[#00BFA5]" />
-              <span>My Profile & Stage</span>
+              <span>{role === "CAREER_COUNSELLOR" ? "My Counsellor Profile" : "My Profile & Stage"}</span>
             </Link>
 
             <Link
-              href="/participant/results"
+              href={
+                role === "CAREER_COUNSELLOR"
+                  ? "/counsellor/sessions"
+                  : "/participant/results"
+              }
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-[#526866] dark:text-[#9FB3B0] hover:text-[#172B2A] dark:hover:text-[#F7FAF9] hover:bg-[#EBF2F0] dark:hover:bg-white/10 transition-colors"
             >
               <Sparkles className="w-4 h-4 text-[#00B8D4]" />
-              <span>Assessment Results</span>
+              <span>{role === "CAREER_COUNSELLOR" ? "Guidance Sessions" : "Assessment Results"}</span>
             </Link>
 
             <Link
-              href="/participant/settings"
+              href={
+                role === "CAREER_COUNSELLOR"
+                  ? "/counsellor/settings"
+                  : "/participant/settings"
+              }
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-[#526866] dark:text-[#9FB3B0] hover:text-[#172B2A] dark:hover:text-[#F7FAF9] hover:bg-[#EBF2F0] dark:hover:bg-white/10 transition-colors"
             >

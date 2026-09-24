@@ -18,13 +18,20 @@ export class StudentRepository {
     client?: PoolClient
   ): Promise<void> {
     const db = client || pool;
+
+    const derivedGrade =
+      data.educationStage && data.educationStage.startsWith("grade_")
+        ? data.educationStage.replace("grade_", "")
+        : null;
+
     const query = `
       INSERT INTO student_profiles (
-        user_id, education_stage, guardian_name, guardian_phone, guardian_email, is_onboarded, updated_at
+        user_id, education_stage, grade_level, guardian_name, guardian_phone, guardian_email, is_onboarded, updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, true, NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, true, NOW())
       ON CONFLICT (user_id) DO UPDATE
       SET education_stage = EXCLUDED.education_stage,
+          grade_level = COALESCE(EXCLUDED.grade_level, student_profiles.grade_level),
           guardian_name = COALESCE(EXCLUDED.guardian_name, student_profiles.guardian_name),
           guardian_phone = COALESCE(EXCLUDED.guardian_phone, student_profiles.guardian_phone),
           guardian_email = COALESCE(EXCLUDED.guardian_email, student_profiles.guardian_email),
@@ -34,6 +41,7 @@ export class StudentRepository {
     await db.query(query, [
       data.userId,
       data.educationStage,
+      derivedGrade,
       data.guardianName || null,
       data.guardianPhone || null,
       data.guardianEmail || null,
@@ -42,11 +50,12 @@ export class StudentRepository {
     // Also sync canonical participant_profiles table
     const participantQuery = `
       INSERT INTO participant_profiles (
-        user_id, education_stage, guardian_name, guardian_phone, guardian_email, is_onboarded, onboarding_completed_at, updated_at
+        user_id, education_stage, grade_level, guardian_name, guardian_phone, guardian_email, is_onboarded, onboarding_completed_at, updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, true, NOW(), NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, true, NOW(), NOW())
       ON CONFLICT (user_id) DO UPDATE
       SET education_stage = EXCLUDED.education_stage,
+          grade_level = COALESCE(EXCLUDED.grade_level, participant_profiles.grade_level),
           guardian_name = COALESCE(EXCLUDED.guardian_name, participant_profiles.guardian_name),
           guardian_phone = COALESCE(EXCLUDED.guardian_phone, participant_profiles.guardian_phone),
           guardian_email = COALESCE(EXCLUDED.guardian_email, participant_profiles.guardian_email),
@@ -57,6 +66,7 @@ export class StudentRepository {
     await db.query(participantQuery, [
       data.userId,
       data.educationStage,
+      derivedGrade,
       data.guardianName || null,
       data.guardianPhone || null,
       data.guardianEmail || null,

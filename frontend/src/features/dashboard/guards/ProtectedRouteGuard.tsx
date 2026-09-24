@@ -21,8 +21,9 @@ export function ProtectedRouteGuard({
   const { data, isLoading, isError } = useCurrentUserQuery();
 
   const user = data?.data?.user;
-  const role = data?.data?.role;
+  const role = data?.data?.role || (user as { role?: UserRole })?.role;
   const onboarding = data?.data?.onboarding;
+  const counsellorApplication = data?.data?.counsellorApplication;
 
   useEffect(() => {
     if (isLoading) return;
@@ -33,21 +34,41 @@ export function ProtectedRouteGuard({
       return;
     }
 
-    // 2. Role restriction check -> Redirect to authorized dashboard
+    // 2. Pending or Rejected Counsellor check
+    const isPendingCounsellor =
+      counsellorApplication?.status === "PENDING" ||
+      (user.status === "PENDING_VERIFICATION" && Boolean(counsellorApplication));
+    const isRejectedCounsellor = counsellorApplication?.status === "REJECTED";
+
+    if (isPendingCounsellor || isRejectedCounsellor) {
+      if (pathname !== "/counsellor/application-pending") {
+        router.replace("/counsellor/application-pending");
+      }
+      return;
+    }
+
+    // If an active user navigates to /counsellor/application-pending, route to their authorized dashboard
+    if (pathname === "/counsellor/application-pending") {
+      const targetRoute = resolveDashboardRoute(role, user.status, counsellorApplication);
+      router.replace(targetRoute);
+      return;
+    }
+
+    // 3. Role restriction check -> Redirect to authorized dashboard
     if (allowedRoles && role && !allowedRoles.includes(role)) {
-      const authorizedRoute = resolveDashboardRoute(role);
+      const authorizedRoute = resolveDashboardRoute(role, user.status, counsellorApplication);
       router.replace(authorizedRoute);
       return;
     }
 
-    // 3. Participant Onboarding Check
-    if (role === "PARTICIPANT" && onboarding && !onboarding.completed) {
+    // 4. Participant Onboarding Check (Only for true active participants)
+    if (role === "PARTICIPANT" && !counsellorApplication && onboarding && !onboarding.completed) {
       if (pathname !== "/participant/onboarding") {
         router.replace("/participant/onboarding");
         return;
       }
     }
-  }, [user, role, onboarding, isLoading, isError, allowedRoles, router, pathname]);
+  }, [user, role, onboarding, counsellorApplication, isLoading, isError, allowedRoles, router, pathname]);
 
   // Loading State
   if (isLoading) {

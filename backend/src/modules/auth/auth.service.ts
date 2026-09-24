@@ -274,15 +274,27 @@ export class AuthService {
 
     await userRepository.updateLastLogin(user.id);
 
-    // Check student onboarding status if participant
+    // Check for counsellor application details
+    const counsellorApp = await authRepository.findCounsellorApplicationByUserId(user.id);
+    const counsellorApplication = counsellorApp
+      ? {
+          id: counsellorApp.id,
+          status: counsellorApp.status,
+          qualification: counsellorApp.qualification,
+          organization: counsellorApp.organization,
+          submittedAt: counsellorApp.createdAt.toISOString(),
+        }
+      : null;
+
+    // Check student onboarding status if participant (and not a pending counsellor applicant)
     let requiresOnboarding = false;
-    if (primaryRole === "PARTICIPANT") {
+    if (primaryRole === "PARTICIPANT" && !counsellorApp) {
       const studentProfile = await userRepository.getStudentProfile(user.id);
       requiresOnboarding = !studentProfile?.isOnboarded;
     }
 
     logger.info(
-      { userId: user.id, role: primaryRole },
+      { userId: user.id, role: primaryRole, hasCounsellorApp: Boolean(counsellorApp) },
       "User authenticated successfully"
     );
 
@@ -293,6 +305,7 @@ export class AuthService {
       accessToken,
       refreshToken,
       requiresOnboarding,
+      counsellorApplication,
     };
   }
 
@@ -477,14 +490,25 @@ export class AuthService {
 
     await userRepository.updateLastLogin(user.id);
 
+    const counsellorApp = await authRepository.findCounsellorApplicationByUserId(user.id);
+    const counsellorApplication = counsellorApp
+      ? {
+          id: counsellorApp.id,
+          status: counsellorApp.status,
+          qualification: counsellorApp.qualification,
+          organization: counsellorApp.organization,
+          submittedAt: counsellorApp.createdAt.toISOString(),
+        }
+      : null;
+
     let requiresOnboarding = false;
-    if (primaryRole === "PARTICIPANT") {
+    if (primaryRole === "PARTICIPANT" && !counsellorApp) {
       const studentProfile = await userRepository.getStudentProfile(user.id);
       requiresOnboarding = !studentProfile?.isOnboarded;
     }
 
     logger.info(
-      { userId: user.id, role: primaryRole, provider: "GOOGLE" },
+      { userId: user.id, role: primaryRole, provider: "GOOGLE", hasCounsellorApp: Boolean(counsellorApp) },
       "Google login/signup succeeded"
     );
 
@@ -495,6 +519,7 @@ export class AuthService {
       accessToken,
       refreshToken,
       requiresOnboarding,
+      counsellorApplication,
     };
   }
 
@@ -605,9 +630,21 @@ export class AuthService {
 
     const { roles, permissions } = await userRepository.getUserRolesAndPermissions(userId);
     const primaryRole: UserRole = roles[0] || "PARTICIPANT";
+    const dashboardFeatures = await userRepository.getUserDashboardFeatures(userId);
+
+    const counsellorApp = await authRepository.findCounsellorApplicationByUserId(userId);
+    const counsellorApplication = counsellorApp
+      ? {
+          id: counsellorApp.id,
+          status: counsellorApp.status,
+          qualification: counsellorApp.qualification,
+          organization: counsellorApp.organization,
+          submittedAt: counsellorApp.createdAt.toISOString(),
+        }
+      : null;
 
     const studentProfile =
-      primaryRole === "PARTICIPANT"
+      primaryRole === "PARTICIPANT" && !counsellorApp
         ? await userRepository.getStudentProfile(userId)
         : null;
 
@@ -615,6 +652,7 @@ export class AuthService {
       user: toPublicUser(user),
       role: primaryRole,
       permissions,
+      dashboardFeatures,
       institution: null,
       relationships: {},
       onboarding: {
@@ -623,6 +661,7 @@ export class AuthService {
         gradeLevel: studentProfile?.gradeLevel || null,
         dateOfBirth: studentProfile?.dateOfBirth || null,
       },
+      counsellorApplication,
     };
   }
 

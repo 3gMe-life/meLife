@@ -88,6 +88,9 @@ export interface CreateBookingRequestDTO {
   grantConsent?: boolean;
 }
 
+export type AssessmentStatus = "COMPLETED" | "IN_PROGRESS" | "NOT_STARTED";
+export type ReportStatus = "AVAILABLE" | "PENDING" | "NOT_AVAILABLE";
+
 export interface CounsellingSessionDTO {
   id: string;
   studentId: string;
@@ -106,8 +109,22 @@ export interface CounsellingSessionDTO {
   studentNotes: string | null;
   hasConsent: boolean;
   notesAdded?: boolean;
+  assessmentStatus?: AssessmentStatus;
+  reportStatus?: ReportStatus;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CounsellorSessionFilterParams {
+  status?: string;
+  search?: string;
+  dateFilter?: "ALL" | "TODAY" | "THIS_WEEK" | "THIS_MONTH" | "UPCOMING" | "PAST";
+  assessmentStatus?: "ALL" | AssessmentStatus;
+  reportStatus?: "ALL" | ReportStatus;
+  sortBy?: "date" | "student" | "status";
+  sortOrder?: "asc" | "desc";
+  page?: number;
+  limit?: number;
 }
 
 export interface CounsellingNoteDTO {
@@ -191,4 +208,47 @@ export interface StudentPsychometricSummaryDTO {
     interests: string[];
     suggestedExplorations: string[];
   };
+}
+
+export interface CounsellorOverviewStatsDTO {
+  todaySessionsCount: number;
+  upcomingSessionsCount: number;
+  pendingRequestsCount: number;
+  completedSessionsCount: number;
+  availableSlotsCount: number;
+  totalAssignedStudentsCount: number;
+  // Aliases for conceptual API structure
+  todaySessions?: number;
+  upcomingSessions?: number;
+  pendingRequests?: number;
+  completedSessions?: number;
+  availableSlots?: number;
+  studentCount?: number;
+}
+
+export interface CounsellorOverviewDTO {
+  stats: CounsellorOverviewStatsDTO;
+  counsellorProfile: CounsellorDetailDTO;
+  todaySessions: CounsellingSessionDTO[];
+  upcomingSessions: CounsellingSessionDTO[];
+  pendingRequests: CounsellingSessionDTO[];
+}
+
+export interface UpdateCounsellorProfileDTO {
+  bio?: string;
+  qualification?: string;
+  experienceYears?: number;
+  specialisations?: string[];
+  languages?: string[];
+  guidanceAreas?: string[];
+  profileImage?: string | null;
+}
+
+export interface CounsellorReviewDTO {
+  id: string;
+  studentName: string;
+  rating: number;
+  comment: string;
+  date: string;
+  sessionType?: string;
 }
