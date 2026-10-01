@@ -1,4 +1,7 @@
 import { AppError } from "../../common/errors/app-error";
+import { logger } from "../../common/utils/logger";
+import { env } from "../../config/env";
+import { emailService } from "../email";
 import { adminRepository } from "./admin.repository";
 import {
   CounsellorApplicationItemDTO,
@@ -29,6 +32,14 @@ import {
   BulkDeleteUsersResultDTO,
   BulkUserStatusRequestDTO,
   BulkUserStatusResultDTO,
+  InstitutionApplicationItemDTO,
+  ApproveInstitutionApplicationRequestDTO,
+  RejectInstitutionApplicationRequestDTO,
+  InstitutionApplicationDecisionResultDTO,
+  AdminInstitutionMetricsDTO,
+  AdminInstitutionListItemDTO,
+  AdminInstitutionDetailDTO,
+  AdminInstitutionFilterParams,
 } from "./admin.types";
 
 export class AdminService {
@@ -66,7 +77,22 @@ export class AdminService {
     applicationIdOrUserId: string,
     dto?: ApproveApplicationRequestDTO
   ): Promise<ApplicationDecisionResultDTO> {
-    return adminRepository.executeApprovalTransaction(adminUserId, applicationIdOrUserId, dto);
+    const result = await adminRepository.executeApprovalTransaction(adminUserId, applicationIdOrUserId, dto);
+
+    // Non-blocking transactional email notification
+    if (result.user?.email) {
+      emailService
+        .sendCounsellorApplicationApproved({
+          to: result.user.email,
+          applicantName: `${result.user.firstName} ${result.user.lastName}`.trim(),
+          dashboardUrl: `${env.APP_URL || env.FRONTEND_URL}/counsellor/dashboard`,
+        })
+        .catch((err) => {
+          logger.warn({ err, userId: result.user.id }, "Non-fatal: Failed to send counsellor approval email");
+        });
+    }
+
+    return result;
   }
 
   /**
@@ -77,7 +103,22 @@ export class AdminService {
     applicationIdOrUserId: string,
     dto?: RejectApplicationRequestDTO
   ): Promise<ApplicationDecisionResultDTO> {
-    return adminRepository.executeRejectionTransaction(adminUserId, applicationIdOrUserId, dto);
+    const result = await adminRepository.executeRejectionTransaction(adminUserId, applicationIdOrUserId, dto);
+
+    // Non-blocking transactional email notification
+    if (result.application?.applicantEmail) {
+      emailService
+        .sendCounsellorApplicationRejected({
+          to: result.application.applicantEmail,
+          applicantName: result.application.applicantName,
+          reason: result.application.reviewNotes || undefined,
+        })
+        .catch((err) => {
+          logger.warn({ err, applicationId: result.application.id }, "Non-fatal: Failed to send counsellor rejection email");
+        });
+    }
+
+    return result;
   }
 
   /**
@@ -293,6 +334,128 @@ export class AdminService {
     idOrUserId: string
   ): Promise<DeleteCounsellorResultDTO> {
     return adminRepository.deleteOrDeactivateCounsellor(adminUserId, idOrUserId);
+  }
+
+  // ==========================================
+  // INSTITUTION / SCHOOL MANAGEMENT SERVICE
+  // ==========================================
+
+  /**
+   * Retrieves summary statistics for institution applications and directory.
+   */
+  async getInstitutionMetrics(): Promise<AdminInstitutionMetricsDTO> {
+    return adminRepository.getInstitutionMetrics();
+  }
+
+  /**
+   * Lists all institution applications with optional status & search filter.
+   */
+  async listInstitutionApplications(
+    status?: string,
+    search?: string
+  ): Promise<InstitutionApplicationItemDTO[]> {
+    return adminRepository.findInstitutionApplications(status, search);
+  }
+
+  /**
+   * Retrieves single institution application detail by ID.
+   */
+  async getInstitutionApplicationById(
+    applicationId: string
+  ): Promise<InstitutionApplicationItemDTO> {
+    return adminRepository.findInstitutionApplicationById(applicationId);
+  }
+
+  /**
+   * Approves an institution application, creating the institution record and admin user account.
+   */
+  async approveInstitutionApplication(
+    adminUserId: string,
+    applicationId: string,
+    dto?: ApproveInstitutionApplicationRequestDTO
+  ): Promise<InstitutionApplicationDecisionResultDTO> {
+    const result = await adminRepository.executeInstitutionApprovalTransaction(adminUserId, applicationId, dto);
+
+    // Non-blocking transactional email notification
+    if (result.adminUser?.email && result.institution) {
+      emailService
+        .sendInstitutionApplicationApproved({
+          to: result.adminUser.email,
+          contactName: `${result.adminUser.firstName} ${result.adminUser.lastName}`.trim(),
+          institutionName: result.institution.name,
+          institutionCode: result.institution.code,
+          temporaryPassword: dto?.temporaryPassword || "Password123!",
+          loginUrl: `${env.APP_URL || env.FRONTEND_URL}/login`,
+        })
+        .catch((err) => {
+          logger.warn({ err, institutionId: result.institution?.id }, "Non-fatal: Failed to send institution approval email");
+        });
+    }
+
+    return result;
+  }
+
+  /**
+   * Rejects an institution application with documented review notes.
+   */
+  async rejectInstitutionApplication(
+    adminUserId: string,
+    applicationId: string,
+    dto?: RejectInstitutionApplicationRequestDTO
+  ): Promise<InstitutionApplicationDecisionResultDTO> {
+    const result = await adminRepository.executeInstitutionRejectionTransaction(adminUserId, applicationId, dto);
+
+    // Non-blocking transactional email notification
+    if (result.application?.officialEmail) {
+      emailService
+        .sendInstitutionApplicationRejected({
+          to: result.application.officialEmail,
+          contactName: result.application.contactName || "Administrator",
+          institutionName: result.application.institutionName,
+          reason: result.application.reviewNotes || undefined,
+        })
+        .catch((err) => {
+          logger.warn({ err, applicationId: result.application.id }, "Non-fatal: Failed to send institution rejection email");
+        });
+    }
+
+    return result;
+  }
+
+  /**
+   * Lists all approved educational institutions with aggregate student and cohort counts.
+   */
+  async listInstitutions(
+    filters?: AdminInstitutionFilterParams
+  ): Promise<AdminInstitutionListItemDTO[]> {
+    return adminRepository.findInstitutions(filters);
+  }
+
+  /**
+   * Retrieves complete institution detail, cohorts, recent students, and completion metrics.
+   */
+  async getInstitutionById(
+    institutionId: string
+  ): Promise<AdminInstitutionDetailDTO> {
+    return adminRepository.findInstitutionAdminDetail(institutionId);
+  }
+
+  /**
+   * Toggles institution active/suspended status and linked admin user status.
+   */
+  async updateInstitutionStatus(
+    adminUserId: string,
+    institutionId: string,
+    isActive: boolean
+  ): Promise<{ id: string; name: string; isActive: boolean }> {
+    return adminRepository.updateInstitutionStatus(adminUserId, institutionId, isActive);
+  }
+
+  /**
+   * Deletes an institution application record.
+   */
+  async deleteInstitutionApplication(applicationId: string): Promise<void> {
+    return adminRepository.deleteInstitutionApplication(applicationId);
   }
 }
 

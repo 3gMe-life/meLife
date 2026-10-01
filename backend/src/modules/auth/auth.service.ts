@@ -10,6 +10,7 @@ import { UserRole } from "../users/user.types";
 import { authRepository } from "./auth.repository";
 import { authTokenService } from "./auth.token.service";
 import { authGoogleService } from "./auth.google.service";
+import { emailService } from "../email/email.service";
 import {
   RegisterRequestDTO,
   LoginRequestDTO,
@@ -47,6 +48,14 @@ export class AuthService {
         contactName: dto.contactName,
         phoneNumber: dto.phoneNumber,
       });
+
+      // Asynchronously dispatch application receipt email (non-blocking)
+      emailService.sendInstitutionApplicationSubmitted({
+        to: normalizedEmail,
+        contactName: dto.contactName,
+        institutionName: dto.institutionName,
+        institutionType: dto.institutionType,
+      }).catch((err) => logger.warn({ err, email: normalizedEmail }, "Failed to send institution application receipt email"));
 
       return {
         success: true,
@@ -110,6 +119,14 @@ export class AuthService {
           { userId: user.id, email: user.email },
           "Counsellor professional application registered"
         );
+
+        // Asynchronously dispatch application receipt email (non-blocking)
+        emailService.sendCounsellorApplicationSubmitted({
+          to: normalizedEmail,
+          applicantName: `${dto.firstName} ${dto.lastName}`.trim() || normalizedEmail,
+          qualification: dto.qualification,
+          organization: dto.organization,
+        }).catch((err) => logger.warn({ err, email: normalizedEmail }, "Failed to send counsellor application receipt email"));
 
         return {
           success: true,
@@ -183,6 +200,8 @@ export class AuthService {
         permissions,
       });
 
+      const dashboardFeatures = await userRepository.getUserDashboardFeatures(user.id, client);
+
       await client.query("COMMIT");
 
       logger.info(
@@ -190,10 +209,23 @@ export class AuthService {
         "New user registered successfully"
       );
 
+      // Asynchronously dispatch welcome email (non-blocking)
+      const dashboardUrl = assignedRole === "PARENT_GUARDIAN" 
+        ? `${env.FRONTEND_URL}/parent/dashboard` 
+        : `${env.FRONTEND_URL}/participant/dashboard`;
+
+      emailService.sendWelcomeEmail({
+        to: normalizedEmail,
+        firstName: dto.firstName,
+        role: assignedRole,
+        dashboardUrl,
+      }).catch((err) => logger.warn({ err, email: normalizedEmail }, "Failed to send welcome email"));
+
       return {
         user: toPublicUser(user),
         role: assignedRole,
         permissions,
+        dashboardFeatures,
         accessToken,
         refreshToken,
         requiresOnboarding: assignedRole === "PARTICIPANT",
@@ -293,6 +325,8 @@ export class AuthService {
       requiresOnboarding = !studentProfile?.isOnboarded;
     }
 
+    const dashboardFeatures = await userRepository.getUserDashboardFeatures(user.id);
+
     logger.info(
       { userId: user.id, role: primaryRole, hasCounsellorApp: Boolean(counsellorApp) },
       "User authenticated successfully"
@@ -302,6 +336,7 @@ export class AuthService {
       user: toPublicUser(user),
       role: primaryRole,
       permissions,
+      dashboardFeatures,
       accessToken,
       refreshToken,
       requiresOnboarding,
@@ -507,6 +542,8 @@ export class AuthService {
       requiresOnboarding = !studentProfile?.isOnboarded;
     }
 
+    const dashboardFeatures = await userRepository.getUserDashboardFeatures(user.id);
+
     logger.info(
       { userId: user.id, role: primaryRole, provider: "GOOGLE", hasCounsellorApp: Boolean(counsellorApp) },
       "Google login/signup succeeded"
@@ -516,6 +553,7 @@ export class AuthService {
       user: toPublicUser(user),
       role: primaryRole,
       permissions,
+      dashboardFeatures,
       accessToken,
       refreshToken,
       requiresOnboarding,
@@ -530,7 +568,14 @@ export class AuthService {
     rawRefreshToken: string,
     ipAddress?: string,
     userAgent?: string
-  ): Promise<{ accessToken: string; newRefreshToken: string; user: ReturnType<typeof toPublicUser>; role: UserRole }> {
+  ): Promise<{
+    accessToken: string;
+    newRefreshToken: string;
+    user: ReturnType<typeof toPublicUser>;
+    role: UserRole;
+    permissions?: string[];
+    dashboardFeatures?: string[];
+  }> {
     const tokenHash = authTokenService.hashRefreshToken(rawRefreshToken);
 
     const session = await sessionRepository.findActiveSessionByTokenHash(tokenHash);
@@ -585,11 +630,15 @@ export class AuthService {
       permissions,
     });
 
+    const dashboardFeatures = await userRepository.getUserDashboardFeatures(user.id);
+
     return {
       accessToken,
       newRefreshToken,
       user: toPublicUser(user),
       role: primaryRole,
+      permissions,
+      dashboardFeatures,
     };
   }
 

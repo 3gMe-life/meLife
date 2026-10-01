@@ -5,7 +5,8 @@ export type AssessmentProductCode =
   | "COMMERCE_CAREER_FINDER"
   | "HUMANITIES_CAREER_FINDER"
   | "RIGHT_CAREER_FINDER"
-  | "AI_JOB_RISK_FINDER";
+  | "AI_JOB_RISK_FINDER"
+  | "ENTREPRENEUR_DEVELOPMENT_TEST";
 
 export type AssessmentStatus = "AVAILABLE" | "IN_PROGRESS" | "COMPLETED" | "LOCKED";
 
@@ -933,6 +934,118 @@ export interface AiJobRiskFinderResult {
     straightLiningDetected: boolean;
     completionTimeSeconds?: number;
     qualityFlag: "NORMAL" | "CAUTION_LOW_VARIATION" | "INCOMPLETE";
+  };
+}
+
+export type EntrepreneurReadinessBand =
+  | "Exceptional Readiness"
+  | "Strong Entrepreneurial Aptitude"
+  | "Developing Capability"
+  | "Foundation Development";
+
+export interface EntrepreneurDimensionScoreDetails {
+  dimensionCode: string;
+  dimensionName: string;
+  sectionCode: string;
+  description: string;
+  weight: number;
+  rawScore: number;
+  minPossibleRaw: number;
+  maxPossibleRaw: number;
+  percentageScore: number;
+  band: "Exceptional" | "High" | "Moderate" | "Foundational";
+  answeredCount: number;
+  totalItems: number;
+  coreIndicators: string[];
+  developmentalFocus: string;
+}
+
+export interface EntrepreneurArchetypeAffinity {
+  archetypeCode: string;
+  title: string;
+  tagline: string;
+  affinityScore: number;
+  isPrimary: boolean;
+  isSecondary: boolean;
+}
+
+export interface StartupRoadmapPhase {
+  phaseNumber: number;
+  title: string;
+  duration: string;
+  objectives: string[];
+  milestones: string[];
+  keyTools: string[];
+}
+
+export interface EntrepreneurStrengthArea {
+  dimensionCode: string;
+  dimensionName: string;
+  score: number;
+  badgeText: string;
+  description: string;
+  leverageTip: string;
+}
+
+export interface EntrepreneurDevelopmentArea {
+  dimensionCode: string;
+  dimensionName: string;
+  score: number;
+  gapSummary: string;
+  actionItem: string;
+  suggestedExercise: string;
+}
+
+export interface EntrepreneurDevelopmentResult {
+  resultId: string;
+  attemptId: string;
+  participantId: string;
+  assessmentCode: "ENTREPRENEUR_DEVELOPMENT_TEST";
+  assessmentName: string;
+  versionCode: string | null;
+  versionName: string | null;
+  completedAt: string;
+  completionTimeSeconds?: number;
+
+  readinessIndex: number;
+  readinessBand: EntrepreneurReadinessBand;
+  readinessTagline: string;
+  readinessSummary: string;
+
+  primaryArchetype: {
+    code: string;
+    title: string;
+    tagline: string;
+    description: string;
+    keySuperpowers: string[];
+    leadershipStyle: string;
+    blindSpots: string[];
+    idealCoFounders: string[];
+  };
+  secondaryArchetype: {
+    code: string;
+    title: string;
+    tagline: string;
+    affinityScore: number;
+  } | null;
+  archetypeAffinities: EntrepreneurArchetypeAffinity[];
+
+  dimensions: EntrepreneurDimensionScoreDetails[];
+  strengths: EntrepreneurStrengthArea[];
+  developmentAreas: EntrepreneurDevelopmentArea[];
+  roadmap: StartupRoadmapPhase[];
+
+  learningRecommendations: {
+    recommendedBooks: Array<{ title: string; author: string; rationale: string }>;
+    coreFrameworks: Array<{ name: string; description: string; application: string }>;
+    practicalProjects: Array<{ title: string; objective: string; deliverable: string }>;
+  };
+
+  responseQuality: {
+    isComplete: boolean;
+    answeredCount: number;
+    totalExpected: number;
+    completionPercentage: number;
   };
 }
 

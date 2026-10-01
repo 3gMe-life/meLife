@@ -102,4 +102,6 @@ export interface RawResponseItem {
   correct_key?: string | null;
   response_value: string | null;
   selected_option_id?: string | null;
+  option_key?: string | null;
+  score_value?: number | string | null;
 }

@@ -221,13 +221,35 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({ user }) =>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {/* Module 1: Counsellor Verifications */}
+          {/* Module 1: Institution Management */}
+          <Link
+            href="/admin/institutions"
+            className="group rounded-3xl bg-white dark:bg-[#112423] border border-[#E3ECEA] dark:border-white/10 p-6 shadow-xs hover:shadow-md hover:border-[#00BFA5]/50 transition-all flex flex-col justify-between cursor-pointer"
+          >
+            <div>
+              <div className="w-10 h-10 rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-[#008F83] dark:text-[#00BFA5] flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                <Building className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-bold text-[#172B2A] dark:text-[#F7FAF9] group-hover:text-[#008F83] dark:group-hover:text-[#00BFA5] transition-colors">
+                Institutions & Schools
+              </h3>
+              <p className="mt-1.5 text-xs text-[#526866] dark:text-[#9FB3B0] leading-relaxed">
+                Review school applications, verify accreditation documents, provision institutional admin accounts, and monitor cohorts.
+              </p>
+            </div>
+            <div className="mt-5 flex items-center gap-1 text-xs font-bold text-[#008F83] dark:text-[#00BFA5]">
+              <span>Manage institutions</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Link>
+
+          {/* Module 2: Counsellor Verifications */}
           <Link
             href="/admin/counsellors"
             className="group rounded-3xl bg-white dark:bg-[#112423] border border-[#E3ECEA] dark:border-white/10 p-6 shadow-xs hover:shadow-md hover:border-[#00BFA5]/50 transition-all flex flex-col justify-between cursor-pointer"
           >
             <div>
-              <div className="w-10 h-10 rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-[#008F83] dark:text-[#00BFA5] flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
                 <UserCheck className="w-5 h-5" />
               </div>
               <h3 className="text-base font-bold text-[#172B2A] dark:text-[#F7FAF9] group-hover:text-[#008F83] dark:group-hover:text-[#00BFA5] transition-colors">

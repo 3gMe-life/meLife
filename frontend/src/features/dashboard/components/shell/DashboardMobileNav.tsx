@@ -8,12 +8,15 @@ import { DashboardIcon } from "../common/DashboardIcon";
 import { getNavigationForRole } from "../../config/navigation.config";
 import type { UserProfile, UserRole } from "../../../auth/types/auth.types";
 
+import { useCurrentUserQuery } from "../../../auth/hooks/useCurrentUserQuery";
+
 interface DashboardMobileNavProps {
   isOpen: boolean;
   onClose: () => void;
   user: UserProfile;
   role?: UserRole;
   educationStage?: string | null;
+  dashboardFeatures?: string[];
 }
 
 export function DashboardMobileNav({
@@ -21,9 +24,12 @@ export function DashboardMobileNav({
   onClose,
   user,
   role = "PARTICIPANT",
+  dashboardFeatures,
 }: DashboardMobileNavProps) {
   const pathname = usePathname();
-  const navigation = getNavigationForRole(role);
+  const { data: authData } = useCurrentUserQuery();
+  const effectiveFeatures = dashboardFeatures || authData?.data?.dashboardFeatures;
+  const navigation = getNavigationForRole(role, effectiveFeatures);
   const panelRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -55,6 +61,38 @@ export function DashboardMobileNav({
     };
   }, [isOpen, onClose]);
 
+  const getHomeRoute = (r: UserRole) => {
+    switch (r) {
+      case "CAREER_COUNSELLOR":
+        return "/counsellor/dashboard";
+      case "SUPER_ADMIN":
+      case "PLATFORM_ADMIN":
+        return "/admin/dashboard";
+      case "INSTITUTION_ADMIN":
+        return "/institution/dashboard";
+      case "PARENT_GUARDIAN":
+        return "/parent/dashboard";
+      default:
+        return "/participant/dashboard";
+    }
+  };
+
+  const getPortalLabel = (r: UserRole) => {
+    switch (r) {
+      case "CAREER_COUNSELLOR":
+        return "Counsellor Portal";
+      case "SUPER_ADMIN":
+      case "PLATFORM_ADMIN":
+        return "Admin Portal";
+      case "INSTITUTION_ADMIN":
+        return "Institution Portal";
+      case "PARENT_GUARDIAN":
+        return "Parent Portal";
+      default:
+        return "Student Portal";
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -80,7 +118,7 @@ export function DashboardMobileNav({
         {/* 1. Header Row: Compact MeLife Brand + Close Button */}
         <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-white/10 shrink-0">
           <Link
-            href="/participant/dashboard"
+            href={getHomeRoute(role)}
             onClick={onClose}
             className="flex items-center gap-2.5 group"
           >
@@ -93,7 +131,7 @@ export function DashboardMobileNav({
                 <span className="w-1.5 h-1.5 rounded-full bg-[#00BFA5]" />
               </span>
               <span className="text-[9px] font-bold text-[#00BFA5] tracking-wider uppercase leading-tight mt-0.5">
-                Student Portal
+                {getPortalLabel(role)}
               </span>
             </div>
           </Link>
@@ -137,7 +175,10 @@ export function DashboardMobileNav({
                         (pathname.startsWith("/participant/counsellors") ||
                           pathname.startsWith("/participant/counsellor"))) ||
                       (item.id === "students" &&
-                        pathname.startsWith("/counsellor/students"));
+                        pathname.startsWith("/counsellor/students")) ||
+                      (item.id === "cohorts" &&
+                        (pathname.startsWith("/institution/classes") ||
+                          pathname.startsWith("/institution/cohorts")));
 
                   return (
                     <Link

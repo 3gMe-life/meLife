@@ -64,6 +64,13 @@ export function AssessmentRunner({ attemptData }: AssessmentRunnerProps) {
     });
   }, [attemptId, language, queryClient, attemptData.supportedLanguages]);
 
+  // Redirect guard: if attempt is already completed, route immediately to results
+  useEffect(() => {
+    if (attemptData.status === "COMPLETED" || dynamicQuestionsData?.status === "COMPLETED") {
+      router.replace(`/participant/results/${attemptId}`);
+    }
+  }, [attemptData.status, dynamicQuestionsData?.status, attemptId, router]);
+
   const activeAttemptData = dynamicQuestionsData || attemptData;
   const rawQuestions = activeAttemptData.questions;
   const sections = activeAttemptData.sections;

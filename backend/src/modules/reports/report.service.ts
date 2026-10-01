@@ -9,10 +9,12 @@ import { reportPdfGenerator } from "./generators/report-pdf.generator";
 import { commerceCareerFinderReportTemplate } from "./templates/commerce-career-finder.template";
 import { humanitiesCareerFinderReportTemplate } from "./templates/humanities-career-finder.template";
 import { rightCareerFinderReportTemplate } from "./templates/right-career-finder.template";
+import { entrepreneurDevelopmentReportTemplate } from "./templates/entrepreneur-development.template";
 import {
   SkillFinderReportDTO,
   AssessmentReportEntity,
 } from "./report.types";
+import { parentRepository } from "../parent/parent.repository";
 
 export class ReportService {
   /**
@@ -91,7 +93,17 @@ export class ReportService {
     let reportTitle = `${safeProfile.name} - Skill Finder Report`;
     let archetype: string | null = null;
 
-    if (resultEntity.assessment_code === "RIGHT_CAREER_FINDER") {
+    if (resultEntity.assessment_code === "ENTREPRENEUR_DEVELOPMENT_TEST") {
+      reportDto = await entrepreneurDevelopmentReportTemplate.generateReport({
+        reportId,
+        result: resultData,
+        studentProfile: safeProfile,
+        languageCode: lang,
+      });
+      templateVer = entrepreneurDevelopmentReportTemplate.templateVersion;
+      reportTitle = `${safeProfile.name} - Entrepreneur Development & Venture Readiness Report`;
+      archetype = reportDto.primaryArchetype?.title || null;
+    } else if (resultEntity.assessment_code === "RIGHT_CAREER_FINDER") {
       reportDto = await rightCareerFinderReportTemplate.generateReport({
         reportId,
         result: resultData,
@@ -225,6 +237,19 @@ export class ReportService {
         "You do not have permission to view this report.",
         "REPORT_FORBIDDEN"
       );
+    }
+
+    if (requestingUserRole === "PARENT_GUARDIAN") {
+      const isParent = await parentRepository.isParentOfStudent(
+        requestingUserId,
+        reportEntity.participant_id
+      );
+      if (!isParent) {
+        throw AppError.forbidden(
+          "You do not have permission to view this student's report.",
+          "REPORT_FORBIDDEN"
+        );
+      }
     }
 
     // If a different language was requested, regenerate or fetch that localized version

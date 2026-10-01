@@ -21,7 +21,8 @@ import type {
 export function evaluateFeatureAccess(
   feature: FeatureDefinition,
   userRole?: UserRole,
-  permissions: string[] = []
+  permissions: string[] = [],
+  dashboardFeatures?: string[]
 ): FeatureAccessResult {
   // 1. Root / Super Admin Override:
   // If user has "admin.all" permission or SUPER_ADMIN role, all features are granted.
@@ -33,7 +34,24 @@ export function evaluateFeatureAccess(
     };
   }
 
-  // 2. Specific Database Permission Check:
+  // 2. Dashboard Feature Flag check:
+  // If the feature is mapped to a key in the role_dashboard_features table and features list is loaded,
+  // enforce that it must be enabled for the role.
+  const mappedKey =
+    feature.dashboardFeatureKey ||
+    (feature.key.startsWith("dashboard.") ? feature.key : undefined);
+
+  if (mappedKey && dashboardFeatures && Array.isArray(dashboardFeatures)) {
+    if (!dashboardFeatures.includes(mappedKey)) {
+      return {
+        isGranted: false,
+        reason: "FEATURE_DISABLED",
+        feature,
+      };
+    }
+  }
+
+  // 3. Specific Database Permission Check:
   if (feature.requiredPermission && permissions.includes(feature.requiredPermission)) {
     return {
       isGranted: true,
@@ -42,7 +60,7 @@ export function evaluateFeatureAccess(
     };
   }
 
-  // 3. Multi-Permission Any Check:
+  // 4. Multi-Permission Any Check:
   if (
     feature.requiredAnyPermissions &&
     feature.requiredAnyPermissions.some((p) => permissions.includes(p))
@@ -54,7 +72,7 @@ export function evaluateFeatureAccess(
     };
   }
 
-  // 4. Role Fallback:
+  // 5. Role Fallback:
   // For features whose fine-grained permissions do not exist in the database,
   // evaluate active role match.
   if (userRole && feature.allowedRoles && feature.allowedRoles.includes(userRole)) {
@@ -65,7 +83,7 @@ export function evaluateFeatureAccess(
     };
   }
 
-  // 5. Access Denied
+  // 6. Access Denied
   return {
     isGranted: false,
     reason: "DENIED",
@@ -85,6 +103,7 @@ export function useFeatureAccess() {
   const userPermissions: string[] = useMemo(() => {
     return authData?.data?.permissions || [];
   }, [authData?.data?.permissions]);
+  const dashboardFeatures = authData?.data?.dashboardFeatures;
 
   const isSuperAdmin = userRole === "SUPER_ADMIN" || userPermissions.includes("admin.all");
   const isAdmin =
@@ -104,9 +123,9 @@ export function useFeatureAccess() {
           reason: "DENIED",
         };
       }
-      return evaluateFeatureAccess(feature, userRole, userPermissions);
+      return evaluateFeatureAccess(feature, userRole, userPermissions, dashboardFeatures);
     },
-    [userRole, userPermissions]
+    [userRole, userPermissions, dashboardFeatures]
   );
 
   /**
@@ -146,8 +165,10 @@ export function useFeatureAccess() {
    */
   const accessibleFeatures = useMemo(() => {
     const all = getAllFeatures();
-    return all.filter((feat) => evaluateFeatureAccess(feat, userRole, userPermissions).isGranted);
-  }, [userRole, userPermissions]);
+    return all.filter((feat) =>
+      evaluateFeatureAccess(feat, userRole, userPermissions, dashboardFeatures).isGranted
+    );
+  }, [userRole, userPermissions, dashboardFeatures]);
 
   /**
    * Get accessible navigation items for a specific portal category

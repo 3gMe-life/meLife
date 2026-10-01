@@ -10,6 +10,7 @@ import { useAssessmentHistoryQuery } from "@/features/assessments/hooks/useAsses
 import { useStartRetakeMutation } from "@/features/assessments/hooks/useStartRetakeMutation";
 
 import { useCareerPathwaysQuery } from "@/features/careers/hooks/useCareerPathwaysQuery";
+import { useFeatureAccess } from "@/features/access-control/hooks/useFeatureAccess";
 
 import { WelcomeCard } from "./widgets/WelcomeCard";
 import { MetricCardsRow } from "./widgets/MetricCardsRow";
@@ -34,7 +35,7 @@ import type {
   ParticipantAssessmentItem,
 } from "@/features/assessments/types/assessment.types";
 import { getSavedLanguagePreference } from "@/features/assessments/config/assessment-i18n.config";
-import { Download, Calendar as CalendarIcon, ArrowRight } from "lucide-react";
+import { Download, Calendar as CalendarIcon, ArrowRight, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
 interface ParticipantDashboardViewProps {
@@ -47,6 +48,7 @@ export function ParticipantDashboardView({
   educationStage,
 }: ParticipantDashboardViewProps) {
   const router = useRouter();
+  const { canAccess } = useFeatureAccess();
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
   const [retakeTargetCode, setRetakeTargetCode] = useState<string | null>(null);
 
@@ -308,14 +310,43 @@ export function ParticipantDashboardView({
                 <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
               </Link>
 
+              {canAccess("participant.counsellor") && (
+                <Link
+                  href="/participant/counsellor"
+                  className="w-full py-2.5 px-3.5 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white text-xs font-bold transition-all shadow-sm shadow-[#00BFA5]/20 flex items-center justify-between group"
+                >
+                  <div className="flex items-center gap-2">
+                    <CalendarIcon className="w-3.5 h-3.5" />
+                    <span>Book Counselor Session</span>
+                  </div>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+              )}
+            </div>
+          </div>
+
+          {/* Widget 5: Parent Connect Card */}
+          <div className="rounded-3xl bg-gradient-to-br from-teal-50/80 via-white to-emerald-50/50 dark:from-[#0E201E] dark:via-[#132826] dark:to-[#0D1C1B] border border-teal-200/80 dark:border-teal-900/50 p-5 sm:p-6 shadow-xs space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-[#0F5B54] text-white flex items-center justify-center shrink-0 shadow-sm shadow-[#0F5B54]/20">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div className="space-y-0.5">
+                <h4 className="text-sm font-black text-[#172B2A] dark:text-[#F7FAF9]">
+                  Parent Connect
+                </h4>
+                <p className="text-[11px] text-[#526866] dark:text-[#9FB3B0] leading-relaxed">
+                  Generate a secure invitation code for your parents to connect and support your career journey.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-1">
               <Link
-                href="/participant/counsellor"
-                className="w-full py-2.5 px-3.5 rounded-xl bg-[#00BFA5] hover:bg-[#008F83] text-[#172B2A] hover:text-white text-xs font-bold transition-all shadow-sm shadow-[#00BFA5]/20 flex items-center justify-between group"
+                href="/participant/parent-connect"
+                className="w-full py-2.5 px-3.5 rounded-xl bg-[#0F5B54] hover:bg-[#0A413C] text-white text-xs font-bold transition-all shadow-sm shadow-[#0F5B54]/20 flex items-center justify-between group active:scale-95"
               >
-                <div className="flex items-center gap-2">
-                  <CalendarIcon className="w-3.5 h-3.5" />
-                  <span>Book Counselor Session</span>
-                </div>
+                <span>Manage Parent Connect</span>
                 <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
               </Link>
             </div>

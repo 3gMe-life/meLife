@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   LucideIcon,
 } from "lucide-react";
+import { useFeatureAccess } from "@/features/access-control/hooks/useFeatureAccess";
 
 interface NextStepItem {
   id: string;
@@ -38,6 +39,7 @@ export function RecommendedNextSteps({
   isProfileIncomplete = false,
   onOpenVoucherModal,
 }: RecommendedNextStepsProps) {
+  const { canAccess } = useFeatureAccess();
   // Dynamically assemble actionable steps based on current state
   const steps: NextStepItem[] = [];
 
@@ -92,17 +94,19 @@ export function RecommendedNextSteps({
       badgeColor: "bg-[#00B8D4]/15 text-[#008F83] dark:text-[#00B8D4] border-[#00B8D4]/30",
     });
 
-    steps.push({
-      id: "book-counselor",
-      title: "1-on-1 Guidance Session",
-      subtitle: "Review results with a certified advisor",
-      href: "/participant/counsellor",
-      icon: Calendar,
-      iconColor: "text-emerald-600 dark:text-emerald-400",
-      iconBg: "bg-emerald-500/15 border-emerald-500/30",
-      badge: "Medium",
-      badgeColor: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
-    });
+    if (canAccess("participant.counsellor")) {
+      steps.push({
+        id: "book-counselor",
+        title: "1-on-1 Guidance Session",
+        subtitle: "Review results with a certified advisor",
+        href: "/participant/counsellor",
+        icon: Calendar,
+        iconColor: "text-emerald-600 dark:text-emerald-400",
+        iconBg: "bg-emerald-500/15 border-emerald-500/30",
+        badge: "Medium",
+        badgeColor: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
+      });
+    }
   }
 
   // Always offer voucher redemption as a step

@@ -8,6 +8,9 @@ import {
   UpdateRoleDashboardFeaturesRequestDTO,
   UpdateCounsellorProfileRequestDTO,
   UpdateUserProfileRequestDTO,
+  ApproveInstitutionApplicationRequestDTO,
+  RejectInstitutionApplicationRequestDTO,
+  AdminInstitutionFilterParams,
 } from "../types/admin.types";
 
 export const adminKeys = {
@@ -36,6 +39,19 @@ export const adminKeys = {
   dashboardFeatures: () => [...adminKeys.all, "dashboard-features"] as const,
   roleDashboardFeatures: (idOrName: string) =>
     [...adminKeys.all, "role-dashboard-features", idOrName] as const,
+  institutionMetrics: () => [...adminKeys.all, "institution-metrics"] as const,
+  institutionApplications: (filters?: AdminInstitutionFilterParams) =>
+    filters !== undefined
+      ? ([...adminKeys.all, "institution-applications", filters] as const)
+      : ([...adminKeys.all, "institution-applications"] as const),
+  institutionApplicationDetail: (id: string) =>
+    [...adminKeys.all, "institution-application", id] as const,
+  institutions: (filters?: AdminInstitutionFilterParams) =>
+    filters !== undefined
+      ? ([...adminKeys.all, "institutions", filters] as const)
+      : ([...adminKeys.all, "institutions"] as const),
+  institutionDetail: (id: string) =>
+    [...adminKeys.all, "institution-detail", id] as const,
 };
 
 /**
@@ -450,6 +466,147 @@ export function useBulkUpdateUserStatus() {
       queryClient.invalidateQueries({ queryKey: adminKeys.users() });
       queryClient.invalidateQueries({ queryKey: adminKeys.overview() });
       queryClient.invalidateQueries({ queryKey: adminKeys.roles() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.all });
+    },
+  });
+}
+
+/**
+ * Hook to fetch institution administrative overview metrics.
+ */
+export function useAdminInstitutionMetrics() {
+  return useQuery({
+    queryKey: adminKeys.institutionMetrics(),
+    queryFn: () => adminApi.getInstitutionMetrics(),
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch institution applications queue with filters.
+ */
+export function useAdminInstitutionApplications(filters?: AdminInstitutionFilterParams) {
+  return useQuery({
+    queryKey: adminKeys.institutionApplications(filters),
+    queryFn: () => adminApi.getInstitutionApplications(filters),
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch single institution application detail.
+ */
+export function useAdminInstitutionApplicationDetail(id: string, enabled = true) {
+  return useQuery({
+    queryKey: adminKeys.institutionApplicationDetail(id),
+    queryFn: () => adminApi.getInstitutionApplicationById(id),
+    enabled: Boolean(id) && enabled,
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
+ * Mutation: Approve institution application atomically.
+ */
+export function useApproveInstitutionApplication() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      dto,
+    }: {
+      id: string;
+      dto?: ApproveInstitutionApplicationRequestDTO;
+    }) => adminApi.approveInstitutionApplication(id, dto),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.institutionMetrics() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.institutionApplications() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.institutionApplicationDetail(variables.id) });
+      queryClient.invalidateQueries({ queryKey: adminKeys.institutions() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.overview() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.users() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.all });
+    },
+  });
+}
+
+/**
+ * Mutation: Reject institution application with audit notes.
+ */
+export function useRejectInstitutionApplication() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      dto,
+    }: {
+      id: string;
+      dto?: RejectInstitutionApplicationRequestDTO;
+    }) => adminApi.rejectInstitutionApplication(id, dto),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.institutionMetrics() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.institutionApplications() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.institutionApplicationDetail(variables.id) });
+      queryClient.invalidateQueries({ queryKey: adminKeys.institutions() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.overview() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.all });
+    },
+  });
+}
+
+/**
+ * Mutation: Delete institution application.
+ */
+export function useDeleteInstitutionApplication() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => adminApi.deleteInstitutionApplication(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.institutionMetrics() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.institutionApplications() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.institutions() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.overview() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.all });
+    },
+  });
+}
+
+/**
+ * Hook to fetch registered institutions list.
+ */
+export function useAdminInstitutions(filters?: AdminInstitutionFilterParams) {
+  return useQuery({
+    queryKey: adminKeys.institutions(filters),
+    queryFn: () => adminApi.getInstitutions(filters),
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch single institution detail with cohorts and students.
+ */
+export function useAdminInstitutionDetail(id: string, enabled = true) {
+  return useQuery({
+    queryKey: adminKeys.institutionDetail(id),
+    queryFn: () => adminApi.getInstitutionById(id),
+    enabled: Boolean(id) && enabled,
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
+ * Mutation: Update institution status (activate/suspend).
+ */
+export function useUpdateInstitutionStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
+      adminApi.updateInstitutionStatus(id, isActive),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.institutions() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.institutionDetail(variables.id) });
+      queryClient.invalidateQueries({ queryKey: adminKeys.institutionMetrics() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.overview() });
       queryClient.invalidateQueries({ queryKey: adminKeys.all });
     },
   });

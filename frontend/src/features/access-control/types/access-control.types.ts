@@ -13,6 +13,7 @@ export type FeatureKey =
   | "admin.users"
   | "admin.roles"
   | "admin.counsellors"
+  | "admin.institutions"
   | "admin.students"
   | "admin.sessions"
   | "admin.reports"
@@ -40,13 +41,31 @@ export type FeatureKey =
   | "participant.settings"
   // Institution Features
   | "institution.dashboard"
+  | "institution.students"
   | "institution.cohorts"
-  | "institution.vouchers"
+  | "institution.assessments"
+  | "institution.reports"
+  | "institution.counsellors"
+  | "institution.sessions"
+  | "institution.parents"
+  | "institution.messages"
   | "institution.analytics"
+  | "institution.staff"
+  | "institution.vouchers"
+  | "institution.settings"
   // Parent Features
   | "parent.dashboard"
   | "parent.children"
-  | "parent.reports";
+  | "parent.connect"
+  | "parent.reports"
+  | "parent.analytics"
+  | "parent.sessions"
+  | "parent.calendar"
+  | "parent.reviews"
+  | "parent.messages"
+  | "parent.notifications"
+  | "parent.profile"
+  | "parent.settings";
 
 export interface FeatureDefinition {
   /** Unique key identifying the feature */
@@ -88,6 +107,12 @@ export interface FeatureDefinition {
   dashboardVisibility: boolean;
 
   /**
+   * Corresponding key in the PostgreSQL `dashboard_features` table
+   * (e.g. "dashboard.counsellors", "dashboard.reports", "dashboard.overview")
+   */
+  dashboardFeatureKey?: string;
+
+  /**
    * Optional badge metadata
    */
   badge?: {
@@ -98,7 +123,7 @@ export interface FeatureDefinition {
 
 export interface FeatureAccessResult {
   isGranted: boolean;
-  reason: "SUPER_ADMIN" | "PERMISSION_GRANTED" | "ROLE_FALLBACK" | "DENIED";
+  reason: "SUPER_ADMIN" | "PERMISSION_GRANTED" | "ROLE_FALLBACK" | "FEATURE_DISABLED" | "DENIED";
   feature?: FeatureDefinition;
 }
 

@@ -9,6 +9,7 @@ export type NavItem = {
   badgeColor?: "primary" | "accent" | "emerald" | "amber";
   isExact?: boolean;
   rolesAllowed?: UserRole[];
+  featureKey?: string;
 };
 
 export type NavSection = {

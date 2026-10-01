@@ -1,27 +1,35 @@
 import { Router } from "express";
 import { authenticate } from "../../middleware/authenticate.middleware";
-import { requireRole } from "../../middleware/authorization.middleware";
+import { requireRole, requireDashboardFeature } from "../../middleware/authorization.middleware";
 import { counsellingController } from "./counselling.controller";
+
+// Helper for optional auth + feature guard on public/student catalogue routes
+const optionalAuthAndFeature = (featureKey: string) => {
+  return async (req: any, res: any, next: any) => {
+    if (req.headers.authorization || req.cookies?.refreshToken) {
+      return authenticate(req, res, (authErr) => {
+        if (authErr) return next(authErr);
+        return requireDashboardFeature(featureKey)(req, res, next);
+      });
+    }
+    next();
+  };
+};
 
 // Public & student-accessible counsellor directory routes
 const counsellorsRouter = Router();
-counsellorsRouter.get("/", (req, res, next) => {
-  // If authorization header or cookie is present, run authenticate middleware soft/gracefully
-  if (req.headers.authorization || req.cookies?.refreshToken) {
-    return authenticate(req, res, () => counsellingController.getAllCounsellors(req, res, next));
-  }
-  return counsellingController.getAllCounsellors(req, res, next);
-});
-counsellorsRouter.get("/:id", counsellingController.getCounsellorById);
+counsellorsRouter.get("/", optionalAuthAndFeature("dashboard.counsellors"), counsellingController.getAllCounsellors);
+counsellorsRouter.get("/:id/availability", optionalAuthAndFeature("dashboard.counsellors"), counsellingController.getDateAvailability);
+counsellorsRouter.get("/:id", optionalAuthAndFeature("dashboard.counsellors"), counsellingController.getCounsellorById);
 
 // Counselling session & portal management routes
 const counsellingRouter = Router();
 counsellingRouter.use(authenticate);
 
-// Student booking & sessions
-counsellingRouter.post("/request", counsellingController.requestSession);
-counsellingRouter.get("/sessions", counsellingController.getStudentSessions);
-counsellingRouter.post("/consent", counsellingController.updateConsent);
+// Student booking & sessions (enforce dashboard.counsellors feature check)
+counsellingRouter.post("/request", requireDashboardFeature("dashboard.counsellors"), counsellingController.requestSession);
+counsellingRouter.get("/sessions", requireDashboardFeature("dashboard.counsellors"), counsellingController.getStudentSessions);
+counsellingRouter.post("/consent", requireDashboardFeature("dashboard.counsellors"), counsellingController.updateConsent);
 
 // Counsellor portal endpoints (Strictly authorized for approved career counsellors and admins)
 counsellingRouter.get(

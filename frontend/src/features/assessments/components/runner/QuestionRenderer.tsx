@@ -113,34 +113,78 @@ export function QuestionRenderer({
         )}
 
         {/* 4. Answer Choice Delegator */}
-        {(question.questionType === "likert_1_4" || question.questionType === "likert_1_5") && (
-          <LikertQuestion
-            options={question.options}
-            selectedValue={currentResponse?.responseValue}
-            onSelect={(val, optId) => onAnswer(val, optId)}
-            disabled={disabled}
-          />
-        )}
+        {(() => {
+          const rawType = (question.questionType || "").toLowerCase().trim();
+          const isLikert =
+            rawType === "likert_1_4" ||
+            rawType === "likert_1_5" ||
+            rawType === "likert_4" ||
+            rawType === "likert_5";
+          const isMultipleChoice =
+            rawType === "mcq_text" ||
+            rawType === "mcq_image" ||
+            rawType === "multiple_choice" ||
+            rawType === "forced_choice_4" ||
+            rawType === "forced_choice_8";
+          const isOpenScored = rawType === "open_scored";
 
-        {(question.questionType === "mcq_text" ||
-          question.questionType === "mcq_image" ||
-          question.questionType === "forced_choice_4" ||
-          question.questionType === "forced_choice_8") && (
-          <MultipleChoiceQuestion
-            options={question.options}
-            selectedValue={currentResponse?.responseValue}
-            onSelect={(val, optId) => onAnswer(val, optId)}
-            disabled={disabled}
-          />
-        )}
+          if (isLikert) {
+            return (
+              <LikertQuestion
+                options={question.options}
+                selectedValue={currentResponse?.responseValue}
+                onSelect={(val, optId) => onAnswer(val, optId)}
+                disabled={disabled}
+              />
+            );
+          }
 
-        {question.questionType === "open_scored" && (
-          <TextQuestion
-            initialValue={currentResponse?.responseValue}
-            onSave={(val) => onAnswer(val)}
-            disabled={disabled}
-          />
-        )}
+          if (isMultipleChoice) {
+            return (
+              <MultipleChoiceQuestion
+                options={question.options}
+                selectedValue={currentResponse?.responseValue}
+                onSelect={(val, optId) => onAnswer(val, optId)}
+                disabled={disabled}
+              />
+            );
+          }
+
+          if (isOpenScored) {
+            return (
+              <TextQuestion
+                initialValue={currentResponse?.responseValue}
+                onSave={(val) => onAnswer(val)}
+                disabled={disabled}
+              />
+            );
+          }
+
+          // Fallback: If options are present, default to Likert or MCQ based on options length
+          if (question.options && question.options.length > 0) {
+            const hasNumericKeys = question.options.some((o) => ["1", "2", "3", "4", "5"].includes(o.optionKey));
+            if (hasNumericKeys) {
+              return (
+                <LikertQuestion
+                  options={question.options}
+                  selectedValue={currentResponse?.responseValue}
+                  onSelect={(val, optId) => onAnswer(val, optId)}
+                  disabled={disabled}
+                />
+              );
+            }
+            return (
+              <MultipleChoiceQuestion
+                options={question.options}
+                selectedValue={currentResponse?.responseValue}
+                onSelect={(val, optId) => onAnswer(val, optId)}
+                disabled={disabled}
+              />
+            );
+          }
+
+          return null;
+        })()}
       </article>
 
       {/* Image Lightbox Modal */}

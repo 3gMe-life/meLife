@@ -436,6 +436,153 @@ export interface BulkUserStatusResultDTO {
   message: string;
 }
 
+// ==========================================
+// INSTITUTION MANAGEMENT DTOs
+// ==========================================
+
+export interface InstitutionApplicationItemDTO {
+  id: string;
+  institutionName: string;
+  institutionType: string;
+  officialEmail: string;
+  contactName: string;
+  phoneNumber: string;
+  registrationNumber?: string | null;
+  affiliationBoard?: string | null;
+  establishedYear?: number | null;
+  website?: string | null;
+  address?: string | null;
+  district?: string | null;
+  state?: string | null;
+  country?: string;
+  studentCapacity?: number;
+  principalName?: string | null;
+  principalEmail?: string | null;
+  documents?: Array<{
+    title: string;
+    url: string;
+    type?: string;
+  }>;
+  status: "PENDING" | "UNDER_REVIEW" | "APPROVED" | "REJECTED" | "SUSPENDED" | string;
+  reviewedBy?: string | null;
+  reviewerName?: string | null;
+  reviewedAt?: string | null;
+  reviewNotes?: string | null;
+  createdAt: string;
+  updatedAt?: string | null;
+}
+
+export interface ApproveInstitutionApplicationRequestDTO {
+  institutionCode?: string;
+  type?: string;
+  studentCapacity?: number;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  reviewNotes?: string;
+  temporaryPassword?: string;
+}
+
+export interface RejectInstitutionApplicationRequestDTO {
+  reason?: string;
+  reviewNotes?: string;
+}
+
+export interface InstitutionApplicationDecisionResultDTO {
+  success: boolean;
+  message: string;
+  application: InstitutionApplicationItemDTO;
+  institution?: {
+    id: string;
+    name: string;
+    code: string;
+    adminUserId: string;
+    type: string;
+    contactEmail: string;
+    studentCapacity: number;
+    isActive: boolean;
+  } | null;
+  adminUser?: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    status: string;
+    role: string;
+  } | null;
+}
+
+export interface AdminInstitutionMetricsDTO {
+  totalInstitutions: number;
+  approvedInstitutions: number;
+  pendingApplications: number;
+  rejectedApplications: number;
+}
+
+export interface AdminInstitutionListItemDTO {
+  id: string;
+  adminUserId: string;
+  name: string;
+  code: string;
+  type: string;
+  contactEmail: string;
+  phone: string | null;
+  city: string | null;
+  state: string | null;
+  country: string;
+  studentCapacity: number;
+  totalStudents: number;
+  totalClasses: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  adminUser?: {
+    id: string;
+    name: string;
+    email: string;
+    status: string;
+  } | null;
+}
+
+export interface AdminInstitutionDetailDTO {
+  institution: AdminInstitutionListItemDTO;
+  classes: Array<{
+    id: string;
+    name: string;
+    academicYear: string;
+    gradeLevel: string;
+    division: string;
+    studentCount: number;
+    coordinatorName: string | null;
+    isActive: boolean;
+  }>;
+  recentStudents: Array<{
+    id: string;
+    studentId: string;
+    name: string;
+    email: string;
+    rollNumber: string | null;
+    status: string;
+    joinedAt: string;
+  }>;
+  stats: {
+    totalStudents: number;
+    activeStudents: number;
+    totalClasses: number;
+    assessmentCompletionRate: number;
+  };
+}
+
+export interface AdminInstitutionFilterParams {
+  search?: string;
+  status?: string;
+  type?: string;
+  page?: number;
+  limit?: number;
+}
+
+
 
 
 

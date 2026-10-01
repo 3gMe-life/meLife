@@ -225,6 +225,10 @@ export function AdminRoleDetailModal({
         return Clock;
       case "GraduationCap":
         return GraduationCap;
+      case "Users":
+        return Users;
+      case "HeartHandshake":
+        return HeartHandshake;
       case "FileText":
         return FileText;
       case "Inbox":

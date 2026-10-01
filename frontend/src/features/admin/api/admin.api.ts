@@ -26,6 +26,14 @@ import {
   DeleteUserResultDTO,
   BulkDeleteUsersResultDTO,
   BulkUserStatusResultDTO,
+  InstitutionApplicationItemDTO,
+  ApproveInstitutionApplicationRequestDTO,
+  RejectInstitutionApplicationRequestDTO,
+  InstitutionApplicationDecisionResultDTO,
+  AdminInstitutionMetricsDTO,
+  AdminInstitutionListItemDTO,
+  AdminInstitutionDetailDTO,
+  AdminInstitutionFilterParams,
 } from "../types/admin.types";
 
 interface ApiResponse<T> {
@@ -359,6 +367,139 @@ export const adminApi = {
       `/admin/counsellors/${id}`,
       {
         method: "DELETE",
+      }
+    );
+    return res.data;
+  },
+
+  /**
+   * Fetches institution administrative metrics.
+   * Endpoint: GET /api/v1/admin/institutions/metrics
+   */
+  async getInstitutionMetrics(): Promise<AdminInstitutionMetricsDTO> {
+    const res = await fetchApi<ApiResponse<AdminInstitutionMetricsDTO>>("/admin/institutions/metrics");
+    return res.data;
+  },
+
+  /**
+   * Fetches institution applications list with filters.
+   * Endpoint: GET /api/v1/admin/institutions/applications
+   */
+  async getInstitutionApplications(filters?: AdminInstitutionFilterParams): Promise<InstitutionApplicationItemDTO[]> {
+    const params = new URLSearchParams();
+    if (filters?.status && filters.status !== "ALL") params.append("status", filters.status);
+    if (filters?.search) params.append("search", filters.search);
+    if (filters?.page) params.append("page", String(filters.page));
+    if (filters?.limit) params.append("limit", String(filters.limit));
+
+    const query = params.toString() ? `?${params.toString()}` : "";
+    const res = await fetchApi<ApiResponse<InstitutionApplicationItemDTO[]>>(
+      `/admin/institutions/applications${query}`
+    );
+    return res.data || [];
+  },
+
+  /**
+   * Fetches single institution application by ID.
+   * Endpoint: GET /api/v1/admin/institutions/applications/:id
+   */
+  async getInstitutionApplicationById(id: string): Promise<InstitutionApplicationItemDTO> {
+    const res = await fetchApi<ApiResponse<InstitutionApplicationItemDTO>>(
+      `/admin/institutions/applications/${id}`
+    );
+    return res.data;
+  },
+
+  /**
+   * Approves an institution application atomically (creates user, institution, initial cohorts, features).
+   * Endpoint: POST /api/v1/admin/institutions/applications/:id/approve
+   */
+  async approveInstitutionApplication(
+    id: string,
+    dto?: ApproveInstitutionApplicationRequestDTO
+  ): Promise<InstitutionApplicationDecisionResultDTO> {
+    const res = await fetchApi<ApiResponse<InstitutionApplicationDecisionResultDTO>>(
+      `/admin/institutions/applications/${id}/approve`,
+      {
+        method: "POST",
+        body: JSON.stringify(dto || {}),
+      }
+    );
+    return res.data;
+  },
+
+  /**
+   * Rejects an institution application with audit notes.
+   * Endpoint: POST /api/v1/admin/institutions/applications/:id/reject
+   */
+  async rejectInstitutionApplication(
+    id: string,
+    dto?: RejectInstitutionApplicationRequestDTO
+  ): Promise<InstitutionApplicationDecisionResultDTO> {
+    const res = await fetchApi<ApiResponse<InstitutionApplicationDecisionResultDTO>>(
+      `/admin/institutions/applications/${id}/reject`,
+      {
+        method: "POST",
+        body: JSON.stringify(dto || {}),
+      }
+    );
+    return res.data;
+  },
+
+  /**
+   * Deletes an institution application.
+   * Endpoint: DELETE /api/v1/admin/institutions/applications/:id
+   */
+  async deleteInstitutionApplication(id: string): Promise<{ success: boolean; message: string }> {
+    const res = await fetchApi<ApiResponse<{ success: boolean; message: string }>>(
+      `/admin/institutions/applications/${id}`,
+      {
+        method: "DELETE",
+      }
+    );
+    return res.data;
+  },
+
+  /**
+   * Fetches registered institutions list with metrics.
+   * Endpoint: GET /api/v1/admin/institutions
+   */
+  async getInstitutions(filters?: AdminInstitutionFilterParams): Promise<AdminInstitutionListItemDTO[]> {
+    const params = new URLSearchParams();
+    if (filters?.search) params.append("search", filters.search);
+    if (filters?.status && filters.status !== "ALL") params.append("status", filters.status);
+    if (filters?.type && filters.type !== "ALL") params.append("type", filters.type);
+    if (filters?.page) params.append("page", String(filters.page));
+    if (filters?.limit) params.append("limit", String(filters.limit));
+
+    const query = params.toString() ? `?${params.toString()}` : "";
+    const res = await fetchApi<ApiResponse<AdminInstitutionListItemDTO[]>>(
+      `/admin/institutions${query}`
+    );
+    return res.data || [];
+  },
+
+  /**
+   * Fetches single institution detailed breakdown (cohorts, students, completion).
+   * Endpoint: GET /api/v1/admin/institutions/:id
+   */
+  async getInstitutionById(id: string): Promise<AdminInstitutionDetailDTO> {
+    const res = await fetchApi<ApiResponse<AdminInstitutionDetailDTO>>(
+      `/admin/institutions/${id}`
+    );
+    return res.data;
+  },
+
+  /**
+   * Updates institution active / suspended status.
+   * Endpoint: PATCH /api/v1/admin/institutions/:id/status
+   */
+  async updateInstitutionStatus(id: string, isActive: boolean): Promise<AdminInstitutionListItemDTO> {
+    const res = await fetchApi<ApiResponse<AdminInstitutionListItemDTO>>(
+      `/admin/institutions/${id}/status`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ isActive }),
       }
     );
     return res.data;

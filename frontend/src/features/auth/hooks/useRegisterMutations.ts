@@ -24,6 +24,7 @@ export function useRegisterStudentMutation() {
             user: data.data.user,
             role: data.data.role,
             permissions: data.data.permissions || [],
+            dashboardFeatures: data.data.dashboardFeatures || [],
             onboarding: {
               completed: !data.data.requiresOnboarding,
             },
@@ -49,6 +50,7 @@ export function useRegisterParentMutation() {
             user: data.data.user,
             role: data.data.role,
             permissions: data.data.permissions || [],
+            dashboardFeatures: data.data.dashboardFeatures || [],
             onboarding: {
               completed: !data.data.requiresOnboarding,
             },

@@ -5,11 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DashboardShell } from "@/features/dashboard/components/shell/DashboardShell";
 import { ProtectedRouteGuard } from "@/features/dashboard/guards/ProtectedRouteGuard";
+import { useFeatureAccess } from "@/features/access-control/hooks/useFeatureAccess";
 import { useLatestCareerReport, useDownloadCareerReportPdfMutation } from "@/features/reports/hooks/useCareerReportQueries";
 import { Compass, FileText, Download, ArrowRight, ArrowLeft, Sparkles, CheckCircle2, ShieldCheck, Loader2 } from "lucide-react";
 
 export default function ParticipantReportsIndexPage() {
   const router = useRouter();
+  const { canAccess } = useFeatureAccess();
   const { data: careerReport, isLoading } = useLatestCareerReport("en");
   const downloadMutation = useDownloadCareerReportPdfMutation();
 
@@ -142,34 +144,36 @@ export default function ParticipantReportsIndexPage() {
           </div>
 
           {/* Counsellor Guided Briefing */}
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow">
-            <div>
-              <div className="flex items-center justify-between">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400">
-                  <ShieldCheck className="h-5 w-5" />
+          {canAccess("participant.counsellor") && (
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow">
+              <div>
+                <div className="flex items-center justify-between">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400">
+                    <ShieldCheck className="h-5 w-5" />
+                  </div>
+                  <span className="rounded-full bg-amber-100 dark:bg-amber-950 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                    Mentorship Ready
+                  </span>
                 </div>
-                <span className="rounded-full bg-amber-100 dark:bg-amber-950 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
-                  Mentorship Ready
-                </span>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mt-4">
+                  1-on-1 Guidance Consultation
+                </h3>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">
+                  Share your 10-section report directly with an accredited 3G MeLife career counsellor for structured educational stream selection and strategic guidance.
+                </p>
               </div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mt-4">
-                1-on-1 Guidance Consultation
-              </h3>
-              <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">
-                Share your 10-section report directly with an accredited 3G MeLife career counsellor for structured educational stream selection and strategic guidance.
-              </p>
-            </div>
 
-            <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
-              <Link
-                href="/participant/counsellors"
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-600 dark:text-teal-400 hover:underline"
-              >
-                <span>Book Counselling Session</span>
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
+              <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <Link
+                  href="/participant/counsellors"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-600 dark:text-teal-400 hover:underline"
+                >
+                  <span>Book Counselling Session</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </DashboardShell>

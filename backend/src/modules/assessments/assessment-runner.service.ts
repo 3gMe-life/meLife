@@ -26,6 +26,8 @@ export class AssessmentRunnerService {
     attemptId: string;
     status: string;
     isNew: boolean;
+    redirectUrl?: string;
+    resultId?: string | null;
     versionCode?: string | null;
     versionName?: string | null;
   }> {
@@ -34,9 +36,26 @@ export class AssessmentRunnerService {
       throw AppError.notFound("Participant user not found.", "AUTH_USER_NOT_FOUND");
     }
 
-    // 1. If assessmentCode is an existing attemptId belonging to this participant, resume it immediately
+    // 1. If assessmentCode is an existing attemptId belonging to this participant, resume or direct to result
     const existingAttempt = await assessmentContentRepository.findAttemptById(assessmentCode);
     if (existingAttempt && existingAttempt.participant_id === userId) {
+      if (existingAttempt.status === "COMPLETED") {
+        const existingResult = await assessmentContentRepository.findResultByAttemptId(existingAttempt.id);
+        logger.info(
+          { userId, attemptId: existingAttempt.id, code: existingAttempt.assessment_code, resultId: existingResult?.id },
+          "Requested completed assessment attempt, routing to result"
+        );
+        return {
+          attemptId: existingAttempt.id,
+          status: existingResult ? "COMPLETED" : "PROCESSING",
+          isNew: false,
+          redirectUrl: `/participant/results/${existingAttempt.id}${existingResult ? `?resultId=${existingResult.id}` : ""}`,
+          resultId: existingResult?.id || null,
+          versionCode: existingAttempt.version_code || null,
+          versionName: existingAttempt.version_name || null,
+        };
+      }
+
       logger.info(
         { userId, attemptId: existingAttempt.id, code: existingAttempt.assessment_code },
         "Resumed assessment attempt directly by attempt ID"
@@ -107,7 +126,7 @@ export class AssessmentRunnerService {
       );
     }
 
-    // Check for existing active attempt
+    // 5. Check for existing active attempt (status = 'IN_PROGRESS')
     const activeAttempt = await assessmentContentRepository.findActiveAttempt(
       userId,
       assessment.id
@@ -115,7 +134,7 @@ export class AssessmentRunnerService {
 
     if (activeAttempt) {
       logger.info(
-        { userId, assessmentCode, attemptId: activeAttempt.id },
+        { userId, assessmentCode: assessment.code, attemptId: activeAttempt.id },
         "Resuming active assessment attempt"
       );
       return {
@@ -127,9 +146,32 @@ export class AssessmentRunnerService {
       };
     }
 
-    // Create new attempt
+    // 6. Check for existing completed attempt (status = 'COMPLETED')
+    const completedAttempt = await assessmentContentRepository.findLatestCompletedAttempt(
+      userId,
+      assessment.id
+    );
+
+    if (completedAttempt) {
+      const existingResult = await assessmentContentRepository.findResultByAttemptId(completedAttempt.id);
+      logger.info(
+        { userId, assessmentCode: assessment.code, attemptId: completedAttempt.id, resultId: existingResult?.id },
+        "Found existing completed assessment attempt, preventing duplicate and routing to result"
+      );
+      return {
+        attemptId: completedAttempt.id,
+        status: existingResult ? "COMPLETED" : "PROCESSING",
+        isNew: false,
+        redirectUrl: `/participant/results/${completedAttempt.id}${existingResult ? `?resultId=${existingResult.id}` : ""}`,
+        resultId: existingResult?.id || null,
+        versionCode: completedAttempt.version_code || targetVersion?.version_code || null,
+        versionName: completedAttempt.version_name || targetVersion?.name || null,
+      };
+    }
+
+    // 7. Create new attempt (Case 1: No active or completed attempt exists)
     const totalQuestions =
-      targetVersion?.question_count || assessment.questionCount || 68;
+      targetVersion?.question_count || assessment.questionCount || 60;
     const newAttempt = await assessmentContentRepository.createAttempt(
       userId,
       assessment.id,
@@ -140,7 +182,7 @@ export class AssessmentRunnerService {
     logger.info(
       {
         userId,
-        assessmentCode,
+        assessmentCode: assessment.code,
         version: targetVersion?.version_code || "DEFAULT",
         attemptId: newAttempt.id,
       },

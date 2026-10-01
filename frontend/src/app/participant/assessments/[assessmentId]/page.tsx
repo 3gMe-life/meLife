@@ -39,6 +39,8 @@ export default function AssessmentRunnerPage() {
   });
 
   const attemptId = startData?.attemptId || "";
+  const isStartCompleted = startData?.status === "COMPLETED";
+  const isAttemptProcessing = startData?.status === "PROCESSING";
 
   // 2. Fetch questions and saved responses once attemptId is resolved with preferred language
   const {
@@ -46,10 +48,35 @@ export default function AssessmentRunnerPage() {
     isLoading: isQuestionsLoading,
     isError: isQuestionsError,
     error: questionsError,
-  } = useAssessmentAttemptQuestionsQuery(attemptId, preferredLang);
+  } = useAssessmentAttemptQuestionsQuery(
+    isStartCompleted ? "" : attemptId,
+    preferredLang
+  );
 
-  const isLoading = isStartLoading || (Boolean(attemptId) && isQuestionsLoading);
-  const isError = isStartError || isQuestionsError;
+  const isAttemptCompleted =
+    isStartCompleted || attemptQuestionsData?.status === "COMPLETED";
+
+  // Authoritative Attempt Lifecycle Redirect: Route completed attempts directly to their results page
+  React.useEffect(() => {
+    if (startData) {
+      if (startData.status === "COMPLETED" || (startData as any).redirectUrl) {
+        const dest =
+          (startData as any).redirectUrl || `/participant/results/${startData.attemptId}`;
+        router.replace(dest);
+      }
+    }
+  }, [startData, router]);
+
+  React.useEffect(() => {
+    if (attemptQuestionsData && attemptQuestionsData.status === "COMPLETED") {
+      router.replace(`/participant/results/${attemptId}`);
+    }
+  }, [attemptQuestionsData, attemptId, router]);
+
+  const isLoading =
+    isStartLoading ||
+    (!isAttemptCompleted && Boolean(attemptId) && isQuestionsLoading);
+  const isError = isStartError || (!isAttemptCompleted && isQuestionsError);
   const errorMessage =
     (startError ? startError.message : null) ||
     (questionsError ? questionsError.message : null) ||
@@ -59,6 +86,38 @@ export default function AssessmentRunnerPage() {
     (startError as any)?.code === "ASSESSMENT_LOCKED" ||
     (startError as any)?.status === 403 ||
     (errorMessage && /locked|prerequisite/i.test(errorMessage));
+
+  if (isAttemptCompleted || (startData as any)?.redirectUrl) {
+    return (
+      <ProtectedRouteGuard allowedRoles={["PARTICIPANT"]}>
+        <div className="min-h-screen bg-[#F7FAF9] dark:bg-[#0D1C1B] flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-12 h-12 border-3 border-[#00BFA5] border-t-transparent rounded-full animate-spin mb-4" />
+          <h2 className="text-lg font-bold text-[#172B2A] dark:text-[#F7FAF9] mb-1">
+            Loading Completed Assessment Results...
+          </h2>
+          <p className="text-xs text-[#526866] dark:text-[#9FB3B0] max-w-sm">
+            Redirecting to your comprehensive psychometric evaluation report and insights.
+          </p>
+        </div>
+      </ProtectedRouteGuard>
+    );
+  }
+
+  if (isAttemptProcessing) {
+    return (
+      <ProtectedRouteGuard allowedRoles={["PARTICIPANT"]}>
+        <div className="min-h-screen bg-[#F7FAF9] dark:bg-[#0D1C1B] flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-12 h-12 border-3 border-[#00BFA5] border-t-transparent rounded-full animate-spin mb-4" />
+          <h2 className="text-lg font-bold text-[#172B2A] dark:text-[#F7FAF9] mb-1">
+            Processing Assessment Evaluation...
+          </h2>
+          <p className="text-xs text-[#526866] dark:text-[#9FB3B0] max-w-sm">
+            Synthesizing dimension scores and generating your venture profile insights.
+          </p>
+        </div>
+      </ProtectedRouteGuard>
+    );
+  }
 
   return (
     <ProtectedRouteGuard allowedRoles={["PARTICIPANT"]}>

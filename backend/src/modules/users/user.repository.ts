@@ -253,6 +253,30 @@ export class UserRepository {
     `;
     await db.query(query, [userId, passwordHash]);
   }
+
+  /**
+   * Checks whether a parent user has an active, verified relationship with a student user.
+   */
+  async isParentOfStudent(
+    parentId: string,
+    studentId: string,
+    client?: PoolClient
+  ): Promise<boolean> {
+    if (!parentId || !studentId) {
+      return false;
+    }
+    const db = client || pool;
+    const query = `
+      SELECT id
+      FROM student_parent_links
+      WHERE parent_user_id = $1
+        AND student_user_id = $2
+        AND link_status = 'ACTIVE'
+      LIMIT 1
+    `;
+    const res = await db.query(query, [parentId, studentId]);
+    return (res.rowCount ?? 0) > 0;
+  }
 }
 
 export const userRepository = new UserRepository();

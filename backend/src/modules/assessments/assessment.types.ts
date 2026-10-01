@@ -5,7 +5,8 @@ export type AssessmentCode =
   | "COMMERCE_CAREER_FINDER"
   | "HUMANITIES_CAREER_FINDER"
   | "RIGHT_CAREER_FINDER"
-  | "AI_JOB_RISK_FINDER";
+  | "AI_JOB_RISK_FINDER"
+  | "ENTREPRENEUR_DEVELOPMENT_TEST";
 
 export type AssessmentCatalogStatus = "DRAFT" | "ACTIVE" | "INACTIVE" | "ARCHIVED";
 

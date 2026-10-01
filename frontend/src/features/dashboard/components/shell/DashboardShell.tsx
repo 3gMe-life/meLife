@@ -23,6 +23,7 @@ export function DashboardShell({
   const user = data?.data?.user;
   const role = data?.data?.role || (user as any)?.role || "PARTICIPANT";
   const educationStage = data?.data?.onboarding?.educationStage;
+  const dashboardFeatures = data?.data?.dashboardFeatures;
 
   return (
     <ProtectedRouteGuard allowedRoles={allowedRoles}>
@@ -47,6 +48,7 @@ export function DashboardShell({
               user={user}
               role={role}
               educationStage={educationStage}
+              dashboardFeatures={dashboardFeatures}
             />
           </div>
         )}
@@ -59,6 +61,7 @@ export function DashboardShell({
               <DashboardSidebar
                 role={role}
                 educationStage={educationStage}
+                dashboardFeatures={dashboardFeatures}
               />
             </aside>
           )}

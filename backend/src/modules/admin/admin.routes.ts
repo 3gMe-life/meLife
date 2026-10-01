@@ -101,6 +101,20 @@ adminRouter.put("/roles/:id/dashboard-features", adminController.updateRoleDashb
 adminRouter.get("/permissions", adminController.listPermissions);
 adminRouter.get("/dashboard-features", adminController.listDashboardFeatures);
 
+/**
+ * Institution Application & Partner Management Routes
+ */
+adminRouter.get("/institutions/metrics", adminController.getInstitutionMetrics);
+adminRouter.get("/institutions/applications", adminController.listInstitutionApplications);
+adminRouter.get("/institutions/applications/:id", adminController.getInstitutionApplicationById);
+adminRouter.post("/institutions/applications/:id/approve", adminController.approveInstitutionApplication);
+adminRouter.post("/institutions/applications/:id/reject", adminController.rejectInstitutionApplication);
+adminRouter.delete("/institutions/applications/:id", adminController.deleteInstitutionApplication);
+
+adminRouter.get("/institutions", adminController.listInstitutions);
+adminRouter.get("/institutions/:id", adminController.getInstitutionById);
+adminRouter.patch("/institutions/:id/status", adminController.updateInstitutionStatus);
+
 export { adminRouter };
 
 

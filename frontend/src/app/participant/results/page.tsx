@@ -12,6 +12,7 @@ import { CommerceCareerFinderResultView } from "@/features/assessments/component
 import { HumanitiesCareerFinderResultView } from "@/features/assessments/components/results/HumanitiesCareerFinderResultView";
 import { RightCareerFinderResultView } from "@/features/assessments/components/results/RightCareerFinderResultView";
 import { AiJobRiskFinderResultView } from "@/features/assessments/components/results/AiJobRiskFinderResultView";
+import { EntrepreneurDevelopmentResultView } from "@/features/assessments/components/results/EntrepreneurDevelopmentResultView";
 import { Sparkles, ArrowRight, BrainCircuit, RefreshCw } from "lucide-react";
 
 export default function ParticipantResultsPage() {
@@ -92,6 +93,12 @@ export default function ParticipantResultsPage() {
                 </Link>
               </div>
             </div>
+          ) : latestResult.assessmentCode === "ENTREPRENEUR_DEVELOPMENT_TEST" ? (
+            <EntrepreneurDevelopmentResultView
+              result={latestResult}
+              currentLanguage={language}
+              onLanguageChange={setLanguage}
+            />
           ) : latestResult.assessmentCode === "AI_JOB_RISK_FINDER" ? (
             <AiJobRiskFinderResultView
               result={latestResult}

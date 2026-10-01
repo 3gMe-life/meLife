@@ -2,6 +2,7 @@ import { fetchApi } from "@/services/api/client";
 import {
   CounsellorCardDTO,
   CounsellorDetailDTO,
+  CounsellorDateAvailabilityDTO,
   CounsellorAvailability,
   CounsellingSessionDTO,
   CounsellingNoteDTO,
@@ -41,6 +42,12 @@ export const counsellorApi = {
     if (filters?.language && filters.language !== "ALL") {
       params.append("language", filters.language);
     }
+    if (filters?.experience && filters.experience !== "ALL") {
+      params.append("experience", String(filters.experience));
+    }
+    if (filters?.day && filters.day !== "ALL") {
+      params.append("day", filters.day);
+    }
 
     const query = params.toString() ? `?${params.toString()}` : "";
     const res = await fetchApi<ApiResponse<CounsellorCardDTO[]>>(`/counsellors${query}`);
@@ -55,6 +62,15 @@ export const counsellorApi = {
    */
   async getCounsellorById(id: string): Promise<CounsellorDetailDTO> {
     const res = await fetchApi<ApiResponse<CounsellorDetailDTO>>(`/counsellors/${id}`);
+    return res.data;
+  },
+
+  /**
+   * Fetches dynamic slot availability for a specific calendar date (including occupied slots).
+   */
+  async getDateAvailability(id: string, date?: string): Promise<CounsellorDateAvailabilityDTO> {
+    const query = date ? `?date=${encodeURIComponent(date)}` : "";
+    const res = await fetchApi<ApiResponse<CounsellorDateAvailabilityDTO>>(`/counsellors/${id}/availability${query}`);
     return res.data;
   },
 

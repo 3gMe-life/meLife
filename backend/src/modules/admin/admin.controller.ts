@@ -598,6 +598,196 @@ export class AdminController {
       next(err);
     }
   }
+
+  // ==========================================
+  // INSTITUTION / SCHOOL MANAGEMENT CONTROLLERS
+  // ==========================================
+
+  /**
+   * GET /api/v1/admin/institutions/metrics
+   * Returns top summary metrics for institution applications & directory.
+   */
+  async getInstitutionMetrics(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        throw AppError.unauthorized("Authentication required", "AUTH_UNAUTHORIZED");
+      }
+      const metrics = await adminService.getInstitutionMetrics();
+      res.status(HttpStatus.OK).json({
+        success: true,
+        data: metrics,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /api/v1/admin/institutions/applications
+   * Lists all institution applications with optional status & search filter.
+   */
+  async listInstitutionApplications(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        throw AppError.unauthorized("Authentication required", "AUTH_UNAUTHORIZED");
+      }
+      const status = req.query.status as string;
+      const search = req.query.search as string;
+      const applications = await adminService.listInstitutionApplications(status, search);
+      res.status(HttpStatus.OK).json({
+        success: true,
+        data: applications,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /api/v1/admin/institutions/applications/:id
+   * Retrieves single institution application detail.
+   */
+  async getInstitutionApplicationById(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        throw AppError.unauthorized("Authentication required", "AUTH_UNAUTHORIZED");
+      }
+      const applicationId = String(req.params.id);
+      const application = await adminService.getInstitutionApplicationById(applicationId);
+      res.status(HttpStatus.OK).json({
+        success: true,
+        data: application,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * POST /api/v1/admin/institutions/applications/:id/approve
+   * Approves an institution application, provisions user account and institution portal.
+   */
+  async approveInstitutionApplication(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        throw AppError.unauthorized("Authentication required", "AUTH_UNAUTHORIZED");
+      }
+      const applicationId = String(req.params.id);
+      const result = await adminService.approveInstitutionApplication(req.user.id, applicationId, req.body);
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: result.message,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * POST /api/v1/admin/institutions/applications/:id/reject
+   * Rejects an institution application with audit notes.
+   */
+  async rejectInstitutionApplication(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        throw AppError.unauthorized("Authentication required", "AUTH_UNAUTHORIZED");
+      }
+      const applicationId = String(req.params.id);
+      const result = await adminService.rejectInstitutionApplication(req.user.id, applicationId, req.body);
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: result.message,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /api/v1/admin/institutions
+   * Lists approved educational institutions with aggregate student counts.
+   */
+  async listInstitutions(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        throw AppError.unauthorized("Authentication required", "AUTH_UNAUTHORIZED");
+      }
+      const search = req.query.search as string;
+      const status = req.query.status as string;
+      const type = req.query.type as string;
+      const institutions = await adminService.listInstitutions({ search, status, type });
+      res.status(HttpStatus.OK).json({
+        success: true,
+        data: institutions,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /api/v1/admin/institutions/:id
+   * Retrieves single approved institution detail with class cohorts and students.
+   */
+  async getInstitutionById(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        throw AppError.unauthorized("Authentication required", "AUTH_UNAUTHORIZED");
+      }
+      const institutionId = String(req.params.id);
+      const detail = await adminService.getInstitutionById(institutionId);
+      res.status(HttpStatus.OK).json({
+        success: true,
+        data: detail,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * PATCH /api/v1/admin/institutions/:id/status
+   * Toggles institution active/suspended state.
+   */
+  async updateInstitutionStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        throw AppError.unauthorized("Authentication required", "AUTH_UNAUTHORIZED");
+      }
+      const institutionId = String(req.params.id);
+      const { isActive } = req.body;
+      const result = await adminService.updateInstitutionStatus(req.user.id, institutionId, Boolean(isActive));
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: `Institution status updated to ${result.isActive ? "ACTIVE" : "SUSPENDED"}.`,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * DELETE /api/v1/admin/institutions/applications/:id
+   * Deletes an institution application record.
+   */
+  async deleteInstitutionApplication(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        throw AppError.unauthorized("Authentication required", "AUTH_UNAUTHORIZED");
+      }
+      const applicationId = String(req.params.id);
+      await adminService.deleteInstitutionApplication(applicationId);
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: "Institution application deleted successfully.",
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const adminController = new AdminController();

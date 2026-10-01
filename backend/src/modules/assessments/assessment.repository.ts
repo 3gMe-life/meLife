@@ -157,6 +157,20 @@ export class AssessmentRepository {
         status: "ACTIVE",
         displayOrder: 7,
       },
+      {
+        code: "ENTREPRENEUR_DEVELOPMENT_TEST" as AssessmentCode,
+        name: "Entrepreneur Development Test",
+        category: "Entrepreneurial Aptitude & Startup Readiness",
+        description: "Comprehensive psychometric assessment evaluating entrepreneurial mindset, opportunity recognition, innovation, business acumen, team orchestration, communication, execution, risk tolerance, resilience, and growth orientation through 50 Likert items and 10 situational judgment scenarios.",
+        estimatedMinutes: 25,
+        questionCount: 60,
+        minAge: 14,
+        maxAge: null,
+        allowedStages: ["SCHOOL", "COLLEGE_UNIVERSITY", "WORKING_PROFESSIONAL", "OTHER"],
+        allowedGrades: ["9", "10", "11", "12"],
+        status: "ACTIVE",
+        displayOrder: 8,
+      },
     ];
 
     for (const item of catalogItems) {

@@ -17,6 +17,7 @@ export const counsellorKeys = {
   list: (filters?: CounsellorFilterParams) => [...counsellorKeys.lists(), filters] as const,
   details: () => [...counsellorKeys.all, "detail"] as const,
   detail: (id: string) => [...counsellorKeys.details(), id] as const,
+  dateAvailability: (id: string, date?: string) => [...counsellorKeys.all, "date-availability", id, date] as const,
   studentSessions: () => ["student-counselling-sessions"] as const,
   counsellorOverview: () => ["counsellor-overview"] as const,
   counsellorSessions: (filters?: string | CounsellorSessionFilterParams) => ["counsellor-sessions", filters] as const,
@@ -47,6 +48,18 @@ export function useCounsellorDetail(id: string) {
     queryFn: () => counsellorApi.getCounsellorById(id),
     enabled: Boolean(id),
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch dynamic slot availability for a specific date (with occupied / booked status).
+ */
+export function useCounsellorDateAvailability(id: string, date?: string) {
+  return useQuery({
+    queryKey: counsellorKeys.dateAvailability(id, date),
+    queryFn: () => counsellorApi.getDateAvailability(id, date),
+    enabled: Boolean(id && date),
+    staleTime: 30 * 1000,
   });
 }
 
@@ -148,6 +161,7 @@ export function useRequestBooking() {
   return useMutation({
     mutationFn: (dto: CreateBookingRequestDTO) => counsellorApi.requestBooking(dto),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: counsellorKeys.all });
       queryClient.invalidateQueries({ queryKey: counsellorKeys.studentSessions() });
       queryClient.invalidateQueries({ queryKey: counsellorKeys.notifications() });
     },

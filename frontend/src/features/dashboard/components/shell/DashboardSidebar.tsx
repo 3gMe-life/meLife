@@ -8,9 +8,12 @@ import { DashboardIcon } from "../common/DashboardIcon";
 import { getNavigationForRole } from "../../config/navigation.config";
 import type { UserRole } from "../../../auth/types/auth.types";
 
+import { useCurrentUserQuery } from "../../../auth/hooks/useCurrentUserQuery";
+
 interface DashboardSidebarProps {
   role?: UserRole;
   educationStage?: string | null;
+  dashboardFeatures?: string[];
 }
 
 const STORAGE_KEY = "melife_sidebar_pinned";
@@ -18,9 +21,12 @@ const STORAGE_KEY = "melife_sidebar_pinned";
 export function DashboardSidebar({
   role = "PARTICIPANT",
   educationStage,
+  dashboardFeatures,
 }: DashboardSidebarProps) {
   const pathname = usePathname();
-  const navigation = getNavigationForRole(role);
+  const { data: authData } = useCurrentUserQuery();
+  const effectiveFeatures = dashboardFeatures || authData?.data?.dashboardFeatures;
+  const navigation = getNavigationForRole(role, effectiveFeatures);
   const [isPinned, setIsPinned] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -159,7 +165,10 @@ export function DashboardSidebar({
                       (pathname.startsWith("/participant/counsellors") ||
                         pathname.startsWith("/participant/counsellor"))) ||
                     (item.id === "students" &&
-                      pathname.startsWith("/counsellor/students"));
+                      pathname.startsWith("/counsellor/students")) ||
+                    (item.id === "cohorts" &&
+                      (pathname.startsWith("/institution/classes") ||
+                        pathname.startsWith("/institution/cohorts")));
 
                 return (
                   <div

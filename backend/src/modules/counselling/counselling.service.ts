@@ -1,5 +1,7 @@
 import { AppError } from "../../common/errors/app-error";
 import { logger } from "../../common/utils/logger";
+import { emailService } from "../email";
+import { userRepository } from "../users/user.repository";
 import { counsellingRepository } from "./counselling.repository";
 import { assessmentContentRepository } from "../assessments/assessment-content.repository";
 import { careerRecommendationService } from "../careers/career-recommendation.service";
@@ -31,6 +33,8 @@ export class CounsellingService {
       search?: string;
       specialisation?: string;
       language?: string;
+      experience?: string | number;
+      day?: string;
     }
   ): Promise<{ counsellors: CounsellorCardDTO[]; isAssessed: boolean }> {
     const counsellors = await counsellingRepository.findAllCounsellors(filters);
@@ -177,7 +181,7 @@ export class CounsellingService {
   }
 
   /**
-   * Books a counselling appointment with consent opt-in.
+   * Books a counselling appointment with consent opt-in, slot collision protection, and past-date validation.
    */
   async bookSession(
     studentId: string,
@@ -188,8 +192,31 @@ export class CounsellingService {
       throw AppError.notFound("Specified counsellor not found", "COUNSELLOR_NOT_FOUND");
     }
 
+    if (counsellor.approvalStatus !== "APPROVED") {
+      throw AppError.badRequest("Selected counsellor is not currently active for appointments", "COUNSELLOR_NOT_ACTIVE");
+    }
+
     if (!dto.sessionDate || !dto.sessionTime) {
       throw AppError.badRequest("Session date and time are required", "INVALID_SESSION_TIME");
+    }
+
+    // Past date check
+    const todayStr = new Date().toISOString().split("T")[0];
+    if (dto.sessionDate < todayStr) {
+      throw AppError.badRequest("Cannot book sessions in the past. Please select a future date.", "PAST_DATE_NOT_ALLOWED");
+    }
+
+    // Check slot collision / double booking
+    const isSlotTaken = await counsellingRepository.checkSlotCollision(
+      counsellor.id,
+      dto.sessionDate,
+      dto.sessionTime
+    );
+    if (isSlotTaken) {
+      throw AppError.conflict(
+        `The time slot (${dto.sessionTime}) on ${dto.sessionDate} is already booked or awaiting confirmation. Please select another time slot.`,
+        "SLOT_COLLISION"
+      );
     }
 
     let durationMinutes = 45;
@@ -217,7 +244,7 @@ export class CounsellingService {
       );
     }
 
-    // 3. Dispatch Notifications
+    // 3. Dispatch In-App Notifications
     try {
       // Notify counsellor
       await counsellingRepository.createNotification({
@@ -248,6 +275,52 @@ export class CounsellingService {
     } catch (notifErr) {
       logger.warn({ err: notifErr }, "Non-fatal error creating session booking notifications");
     }
+
+    // 4. Dispatch Non-Blocking Transactional Emails
+    (async () => {
+      try {
+        const studentUser = await userRepository.findById(studentId);
+        const studentFullName = studentUser
+          ? `${studentUser.first_name} ${studentUser.last_name}`.trim()
+          : "Student";
+
+        if (studentUser?.email) {
+          // Send to Student
+          emailService
+            .sendSessionBookedEmail({
+              to: studentUser.email,
+              recipientName: studentFullName,
+              counsellorName: counsellor.name,
+              studentName: studentFullName,
+              sessionDate: dto.sessionDate,
+              timeSlot: dto.sessionTime,
+              role: "STUDENT",
+            })
+            .catch((err) => {
+              logger.warn({ err, studentId }, "Non-fatal: Failed to send session booked email to student");
+            });
+        }
+
+        if (counsellor.email) {
+          // Send to Counsellor
+          emailService
+            .sendSessionBookedEmail({
+              to: counsellor.email,
+              recipientName: counsellor.name,
+              counsellorName: counsellor.name,
+              studentName: studentFullName,
+              sessionDate: dto.sessionDate,
+              timeSlot: dto.sessionTime,
+              role: "COUNSELLOR",
+            })
+            .catch((err) => {
+              logger.warn({ err, counsellorId: counsellor.id }, "Non-fatal: Failed to send session booked email to counsellor");
+            });
+        }
+      } catch (emailErr) {
+        logger.warn({ emailErr, studentId, counsellorId: counsellor.id }, "Non-fatal error dispatching session booked emails");
+      }
+    })();
 
     return {
       ...session,
@@ -379,6 +452,35 @@ export class CounsellingService {
       logger.warn({ err: notifErr }, "Non-fatal error sending session update notification");
     }
 
+    // Non-blocking transactional email notification for cancellation or rejection
+    if (status === "REJECTED" || (status as string) === "CANCELLED") {
+      (async () => {
+        try {
+          const studentUser = await userRepository.findById(existingSession.studentId);
+          if (studentUser?.email) {
+            const studentFullName = `${studentUser.first_name} ${studentUser.last_name}`.trim();
+            emailService
+              .sendSessionCancelledEmail({
+                to: studentUser.email,
+                recipientName: studentFullName,
+                counsellorName: counsellor.name,
+                studentName: studentFullName,
+                sessionDate: `${existingSession.sessionDate} at ${existingSession.sessionTime}`,
+                reason:
+                  status === "REJECTED"
+                    ? "The counsellor had an unavoidable scheduling conflict. Please select another slot."
+                    : "Session was cancelled.",
+              })
+              .catch((err) => {
+                logger.warn({ err, studentId: existingSession.studentId }, "Non-fatal: Failed to send session cancellation email");
+              });
+          }
+        } catch (emailErr) {
+          logger.warn({ emailErr, sessionId }, "Non-fatal error dispatching cancellation email");
+        }
+      })();
+    }
+
     return {
       ...existingSession,
       status: updated.status,
@@ -438,6 +540,52 @@ export class CounsellingService {
   async getCounsellorAvailability(counsellorUserIdOrId: string) {
     const counsellor = await this.resolveCounsellor(counsellorUserIdOrId);
     return counsellingRepository.getCounsellorAvailability(counsellor.id);
+  }
+
+  /**
+   * Retrieves date-specific slot availability including booked / occupied status.
+   */
+  async getDateSlotAvailability(
+    counsellorIdOrUserId: string,
+    dateStr?: string
+  ): Promise<{
+    counsellorId: string;
+    date: string;
+    dayOfWeek: string;
+    isPastDate: boolean;
+    weeklySchedule: any[];
+    bookedSlots: string[];
+    isAvailableDay: boolean;
+  }> {
+    const counsellor = await this.resolveCounsellor(counsellorIdOrUserId);
+
+    const todayStr = new Date().toISOString().split("T")[0];
+    const targetDate = dateStr || todayStr;
+    const isPastDate = targetDate < todayStr;
+
+    // Determine day of week for targetDate
+    const parsedDate = new Date(`${targetDate}T00:00:00Z`);
+    const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const dayOfWeek = dayNames[parsedDate.getUTCDay()];
+
+    const weeklySchedule = counsellor.availability || (await counsellingRepository.getCounsellorAvailability(counsellor.id));
+    const daySchedule = weeklySchedule.find(
+      (s: any) => s.day?.toLowerCase() === dayOfWeek.toLowerCase() && s.isActive !== false
+    );
+
+    const bookedSlots = isPastDate
+      ? []
+      : await counsellingRepository.getBookedSlotsForDate(counsellor.id, targetDate);
+
+    return {
+      counsellorId: counsellor.id,
+      date: targetDate,
+      dayOfWeek,
+      isPastDate,
+      weeklySchedule,
+      bookedSlots,
+      isAvailableDay: Boolean(daySchedule),
+    };
   }
 
   /**

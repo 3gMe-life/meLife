@@ -172,6 +172,32 @@ export class AuthRepository {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
 
+      -- 14. Parent Invitations (Temporary student-generated invite token)
+      CREATE TABLE IF NOT EXISTS parent_invitations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        student_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        invite_code VARCHAR(50) UNIQUE NOT NULL,
+        status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+        expires_at TIMESTAMPTZ NOT NULL,
+        used_at TIMESTAMPTZ NULL,
+        used_by_parent_id UUID NULL REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      -- 15. Student-Parent Links (Permanent verified relationship)
+      CREATE TABLE IF NOT EXISTS student_parent_links (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        parent_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        student_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        relationship_type VARCHAR(50) NOT NULL DEFAULT 'PARENT',
+        link_status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+        link_method VARCHAR(50) NOT NULL DEFAULT 'INVITATION_CODE',
+        verified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(parent_user_id, student_user_id)
+      );
+
       -- Indexes
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(LOWER(email));
       CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
@@ -183,6 +209,12 @@ export class AuthRepository {
       CREATE INDEX IF NOT EXISTS idx_dashboard_features_key ON dashboard_features(key);
       CREATE INDEX IF NOT EXISTS idx_role_dashboard_features_lookup ON role_dashboard_features(role_id, feature_id);
       CREATE INDEX IF NOT EXISTS idx_role_feature_audit_logs_role ON role_feature_audit_logs(role_id);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_parent_invitations_code ON parent_invitations(invite_code);
+      CREATE INDEX IF NOT EXISTS idx_parent_invitations_student ON parent_invitations(student_id);
+      CREATE INDEX IF NOT EXISTS idx_parent_invitations_status ON parent_invitations(status);
+      CREATE INDEX IF NOT EXISTS idx_student_parent_links_parent ON student_parent_links(parent_user_id);
+      CREATE INDEX IF NOT EXISTS idx_student_parent_links_student ON student_parent_links(student_user_id);
+      CREATE INDEX IF NOT EXISTS idx_student_parent_links_status ON student_parent_links(link_status);
     `;
 
     await db.query(query);
@@ -210,7 +242,15 @@ export class AuthRepository {
       "student.read",
       "student.manage",
       "institution.manage",
+      "counsellor.view",
       "admin.all",
+      "class.read",
+      "class.manage",
+      "assessment.assign",
+      "session.manage",
+      "parent.read",
+      "staff.manage",
+      "voucher.manage",
     ];
     for (const p of standardPerms) {
       await db.query(
@@ -400,7 +440,20 @@ export class AuthRepository {
         },
         {
           role: "INSTITUTION_ADMIN",
-          permissions: ["student.read", "student.manage", "institution.manage"],
+          permissions: [
+            "student.read",
+            "student.manage",
+            "institution.manage",
+            "class.read",
+            "class.manage",
+            "assessment.assign",
+            "session.manage",
+            "parent.read",
+            "staff.manage",
+            "voucher.manage",
+            "counsellor.view",
+            "result.read_own",
+          ],
         },
         {
           role: "PLATFORM_ADMIN",
@@ -548,6 +601,76 @@ export class AuthRepository {
           route: "/counsellor/settings",
           requiredPermission: null,
           sortOrder: 11,
+        },
+        {
+          key: "dashboard.children",
+          name: "Children Profiles",
+          description: "View connected children profiles, milestones, and reports",
+          category: "CORE",
+          icon: "Users",
+          route: "/parent/children",
+          requiredPermission: "student.read",
+          sortOrder: 12,
+        },
+        {
+          key: "dashboard.counsellors",
+          name: "Counsellor Connect",
+          description: "Connect with certified career counsellors for 1-on-1 guidance",
+          category: "COMMUNICATION",
+          icon: "Users",
+          route: "/participant/counsellors",
+          requiredPermission: null,
+          sortOrder: 13,
+        },
+        {
+          key: "dashboard.cohorts",
+          name: "Classes & Cohorts",
+          description: "Manage classes, student cohorts, and academic years",
+          category: "CORE",
+          icon: "School",
+          route: "/institution/classes",
+          requiredPermission: "class.read",
+          sortOrder: 14,
+        },
+        {
+          key: "dashboard.assessments",
+          name: "Assessments",
+          description: "Allocate psychometric assessments to cohorts",
+          category: "ASSESSMENTS & REPORTS",
+          icon: "ClipboardCheck",
+          route: "/institution/assessments",
+          requiredPermission: "assessment.assign",
+          sortOrder: 15,
+        },
+        {
+          key: "dashboard.parents",
+          name: "Parent Connect",
+          description: "Monitor parent account linkings and consent",
+          category: "COMMUNICATION",
+          icon: "HeartHandshake",
+          route: "/institution/parents",
+          requiredPermission: "parent.read",
+          sortOrder: 16,
+        },
+        {
+          key: "dashboard.staff",
+          name: "Staff & Teachers",
+          description: "Manage teachers and cohort coordinators",
+          category: "MANAGEMENT",
+          icon: "ShieldCheck",
+          route: "/institution/staff",
+          requiredPermission: "staff.manage",
+          sortOrder: 17,
+        },
+        {
+          key: "dashboard.vouchers",
+          name: "Assessment Vouchers",
+          description: "Manage voucher credits and allocations",
+          category: "BILLING",
+          icon: "Ticket",
+          route: "/institution/vouchers",
+          requiredPermission: "voucher.manage",
+          sortOrder: 18,
         },
       ];
 

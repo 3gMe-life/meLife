@@ -30,6 +30,23 @@ const LANGUAGES = [
   { value: "Kannada", label: "Kannada" },
 ];
 
+const EXPERIENCES = [
+  { value: "ALL", label: "All Experience" },
+  { value: "1", label: "1+ Years Exp" },
+  { value: "5", label: "5+ Years Exp" },
+  { value: "10", label: "10+ Years Exp" },
+];
+
+const DAYS = [
+  { value: "ALL", label: "Any Day" },
+  { value: "Monday", label: "Monday" },
+  { value: "Tuesday", label: "Tuesday" },
+  { value: "Wednesday", label: "Wednesday" },
+  { value: "Thursday", label: "Thursday" },
+  { value: "Friday", label: "Friday" },
+  { value: "Saturday", label: "Saturday" },
+];
+
 export const CounsellorFilterBar: React.FC<CounsellorFilterBarProps> = ({
   filters,
   onChange,
@@ -52,7 +69,7 @@ export const CounsellorFilterBar: React.FC<CounsellorFilterBarProps> = ({
       {/* Dropdown Filters */}
       <div className="flex flex-wrap items-center gap-2.5">
         {/* Specialisation Select */}
-        <div className="relative min-w-[170px]">
+        <div className="relative min-w-[160px]">
           <select
             value={filters.specialisation || "ALL"}
             onChange={(e) => onChange({ ...filters, specialisation: e.target.value })}
@@ -67,8 +84,24 @@ export const CounsellorFilterBar: React.FC<CounsellorFilterBarProps> = ({
           <Filter className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
         </div>
 
+        {/* Experience Select */}
+        <div className="relative min-w-[130px]">
+          <select
+            value={filters.experience || "ALL"}
+            onChange={(e) => onChange({ ...filters, experience: e.target.value })}
+            className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50/70 py-2 pl-3 pr-8 text-xs font-medium text-slate-700 shadow-xs focus:border-indigo-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-600/20 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-200"
+          >
+            {EXPERIENCES.map((exp) => (
+              <option key={exp.value} value={exp.value}>
+                {exp.label}
+              </option>
+            ))}
+          </select>
+          <Filter className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+        </div>
+
         {/* Language Select */}
-        <div className="relative min-w-[140px]">
+        <div className="relative min-w-[130px]">
           <select
             value={filters.language || "ALL"}
             onChange={(e) => onChange({ ...filters, language: e.target.value })}
@@ -81,6 +114,22 @@ export const CounsellorFilterBar: React.FC<CounsellorFilterBarProps> = ({
             ))}
           </select>
           <Languages className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+        </div>
+
+        {/* Availability Day Select */}
+        <div className="relative min-w-[120px]">
+          <select
+            value={filters.day || "ALL"}
+            onChange={(e) => onChange({ ...filters, day: e.target.value })}
+            className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50/70 py-2 pl-3 pr-8 text-xs font-medium text-slate-700 shadow-xs focus:border-indigo-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-600/20 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-200"
+          >
+            {DAYS.map((d) => (
+              <option key={d.value} value={d.value}>
+                {d.label}
+              </option>
+            ))}
+          </select>
+          <Filter className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
         </div>
 
         {/* Reset / Status Indicator */}

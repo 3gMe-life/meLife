@@ -54,6 +54,16 @@ export interface CounsellorDetailDTO extends CounsellorCardDTO {
   reviews: CounsellorReview[];
 }
 
+export interface CounsellorDateAvailabilityDTO {
+  counsellorId: string;
+  date: string;
+  dayOfWeek: string;
+  isPastDate: boolean;
+  weeklySchedule: CounsellorAvailability[];
+  bookedSlots: string[];
+  isAvailableDay: boolean;
+}
+
 export interface CreateBookingRequestDTO {
   counsellorId: string;
   sessionType: SessionType;
@@ -192,6 +202,8 @@ export interface CounsellorFilterParams {
   search?: string;
   specialisation?: string;
   language?: string;
+  experience?: string | number;
+  day?: string;
 }
 
 export interface CounsellorOverviewStatsDTO {

@@ -34,6 +34,11 @@ import {
   AI_JOB_RISK_FINDER_QUESTIONS,
 } from "./content/ai-job-risk-finder-catalog.data";
 import {
+  ENTREPRENEUR_DEVELOPMENT_SECTIONS,
+  ENTREPRENEUR_DIMENSIONS,
+  ENTREPRENEUR_DEVELOPMENT_QUESTIONS,
+} from "./content/entrepreneur-development-catalog.data";
+import {
   SanitizedQuestionDTO,
   AssessmentSectionSummaryDTO,
   AssessmentAttemptQuestionsResponseDTO,
@@ -1180,6 +1185,134 @@ export class AssessmentContentRepository {
   }
 
   /**
+   * Seeds all 60 questions, sections, dimensions, and options for Entrepreneur Development Test idempotently.
+   */
+  async seedEntrepreneurDevelopmentContent(client?: PoolClient): Promise<void> {
+    const db = client || pool;
+
+    // 1. Find ENTREPRENEUR_DEVELOPMENT_TEST assessment ID
+    const assessRes = await db.query(
+      `SELECT id FROM assessments WHERE code = 'ENTREPRENEUR_DEVELOPMENT_TEST' LIMIT 1`
+    );
+    if (!assessRes.rows[0]) {
+      logger.warn("ENTREPRENEUR_DEVELOPMENT_TEST assessment catalog entry missing, skipping content seeding");
+      return;
+    }
+    const assessmentId = assessRes.rows[0].id;
+
+    // 2. Upsert Sections
+    const sectionMap: Record<string, string> = {};
+    for (const sec of ENTREPRENEUR_DEVELOPMENT_SECTIONS) {
+      const sRes = await db.query(
+        `INSERT INTO assessment_sections (assessment_id, code, name, description, display_order, updated_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())
+         ON CONFLICT (assessment_id, code) DO UPDATE SET
+           name = EXCLUDED.name,
+           description = EXCLUDED.description,
+           display_order = EXCLUDED.display_order,
+           updated_at = NOW()
+         RETURNING id`,
+        [assessmentId, sec.code, sec.name, sec.description, sec.displayOrder]
+      );
+      sectionMap[sec.code] = sRes.rows[0].id;
+    }
+
+    // 3. Upsert Dimensions
+    const dimensionMap: Record<string, string> = {};
+    for (const dim of ENTREPRENEUR_DIMENSIONS) {
+      const sectionId = sectionMap[dim.sectionCode];
+      if (!sectionId) continue;
+
+      const dRes = await db.query(
+        `INSERT INTO assessment_dimensions (section_id, code, name, description, display_order, updated_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())
+         ON CONFLICT (section_id, code) DO UPDATE SET
+           name = EXCLUDED.name,
+           description = EXCLUDED.description,
+           display_order = EXCLUDED.display_order,
+           updated_at = NOW()
+         RETURNING id`,
+        [sectionId, dim.code, dim.name, dim.description, dim.displayOrder]
+      );
+      dimensionMap[dim.code] = dRes.rows[0].id;
+    }
+
+    // 4. Batch Upsert Questions
+    const qPayload = ENTREPRENEUR_DEVELOPMENT_QUESTIONS.map((q) => ({
+      section_id: sectionMap[q.sectionCode],
+      dimension_id: q.dimensionCode ? dimensionMap[q.dimensionCode] || null : null,
+      question_number: q.displayOrder,
+      question_text: q.questionText,
+      question_type: q.questionType,
+      max_points: q.maxPoints || 5.0,
+      is_required: true,
+      display_order: q.displayOrder,
+    }));
+
+    const qRes = await db.query(
+      `INSERT INTO assessment_questions (
+         assessment_id, section_id, dimension_id, question_number, question_text,
+         question_type, max_points, is_required, display_order, updated_at
+       )
+       SELECT $1, t.section_id, t.dimension_id, t.question_number, t.question_text,
+              t.question_type, t.max_points, t.is_required, t.display_order, NOW()
+       FROM json_to_recordset($2) AS t(
+         section_id uuid, dimension_id uuid, question_number integer, question_text text,
+         question_type varchar, max_points numeric, is_required boolean, display_order integer
+       )
+       ON CONFLICT (assessment_id, question_number) DO UPDATE SET
+         section_id = EXCLUDED.section_id,
+         dimension_id = EXCLUDED.dimension_id,
+         question_text = EXCLUDED.question_text,
+         question_type = EXCLUDED.question_type,
+         max_points = EXCLUDED.max_points,
+         display_order = EXCLUDED.display_order,
+         updated_at = NOW()
+       RETURNING id, question_number`,
+      [assessmentId, JSON.stringify(qPayload)]
+    );
+
+    const qIdMap: Record<number, string> = {};
+    for (const row of qRes.rows) {
+      qIdMap[row.question_number] = row.id;
+    }
+
+    // 5. Batch Upsert Options
+    const optPayload: any[] = [];
+    for (const q of ENTREPRENEUR_DEVELOPMENT_QUESTIONS) {
+      const qId = qIdMap[q.displayOrder];
+      if (!qId || !q.options) continue;
+      for (const opt of q.options) {
+        optPayload.push({
+          question_id: qId,
+          option_key: opt.optionKey,
+          option_text: opt.optionText,
+          score_value: opt.scoreValue || 0,
+          display_order: opt.displayOrder,
+        });
+      }
+    }
+
+    if (optPayload.length > 0) {
+      await db.query(
+        `INSERT INTO question_options (question_id, option_key, option_text, score_value, display_order, updated_at)
+         SELECT t.question_id, t.option_key, t.option_text, t.score_value, t.display_order, NOW()
+         FROM json_to_recordset($1) AS t(
+           question_id uuid, option_key varchar, option_text text, score_value numeric, display_order integer
+         )
+         ON CONFLICT (question_id, option_key) DO UPDATE SET
+           option_text = EXCLUDED.option_text,
+           score_value = EXCLUDED.score_value,
+           display_order = EXCLUDED.display_order,
+           updated_at = NOW()`,
+        [JSON.stringify(optPayload)]
+      );
+    }
+
+    logger.info("✨ Entrepreneur Development Test 60-item question bank & options seeded successfully.");
+  }
+
+  /**
    * Finds an existing active attempt for participant and assessment.
    */
   async findActiveAttempt(userId: string, assessmentId: string, client?: PoolClient): Promise<any> {
@@ -1189,6 +1322,27 @@ export class AssessmentContentRepository {
        FROM assessment_attempts
        WHERE participant_id = $1 AND assessment_id = $2 AND status = 'IN_PROGRESS'
        ORDER BY started_at DESC
+       LIMIT 1`,
+      [userId, assessmentId]
+    );
+    return res.rows[0] || null;
+  }
+
+  /**
+   * Finds the latest completed attempt for a participant and assessment.
+   */
+  async findLatestCompletedAttempt(userId: string, assessmentId: string, client?: PoolClient): Promise<any> {
+    const db = client || pool;
+    const res = await db.query(
+      `SELECT a.id, a.participant_id, a.assessment_id, a.version_id, a.status, a.current_question_index,
+              a.total_questions, a.answered_count, a.started_at, a.completed_at,
+              ass.code as assessment_code, ass.name as assessment_name,
+              v.version_code, v.name as version_name, v.duration_minutes
+       FROM assessment_attempts a
+       JOIN assessments ass ON a.assessment_id = ass.id
+       LEFT JOIN assessment_versions v ON a.version_id = v.id
+       WHERE a.participant_id = $1 AND a.assessment_id = $2 AND a.status = 'COMPLETED'
+       ORDER BY a.completed_at DESC NULLS LAST, a.updated_at DESC
        LIMIT 1`,
       [userId, assessmentId]
     );

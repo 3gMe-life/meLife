@@ -91,6 +91,11 @@ const envSchema = z.object({
     .string()
     .default("100")
     .transform((val) => parseInt(val, 10)),
+
+  // Resend Email Configuration
+  RESEND_API_KEY: z.string().optional().default(""),
+  EMAIL_FROM: z.string().default("3G MeLife <onboarding@resend.dev>"),
+  APP_URL: z.string().default("http://localhost:3000"),
 });
 
 const parseEnv = () => {

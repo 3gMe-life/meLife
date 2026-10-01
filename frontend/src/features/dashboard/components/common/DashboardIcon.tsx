@@ -30,6 +30,14 @@ import {
   Flame,
   Award,
   Home,
+  MessageSquare,
+  Inbox,
+  ShieldCheck,
+  User,
+  UserCheck,
+  Mail,
+  ClipboardCheck,
+  HeartHandshake,
 } from "lucide-react";
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -63,6 +71,14 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   ChevronRight,
   Flame,
   Award,
+  MessageSquare,
+  Inbox,
+  ShieldCheck,
+  User,
+  UserCheck,
+  Mail,
+  ClipboardCheck,
+  HeartHandshake,
 };
 
 interface DashboardIconProps {

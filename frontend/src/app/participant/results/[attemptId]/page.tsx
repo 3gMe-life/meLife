@@ -12,6 +12,7 @@ import { CommerceCareerFinderResultView } from "@/features/assessments/component
 import { HumanitiesCareerFinderResultView } from "@/features/assessments/components/results/HumanitiesCareerFinderResultView";
 import { RightCareerFinderResultView } from "@/features/assessments/components/results/RightCareerFinderResultView";
 import { AiJobRiskFinderResultView } from "@/features/assessments/components/results/AiJobRiskFinderResultView";
+import { EntrepreneurDevelopmentResultView } from "@/features/assessments/components/results/EntrepreneurDevelopmentResultView";
 
 export default function AssessmentResultDetailPage() {
   const params = useParams();
@@ -73,6 +74,12 @@ export default function AssessmentResultDetailPage() {
                 Go to Assessments
               </button>
             </div>
+          ) : result.assessmentCode === "ENTREPRENEUR_DEVELOPMENT_TEST" ? (
+            <EntrepreneurDevelopmentResultView
+              result={result}
+              currentLanguage={language}
+              onLanguageChange={setLanguage}
+            />
           ) : result.assessmentCode === "AI_JOB_RISK_FINDER" ? (
             <AiJobRiskFinderResultView
               result={result}

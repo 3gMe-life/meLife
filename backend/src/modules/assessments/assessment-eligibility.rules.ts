@@ -133,6 +133,13 @@ export function evaluateAssessmentEligibility(
       };
     }
 
+    case "ENTREPRENEUR_DEVELOPMENT_TEST": {
+      return {
+        isEligible: true,
+        reason: "Comprehensive entrepreneurial aptitude, innovation mindset, and venture readiness evaluation.",
+      };
+    }
+
     default:
       return {
         isEligible: true,

@@ -1,6 +1,9 @@
 import { assessmentContentRepository } from "../assessments/assessment-content.repository";
 import { AppError } from "../../common/errors/app-error";
 import { logger } from "../../common/utils/logger";
+import { env } from "../../config/env";
+import { emailService } from "../email";
+import { userRepository } from "../users/user.repository";
 import {
   RawResponseItem,
   SkillFinderFullResultDTO,
@@ -28,6 +31,10 @@ import {
 import {
   aiJobRiskFinderScoringService,
 } from "../assessments/scoring/ai-job-risk-finder-scoring.service";
+import {
+  entrepreneurDevelopmentScoringService,
+  type EntrepreneurDevelopmentResultDTO,
+} from "../assessments/scoring/entrepreneur-development-scoring.service";
 import { interestScoringEngine } from "./skill-finder/interest.scoring";
 import { skillBehaviourScoringEngine } from "./skill-finder/skill-behaviour.scoring";
 import { aptitudeScoringEngine } from "./skill-finder/aptitude.scoring";
@@ -165,7 +172,8 @@ export class ScoringService {
       | EngineeringBranchFinderResultDTO
       | CommerceCareerFinderResultDTO
       | HumanitiesCareerFinderResultDTO
-      | RightCareerFinderResultDTO;
+      | RightCareerFinderResultDTO
+      | EntrepreneurDevelopmentResultDTO;
   }> {
     const attempt = await assessmentContentRepository.findAttemptById(attemptId);
     if (!attempt) {
@@ -196,7 +204,18 @@ export class ScoringService {
 
     // Score constructs
     let result: any;
-    if (attempt.assessment_code === "AI_JOB_RISK_FINDER") {
+    if (attempt.assessment_code === "ENTREPRENEUR_DEVELOPMENT_TEST") {
+      result = entrepreneurDevelopmentScoringService.calculateScores({
+        attemptId,
+        participantId: userId,
+        versionCode: attempt.version_code,
+        versionName: attempt.version_name,
+        responses: rawResponses,
+        completionTimeSeconds: attempt.started_at
+          ? Math.round((Date.now() - new Date(attempt.started_at).getTime()) / 1000)
+          : undefined,
+      });
+    } else if (attempt.assessment_code === "AI_JOB_RISK_FINDER") {
       result = aiJobRiskFinderScoringService.calculateScores({
         attemptId,
         participantId: userId,
@@ -288,6 +307,36 @@ export class ScoringService {
       },
       "Psychometric scoring completed and result snapshot persisted."
     );
+
+    // Non-blocking transactional email notification for assessment completion
+    (async () => {
+      try {
+        const user = await userRepository.findById(userId);
+        if (user?.email) {
+          const assessmentTitle =
+            attempt.assessment_title ||
+            attempt.assessment_code.replace(/_/g, " ").replace(/\b\w/g, (l: string) => l.toUpperCase());
+
+          emailService
+            .sendAssessmentCompletedEmail({
+              to: user.email,
+              studentName: `${user.first_name} ${user.last_name}`.trim(),
+              assessmentTitle,
+              reportUrl: `${env.APP_URL || env.FRONTEND_URL}/dashboard/assessments/results/${attemptId}`,
+              completedAt: new Date().toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              }),
+            })
+            .catch((err) => {
+              logger.warn({ err, userId, attemptId }, "Non-fatal: Failed to send assessment completed email");
+            });
+        }
+      } catch (emailErr) {
+        logger.warn({ emailErr, userId, attemptId }, "Non-fatal error dispatching assessment completion email");
+      }
+    })();
 
     return {
       success: true,

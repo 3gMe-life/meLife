@@ -1,6 +1,7 @@
 import React from "react";
 import {
   LayoutDashboard,
+  School,
   UserCheck,
   Users,
   GraduationCap,
@@ -49,6 +50,15 @@ export const ADMIN_NAVIGATION_ITEMS: AdminNavItem[] = [
     icon: LayoutDashboard,
     requiredPermission: "admin.all",
     requiredAnyPermissions: ["dashboard.view", "admin.all"],
+  },
+  {
+    id: "institutions",
+    featureKey: "admin.institutions",
+    label: "Institutions & Schools",
+    href: "/admin/institutions",
+    icon: School,
+    requiredPermission: "admin.all",
+    requiredAnyPermissions: ["institution.manage", "institution.read", "admin.all"],
   },
   {
     id: "counsellors",

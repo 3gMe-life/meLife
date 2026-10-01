@@ -21,10 +21,15 @@ import { rightCareerFinderQuestionSelectionService } from "./modules/assessments
 import { rightCareerFinderTranslationsService } from "./modules/assessments/services/right-career-finder-translations.service";
 import { aiJobRiskFinderQuestionSelectionService } from "./modules/assessments/services/ai-job-risk-finder-question-selection.service";
 import { aiJobRiskFinderTranslationsService } from "./modules/assessments/services/ai-job-risk-finder-translations.service";
+import { entrepreneurDevelopmentQuestionSelectionService } from "./modules/assessments/services/entrepreneur-development-question-selection.service";
+import { entrepreneurDevelopmentTranslationsService } from "./modules/assessments/services/entrepreneur-development-translations.service";
 import { reportRepository } from "./modules/reports/report.repository";
 import { careerRepository } from "./modules/careers/career.repository";
 import { careerReportRepository } from "./modules/careers/reports/career-report.repository";
 import { counsellingRepository } from "./modules/counselling/counselling.repository";
+import { parentRepository } from "./modules/parent/parent.repository";
+import { institutionRepository } from "./modules/institution/institution.repository";
+import { adminRepository } from "./modules/admin/admin.repository";
 import http from "http";
 
 const bootstrap = async () => {
@@ -39,6 +44,9 @@ const bootstrap = async () => {
 
     // 3. Initialize participant schema & migrations
     await participantRepository.initSchema();
+
+    // 3b. Initialize Parent Connect schema (parent_invitations & student_parent_links)
+    await parentRepository.initSchema();
 
     // 4. Initialize assessment catalog schema & seed official catalog
     await assessmentRepository.initSchema();
@@ -80,6 +88,11 @@ const bootstrap = async () => {
     await aiJobRiskFinderQuestionSelectionService.seedAiJobRiskFinderVersions();
     await aiJobRiskFinderTranslationsService.seedAiJobRiskFinderTranslations();
 
+    // 5h. Entrepreneur Development Test Question Bank & Versions & Translations
+    await assessmentContentRepository.seedEntrepreneurDevelopmentContent();
+    await entrepreneurDevelopmentQuestionSelectionService.seedEntrepreneurDevelopmentVersions();
+    await entrepreneurDevelopmentTranslationsService.seedEntrepreneurDevelopmentTranslations();
+
     // 6. Initialize psychometric reports schema
     await reportRepository.initSchema();
 
@@ -94,7 +107,12 @@ const bootstrap = async () => {
     await counsellingRepository.initSchema();
     await counsellingRepository.seedCounsellors();
 
-    // 9. Initialize Express application
+    // 10. Initialize institution schema & seed demo institution
+    await institutionRepository.initSchema();
+    await institutionRepository.seedInstitution();
+    await adminRepository.initInstitutionApplicationsSchema();
+
+    // 11. Initialize Express application
     const app = createApp();
     const server = http.createServer(app);
 

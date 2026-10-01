@@ -1,6 +1,7 @@
 import { pool } from "../../config/database";
 import { AppError } from "../../common/errors/app-error";
 import { logger } from "../../common/utils/logger";
+import { hashPassword } from "../../common/utils/crypto";
 import {
   CounsellorApplicationItemDTO,
   ApproveApplicationRequestDTO,
@@ -35,6 +36,14 @@ import {
   BulkDeleteUsersResultDTO,
   BulkDeleteUserItemResult,
   BulkUserStatusResultDTO,
+  InstitutionApplicationItemDTO,
+  ApproveInstitutionApplicationRequestDTO,
+  RejectInstitutionApplicationRequestDTO,
+  InstitutionApplicationDecisionResultDTO,
+  AdminInstitutionMetricsDTO,
+  AdminInstitutionListItemDTO,
+  AdminInstitutionDetailDTO,
+  AdminInstitutionFilterParams,
 } from "./admin.types";
 
 export class AdminRepository {
@@ -2377,6 +2386,721 @@ export class AdminRepository {
       throw err;
     } finally {
       client.release();
+    }
+  }
+
+  // ==========================================
+  // INSTITUTION / SCHOOL MANAGEMENT REPOSITORY
+  // ==========================================
+
+  /**
+   * Initializes / aligns schema for institution applications with full review columns and seeds demo applications.
+   */
+  async initInstitutionApplicationsSchema(): Promise<void> {
+    try {
+      await pool.query(`
+        ALTER TABLE institution_applications 
+          ADD COLUMN IF NOT EXISTS registration_number VARCHAR(100) NULL,
+          ADD COLUMN IF NOT EXISTS affiliation_board VARCHAR(100) NULL,
+          ADD COLUMN IF NOT EXISTS established_year INT NULL,
+          ADD COLUMN IF NOT EXISTS website VARCHAR(255) NULL,
+          ADD COLUMN IF NOT EXISTS address VARCHAR(255) NULL,
+          ADD COLUMN IF NOT EXISTS district VARCHAR(100) NULL,
+          ADD COLUMN IF NOT EXISTS state VARCHAR(100) NULL,
+          ADD COLUMN IF NOT EXISTS country VARCHAR(100) NOT NULL DEFAULT 'India',
+          ADD COLUMN IF NOT EXISTS student_capacity INT NOT NULL DEFAULT 500,
+          ADD COLUMN IF NOT EXISTS principal_name VARCHAR(255) NULL,
+          ADD COLUMN IF NOT EXISTS principal_email VARCHAR(255) NULL,
+          ADD COLUMN IF NOT EXISTS documents JSONB NOT NULL DEFAULT '[]'::jsonb,
+          ADD COLUMN IF NOT EXISTS reviewed_by UUID NULL REFERENCES users(id) ON DELETE SET NULL,
+          ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ NULL,
+          ADD COLUMN IF NOT EXISTS review_notes TEXT NULL,
+          ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+      `);
+
+      // Seed sample applications if table is sparse
+      const countRes = await pool.query(`SELECT COUNT(*)::int as count FROM institution_applications`);
+      if ((countRes.rows[0]?.count || 0) < 2) {
+        await pool.query(`
+          INSERT INTO institution_applications (
+            institution_name, institution_type, official_email, contact_name, phone_number,
+            registration_number, affiliation_board, established_year, website, address,
+            district, state, country, student_capacity, principal_name, principal_email,
+            status, created_at
+          )
+          VALUES 
+          (
+            'St. Xavier''s International School', 'K-12 Higher Secondary School', 'admissions@stxaviers-intl.edu.in',
+            'Fr. Augustine Pereira', '+91 22 2654 8900', 'REG-MAH-2018-9921', 'CBSE / Cambridge',
+            2004, 'https://stxaviers-intl.edu.in', 'Plot 42, Bandra-Kurla Complex', 'Mumbai', 'Maharashtra', 'India',
+            1500, 'Fr. Augustine Pereira', 'principal@stxaviers-intl.edu.in', 'PENDING', NOW() - INTERVAL '2 days'
+          ),
+          (
+            'Greenwood World Academy', 'K-12 Day & Boarding School', 'partners@greenwoodacademy.ac.in',
+            'Dr. Radhika Krishnan', '+91 80 4122 3344', 'REG-KA-2015-8812', 'ICSE / IB World',
+            2012, 'https://greenwoodacademy.ac.in', 'Sarjapur Main Road, Varthur Hobli', 'Bangalore Urban', 'Karnataka', 'India',
+            1800, 'Dr. Radhika Krishnan', 'principal@greenwoodacademy.ac.in', 'PENDING', NOW() - INTERVAL '5 days'
+          ),
+          (
+            'Heritage Cambridge Academy', 'Senior Secondary Academy', 'info@heritagecambridge.org',
+            'Prof. Samarjit Sengupta', '+91 33 2419 7788', 'REG-WB-2019-3301', 'Cambridge Assessment International Education',
+            2016, 'https://heritagecambridge.org', 'Sector V, Salt Lake City', 'Kolkata', 'West Bengal', 'India',
+            800, 'Prof. Samarjit Sengupta', 'principal@heritagecambridge.org', 'UNDER_REVIEW', NOW() - INTERVAL '7 days'
+          )
+          ON CONFLICT DO NOTHING;
+        `);
+      }
+    } catch (err) {
+      logger.error({ err }, "Error aligning institution_applications schema");
+    }
+  }
+
+  /**
+   * Retrieves summary statistics for institution applications and directory.
+   */
+  async getInstitutionMetrics(): Promise<AdminInstitutionMetricsDTO> {
+    const query = `
+      SELECT
+        (SELECT COUNT(*)::int FROM institutions WHERE is_active = true) as approved_institutions,
+        (SELECT COUNT(*)::int FROM institutions) as total_institutions,
+        (SELECT COUNT(*)::int FROM institution_applications WHERE status IN ('PENDING', 'UNDER_REVIEW')) as pending_applications,
+        (SELECT COUNT(*)::int FROM institution_applications WHERE status = 'REJECTED') as rejected_applications
+    `;
+    const res = await pool.query(query);
+    const row = res.rows[0] || {};
+    return {
+      totalInstitutions: row.total_institutions || 0,
+      approvedInstitutions: row.approved_institutions || 0,
+      pendingApplications: row.pending_applications || 0,
+      rejectedApplications: row.rejected_applications || 0,
+    };
+  }
+
+  /**
+   * Lists all institution applications with optional status and search filtering.
+   */
+  async findInstitutionApplications(
+    status?: string,
+    search?: string
+  ): Promise<InstitutionApplicationItemDTO[]> {
+    let query = `
+      SELECT ia.id, ia.institution_name, ia.institution_type, ia.official_email, ia.contact_name, ia.phone_number,
+             ia.registration_number, ia.affiliation_board, ia.established_year, ia.website, ia.address,
+             ia.district, ia.state, ia.country, ia.student_capacity, ia.principal_name, ia.principal_email,
+             ia.documents, ia.status, ia.reviewed_by, ia.reviewed_at, ia.review_notes, ia.created_at, ia.updated_at,
+             u.first_name as reviewer_first_name, u.last_name as reviewer_last_name
+      FROM institution_applications ia
+      LEFT JOIN users u ON ia.reviewed_by = u.id
+    `;
+
+    const whereClauses: string[] = [];
+    const values: unknown[] = [];
+
+    if (status && status.toUpperCase() !== "ALL") {
+      values.push(status.toUpperCase());
+      whereClauses.push(`ia.status = $${values.length}`);
+    }
+
+    if (search && search.trim()) {
+      values.push(`%${search.trim()}%`);
+      whereClauses.push(
+        `(ia.institution_name ILIKE $${values.length} OR ia.official_email ILIKE $${values.length} OR ia.contact_name ILIKE $${values.length} OR ia.district ILIKE $${values.length} OR ia.state ILIKE $${values.length})`
+      );
+    }
+
+    if (whereClauses.length > 0) {
+      query += ` WHERE ${whereClauses.join(" AND ")}`;
+    }
+
+    query += ` ORDER BY ia.created_at DESC`;
+
+    const res = await pool.query(query, values);
+    return res.rows.map((r) => ({
+      id: r.id,
+      institutionName: r.institution_name,
+      institutionType: r.institution_type,
+      officialEmail: r.official_email,
+      contactName: r.contact_name,
+      phoneNumber: r.phone_number,
+      registrationNumber: r.registration_number,
+      affiliationBoard: r.affiliation_board,
+      establishedYear: r.established_year,
+      website: r.website,
+      address: r.address,
+      district: r.district,
+      state: r.state,
+      country: r.country || "India",
+      studentCapacity: r.student_capacity || 500,
+      principalName: r.principal_name,
+      principalEmail: r.principal_email,
+      documents: r.documents || [],
+      status: r.status,
+      reviewedBy: r.reviewed_by,
+      reviewerName: r.reviewer_first_name ? `${r.reviewer_first_name} ${r.reviewer_last_name || ""}`.trim() : null,
+      reviewedAt: r.reviewed_at ? r.reviewed_at.toISOString() : null,
+      reviewNotes: r.review_notes,
+      createdAt: r.created_at ? r.created_at.toISOString() : new Date().toISOString(),
+      updatedAt: r.updated_at ? r.updated_at.toISOString() : null,
+    }));
+  }
+
+  /**
+   * Retrieves single institution application detail.
+   */
+  async findInstitutionApplicationById(
+    applicationId: string
+  ): Promise<InstitutionApplicationItemDTO> {
+    if (!applicationId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(applicationId)) {
+      throw AppError.notFound("Institution application not found.", "APPLICATION_NOT_FOUND");
+    }
+
+    const query = `
+      SELECT ia.id, ia.institution_name, ia.institution_type, ia.official_email, ia.contact_name, ia.phone_number,
+             ia.registration_number, ia.affiliation_board, ia.established_year, ia.website, ia.address,
+             ia.district, ia.state, ia.country, ia.student_capacity, ia.principal_name, ia.principal_email,
+             ia.documents, ia.status, ia.reviewed_by, ia.reviewed_at, ia.review_notes, ia.created_at, ia.updated_at,
+             u.first_name as reviewer_first_name, u.last_name as reviewer_last_name
+      FROM institution_applications ia
+      LEFT JOIN users u ON ia.reviewed_by = u.id
+      WHERE ia.id = $1
+      LIMIT 1
+    `;
+
+    const res = await pool.query(query, [applicationId]);
+    if (!res.rows[0]) {
+      throw AppError.notFound("Institution application not found.", "APPLICATION_NOT_FOUND");
+    }
+
+    const r = res.rows[0];
+    return {
+      id: r.id,
+      institutionName: r.institution_name,
+      institutionType: r.institution_type,
+      officialEmail: r.official_email,
+      contactName: r.contact_name,
+      phoneNumber: r.phone_number,
+      registrationNumber: r.registration_number,
+      affiliationBoard: r.affiliation_board,
+      establishedYear: r.established_year,
+      website: r.website,
+      address: r.address,
+      district: r.district,
+      state: r.state,
+      country: r.country || "India",
+      studentCapacity: r.student_capacity || 500,
+      principalName: r.principal_name,
+      principalEmail: r.principal_email,
+      documents: r.documents || [],
+      status: r.status,
+      reviewedBy: r.reviewed_by,
+      reviewerName: r.reviewer_first_name ? `${r.reviewer_first_name} ${r.reviewer_last_name || ""}`.trim() : null,
+      reviewedAt: r.reviewed_at ? r.reviewed_at.toISOString() : null,
+      reviewNotes: r.review_notes,
+      createdAt: r.created_at ? r.created_at.toISOString() : new Date().toISOString(),
+      updatedAt: r.updated_at ? r.updated_at.toISOString() : null,
+    };
+  }
+
+  /**
+   * Atomically approves an institution application, provisions the institution admin user account,
+   * assigns the INSTITUTION_ADMIN role, creates the institutions record, and provisions starter cohorts.
+   */
+  async executeInstitutionApprovalTransaction(
+    adminUserId: string,
+    applicationId: string,
+    options?: ApproveInstitutionApplicationRequestDTO
+  ): Promise<InstitutionApplicationDecisionResultDTO> {
+    if (!applicationId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(applicationId)) {
+      throw AppError.notFound("Institution application not found.", "APPLICATION_NOT_FOUND");
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      // 1. Lock application
+      const lockQuery = `
+        SELECT * FROM institution_applications WHERE id = $1 FOR UPDATE
+      `;
+      const appRes = await client.query(lockQuery, [applicationId]);
+      if (!appRes.rows[0]) {
+        throw AppError.notFound("Institution application not found.", "APPLICATION_NOT_FOUND");
+      }
+
+      const rawApp = appRes.rows[0];
+      if (rawApp.status === "APPROVED") {
+        throw AppError.badRequest("This application has already been approved.", "ALREADY_APPROVED");
+      }
+
+      const adminEmail = (rawApp.official_email || rawApp.principal_email).toLowerCase().trim();
+      const institutionName = rawApp.institution_name;
+      const contactName = rawApp.contact_name || rawApp.principal_name || "Administrator";
+      const nameParts = contactName.split(" ");
+      const firstName = nameParts[0] || "Principal";
+      const lastName = nameParts.slice(1).join(" ") || "Admin";
+      const defaultPasswordHash = await hashPassword(options?.temporaryPassword || "Password123!");
+
+      // 2. Upsert user account for Institution Administrator
+      let instAdminUserId: string;
+      const userRes = await client.query(
+        `SELECT id, email, first_name, last_name, status FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1`,
+        [adminEmail]
+      );
+
+      if (userRes.rows.length > 0) {
+        instAdminUserId = userRes.rows[0].id;
+        await client.query(
+          `UPDATE users SET status = 'ACTIVE', password_hash = COALESCE(password_hash, $1), updated_at = NOW() WHERE id = $2`,
+          [defaultPasswordHash, instAdminUserId]
+        );
+      } else {
+        const newUserRes = await client.query(
+          `INSERT INTO users (email, password_hash, first_name, last_name, status, email_verified_at)
+           VALUES ($1, $2, $3, $4, 'ACTIVE', NOW())
+           RETURNING id`,
+          [adminEmail, defaultPasswordHash, firstName, lastName]
+        );
+        instAdminUserId = newUserRes.rows[0].id;
+      }
+
+      // 3. Assign INSTITUTION_ADMIN role (is_primary = true)
+      await client.query(`DELETE FROM user_roles WHERE user_id = $1`, [instAdminUserId]);
+      await client.query(
+        `INSERT INTO user_roles (user_id, role_id, is_primary)
+         SELECT $1, r.id, true
+         FROM roles r
+         WHERE r.name = 'INSTITUTION_ADMIN'`,
+        [instAdminUserId]
+      );
+
+      // 4. Generate unique institution code
+      let institutionCode = options?.institutionCode?.trim();
+      if (!institutionCode) {
+        const prefix = institutionName
+          .split(" ")
+          .map((w: string) => w[0])
+          .join("")
+          .toUpperCase()
+          .slice(0, 4);
+        institutionCode = `${prefix || "INST"}-${Math.floor(1000 + Math.random() * 9000)}`;
+      }
+
+      const instCapacity = options?.studentCapacity || rawApp.student_capacity || 1000;
+      const instType = options?.type || rawApp.institution_type || "K-12 School";
+      const instAddress = options?.address || rawApp.address || null;
+      const instCity = options?.city || rawApp.district || null;
+      const instState = options?.state || rawApp.state || null;
+      const instCountry = options?.country || rawApp.country || "India";
+
+      // 5. Create or update institution entity
+      const instRes = await client.query(
+        `INSERT INTO institutions (
+           admin_user_id, name, code, type, contact_email, phone,
+           address, city, state, country, student_capacity, is_active
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true)
+         ON CONFLICT (admin_user_id) DO UPDATE
+         SET name = EXCLUDED.name,
+             type = EXCLUDED.type,
+             contact_email = EXCLUDED.contact_email,
+             phone = EXCLUDED.phone,
+             address = EXCLUDED.address,
+             city = EXCLUDED.city,
+             state = EXCLUDED.state,
+             country = EXCLUDED.country,
+             student_capacity = EXCLUDED.student_capacity,
+             is_active = true,
+             updated_at = NOW()
+         RETURNING id, admin_user_id as "adminUserId", name, code, type, contact_email as "contactEmail",
+                   student_capacity as "studentCapacity", is_active as "isActive"`,
+        [
+          instAdminUserId,
+          institutionName,
+          institutionCode,
+          instType,
+          adminEmail,
+          rawApp.phone_number,
+          instAddress,
+          instCity,
+          instState,
+          instCountry,
+          instCapacity,
+        ]
+      );
+      const createdInst = instRes.rows[0];
+
+      // 6. Provision starter cohorts (Grades 9 to 12)
+      const starterCohorts = [
+        { grade: "Grade 9", division: "Section A", name: "Grade 9-A (Foundation)" },
+        { grade: "Grade 10", division: "Section A", name: "Grade 10-A (Stream Selection)" },
+        { grade: "Grade 11", division: "Section Science", name: "Grade 11-Science (STEM)" },
+        { grade: "Grade 12", division: "Section Commerce", name: "Grade 12-Commerce (Business)" },
+      ];
+
+      for (const c of starterCohorts) {
+        await client.query(
+          `INSERT INTO institution_classes (
+             institution_id, academic_year, grade_level, division, name, is_active
+           )
+           VALUES ($1, '2026-2027', $2, $3, $4, true)
+           ON CONFLICT (institution_id, academic_year, grade_level, division) DO NOTHING`,
+          [createdInst.id, c.grade, c.division, c.name]
+        );
+      }
+
+      // 7. Update institution_applications status to APPROVED
+      const updateAppRes = await client.query(
+        `UPDATE institution_applications
+         SET status = 'APPROVED',
+             reviewed_by = $1,
+             reviewed_at = NOW(),
+             review_notes = $2,
+             updated_at = NOW()
+         WHERE id = $3
+         RETURNING id, institution_name, institution_type, official_email, contact_name, phone_number,
+                   status, reviewed_by, reviewed_at, review_notes, created_at, updated_at`,
+        [adminUserId, options?.reviewNotes || "Approved by Super Administrator", applicationId]
+      );
+      const updatedApp = updateAppRes.rows[0];
+
+      await client.query("COMMIT");
+      logger.info({ adminUserId, applicationId, institutionId: createdInst.id }, "Institution application approved successfully");
+
+      return {
+        success: true,
+        message: `Institution "${institutionName}" approved successfully. Institutional portal credentials provisioned for ${adminEmail}.`,
+        application: {
+          id: updatedApp.id,
+          institutionName: updatedApp.institution_name,
+          institutionType: updatedApp.institution_type,
+          officialEmail: updatedApp.official_email,
+          contactName: updatedApp.contact_name,
+          phoneNumber: updatedApp.phone_number,
+          status: updatedApp.status,
+          reviewedBy: updatedApp.reviewed_by,
+          reviewedAt: updatedApp.reviewed_at ? updatedApp.reviewed_at.toISOString() : null,
+          reviewNotes: updatedApp.review_notes,
+          createdAt: updatedApp.created_at ? updatedApp.created_at.toISOString() : new Date().toISOString(),
+          updatedAt: updatedApp.updated_at ? updatedApp.updated_at.toISOString() : null,
+        },
+        institution: {
+          id: createdInst.id,
+          name: createdInst.name,
+          code: createdInst.code,
+          adminUserId: createdInst.adminUserId,
+          type: createdInst.type,
+          contactEmail: createdInst.contactEmail,
+          studentCapacity: createdInst.studentCapacity,
+          isActive: createdInst.isActive,
+        },
+        adminUser: {
+          id: instAdminUserId,
+          email: adminEmail,
+          firstName,
+          lastName,
+          status: "ACTIVE",
+          role: "INSTITUTION_ADMIN",
+        },
+      };
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Rejects an institution application with documented review notes.
+   */
+  async executeInstitutionRejectionTransaction(
+    adminUserId: string,
+    applicationId: string,
+    options?: RejectInstitutionApplicationRequestDTO
+  ): Promise<InstitutionApplicationDecisionResultDTO> {
+    if (!applicationId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(applicationId)) {
+      throw AppError.notFound("Institution application not found.", "APPLICATION_NOT_FOUND");
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const updateRes = await client.query(
+        `UPDATE institution_applications
+         SET status = 'REJECTED',
+             reviewed_by = $1,
+             reviewed_at = NOW(),
+             review_notes = $2,
+             updated_at = NOW()
+         WHERE id = $3
+         RETURNING id, institution_name, institution_type, official_email, contact_name, phone_number,
+                   status, reviewed_by, reviewed_at, review_notes, created_at, updated_at`,
+        [adminUserId, options?.reason || options?.reviewNotes || "Rejected by administrator", applicationId]
+      );
+
+      if (!updateRes.rows[0]) {
+        throw AppError.notFound("Institution application not found.", "APPLICATION_NOT_FOUND");
+      }
+
+      await client.query("COMMIT");
+      const updated = updateRes.rows[0];
+
+      return {
+        success: true,
+        message: `Application for "${updated.institution_name}" has been rejected.`,
+        application: {
+          id: updated.id,
+          institutionName: updated.institution_name,
+          institutionType: updated.institution_type,
+          officialEmail: updated.official_email,
+          contactName: updated.contact_name,
+          phoneNumber: updated.phone_number,
+          status: updated.status,
+          reviewedBy: updated.reviewed_by,
+          reviewedAt: updated.reviewed_at ? updated.reviewed_at.toISOString() : null,
+          reviewNotes: updated.review_notes,
+          createdAt: updated.created_at ? updated.created_at.toISOString() : new Date().toISOString(),
+          updatedAt: updated.updated_at ? updated.updated_at.toISOString() : null,
+        },
+      };
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Retrieves all approved institutions with live aggregated student & cohort counts.
+   */
+  async findInstitutions(
+    filters?: AdminInstitutionFilterParams
+  ): Promise<AdminInstitutionListItemDTO[]> {
+    let query = `
+      SELECT i.id, i.admin_user_id as "adminUserId", i.name, i.code, i.type, i.contact_email as "contactEmail",
+             i.phone, i.city, i.state, i.country, i.student_capacity as "studentCapacity", i.is_active as "isActive",
+             i.created_at as "createdAt", i.updated_at as "updatedAt",
+             (SELECT COUNT(*)::int FROM institution_students ist WHERE ist.institution_id = i.id) as "totalStudents",
+             (SELECT COUNT(*)::int FROM institution_classes ic WHERE ic.institution_id = i.id) as "totalClasses",
+             u.id as user_id, u.first_name, u.last_name, u.email as user_email, u.status as user_status
+      FROM institutions i
+      JOIN users u ON i.admin_user_id = u.id
+    `;
+
+    const whereClauses: string[] = [];
+    const values: unknown[] = [];
+
+    if (filters?.status) {
+      if (filters.status.toUpperCase() === "ACTIVE") {
+        whereClauses.push(`i.is_active = true`);
+      } else if (filters.status.toUpperCase() === "SUSPENDED" || filters.status.toUpperCase() === "INACTIVE") {
+        whereClauses.push(`i.is_active = false`);
+      }
+    }
+
+    if (filters?.search && filters.search.trim()) {
+      values.push(`%${filters.search.trim()}%`);
+      whereClauses.push(
+        `(i.name ILIKE $${values.length} OR i.code ILIKE $${values.length} OR i.contact_email ILIKE $${values.length} OR i.city ILIKE $${values.length})`
+      );
+    }
+
+    if (whereClauses.length > 0) {
+      query += ` WHERE ${whereClauses.join(" AND ")}`;
+    }
+
+    query += ` ORDER BY i.created_at DESC`;
+
+    const res = await pool.query(query, values);
+    return res.rows.map((r) => ({
+      id: r.id,
+      adminUserId: r.adminUserId,
+      name: r.name,
+      code: r.code,
+      type: r.type,
+      contactEmail: r.contactEmail,
+      phone: r.phone,
+      city: r.city,
+      state: r.state,
+      country: r.country || "India",
+      studentCapacity: r.studentCapacity,
+      totalStudents: r.totalStudents || 0,
+      totalClasses: r.totalClasses || 0,
+      isActive: r.isActive,
+      createdAt: r.createdAt ? r.createdAt.toISOString() : new Date().toISOString(),
+      updatedAt: r.updatedAt ? r.updatedAt.toISOString() : new Date().toISOString(),
+      adminUser: {
+        id: r.user_id,
+        name: `${r.first_name || ""} ${r.last_name || ""}`.trim() || "Administrator",
+        email: r.user_email,
+        status: r.user_status,
+      },
+    }));
+  }
+
+  /**
+   * Retrieves complete institution detail, cohorts, recent students, and completion metrics for Super Admin inspection.
+   */
+  async findInstitutionAdminDetail(
+    institutionId: string
+  ): Promise<AdminInstitutionDetailDTO> {
+    if (!institutionId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(institutionId)) {
+      throw AppError.notFound("Institution not found.", "INSTITUTION_NOT_FOUND");
+    }
+
+    const instQuery = `
+      SELECT i.id, i.admin_user_id as "adminUserId", i.name, i.code, i.type, i.contact_email as "contactEmail",
+             i.phone, i.city, i.state, i.country, i.student_capacity as "studentCapacity", i.is_active as "isActive",
+             i.created_at as "createdAt", i.updated_at as "updatedAt",
+             (SELECT COUNT(*)::int FROM institution_students ist WHERE ist.institution_id = i.id) as "totalStudents",
+             (SELECT COUNT(*)::int FROM institution_classes ic WHERE ic.institution_id = i.id) as "totalClasses",
+             u.id as user_id, u.first_name, u.last_name, u.email as user_email, u.status as user_status
+      FROM institutions i
+      JOIN users u ON i.admin_user_id = u.id
+      WHERE i.id = $1
+      LIMIT 1
+    `;
+    const instRes = await pool.query(instQuery, [institutionId]);
+    if (!instRes.rows[0]) {
+      throw AppError.notFound("Institution not found.", "INSTITUTION_NOT_FOUND");
+    }
+
+    const r = instRes.rows[0];
+
+    // Cohorts
+    const classesRes = await pool.query(
+      `SELECT id, name, academic_year as "academicYear", grade_level as "gradeLevel", division,
+              student_count as "studentCount", coordinator_name as "coordinatorName", is_active as "isActive"
+       FROM institution_classes
+       WHERE institution_id = $1
+       ORDER BY grade_level ASC, division ASC`,
+      [institutionId]
+    );
+
+    // Recent Students
+    const studentsRes = await pool.query(
+      `SELECT ist.id, ist.student_id as "studentId", ist.roll_number as "rollNumber", ist.status, ist.joined_at as "joinedAt",
+              u.first_name, u.last_name, u.email
+       FROM institution_students ist
+       JOIN users u ON ist.student_id = u.id
+       WHERE ist.institution_id = $1
+       ORDER BY ist.joined_at DESC
+       LIMIT 10`,
+      [institutionId]
+    );
+
+    // Assessment completion rate
+    const statsRes = await pool.query(
+      `SELECT
+         COUNT(DISTINCT ist.student_id)::int as total_students,
+         COUNT(DISTINCT CASE WHEN ist.status IN ('ENROLLED', 'ACTIVE') THEN ist.student_id END)::int as active_students,
+         (SELECT COUNT(*)::int FROM institution_classes WHERE institution_id = $1) as total_classes,
+         COUNT(DISTINCT ar.participant_id)::int as assessed_students
+       FROM institution_students ist
+       LEFT JOIN assessment_results ar ON ist.student_id = ar.participant_id
+       WHERE ist.institution_id = $1`,
+      [institutionId]
+    );
+
+    const statsRow = statsRes.rows[0] || {};
+    const totalStudents = statsRow.total_students || 0;
+    const activeStudents = statsRow.active_students || 0;
+    const totalClasses = statsRow.total_classes || 0;
+    const assessedStudents = statsRow.assessed_students || 0;
+    const assessmentCompletionRate =
+      totalStudents > 0 ? Math.round((assessedStudents / totalStudents) * 100) : 0;
+
+    return {
+      institution: {
+        id: r.id,
+        adminUserId: r.adminUserId,
+        name: r.name,
+        code: r.code,
+        type: r.type,
+        contactEmail: r.contactEmail,
+        phone: r.phone,
+        city: r.city,
+        state: r.state,
+        country: r.country || "India",
+        studentCapacity: r.studentCapacity,
+        totalStudents: r.totalStudents || 0,
+        totalClasses: r.totalClasses || 0,
+        isActive: r.isActive,
+        createdAt: r.createdAt ? r.createdAt.toISOString() : new Date().toISOString(),
+        updatedAt: r.updatedAt ? r.updatedAt.toISOString() : new Date().toISOString(),
+        adminUser: {
+          id: r.user_id,
+          name: `${r.first_name || ""} ${r.last_name || ""}`.trim() || "Administrator",
+          email: r.user_email,
+          status: r.user_status,
+        },
+      },
+      classes: classesRes.rows,
+      recentStudents: studentsRes.rows.map((s) => ({
+        id: s.id,
+        studentId: s.studentId,
+        name: `${s.first_name || ""} ${s.last_name || ""}`.trim() || "Student",
+        email: s.email,
+        rollNumber: s.rollNumber,
+        status: s.status,
+        joinedAt: s.joinedAt ? s.joinedAt.toISOString() : new Date().toISOString(),
+      })),
+      stats: {
+        totalStudents,
+        activeStudents,
+        totalClasses,
+        assessmentCompletionRate,
+      },
+    };
+  }
+
+  /**
+   * Toggles institution active / suspended status.
+   */
+  async updateInstitutionStatus(
+    adminUserId: string,
+    institutionId: string,
+    isActive: boolean
+  ): Promise<{ id: string; name: string; isActive: boolean }> {
+    const res = await pool.query(
+      `UPDATE institutions
+       SET is_active = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING id, name, is_active as "isActive", admin_user_id as "adminUserId"`,
+      [isActive, institutionId]
+    );
+
+    if (!res.rows[0]) {
+      throw AppError.notFound("Institution not found.", "INSTITUTION_NOT_FOUND");
+    }
+
+    const inst = res.rows[0];
+    // Sync linked admin user status
+    await pool.query(
+      `UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2`,
+      [isActive ? "ACTIVE" : "SUSPENDED", inst.adminUserId]
+    );
+
+    logger.info({ adminUserId, institutionId, isActive }, "Institution status toggled");
+    return {
+      id: inst.id,
+      name: inst.name,
+      isActive: inst.isActive,
+    };
+  }
+
+  /**
+   * Deletes an institution application record.
+   */
+  async deleteInstitutionApplication(applicationId: string): Promise<void> {
+    const res = await pool.query(
+      `DELETE FROM institution_applications WHERE id = $1 RETURNING id`,
+      [applicationId]
+    );
+    if (!res.rows[0]) {
+      throw AppError.notFound("Institution application not found.", "APPLICATION_NOT_FOUND");
     }
   }
 }

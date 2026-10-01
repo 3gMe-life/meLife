@@ -290,6 +290,8 @@ export class CounsellingRepository {
     search?: string;
     specialisation?: string;
     language?: string;
+    experience?: string | number;
+    day?: string;
   }): Promise<CounsellorEntity[]> {
     let query = `
       SELECT c.id, c.user_id, c.qualification, c.experience_years, c.bio,
@@ -311,7 +313,7 @@ export class CounsellingRepository {
       FROM counsellors c
       JOIN users u ON c.user_id = u.id
       LEFT JOIN counsellor_availability a ON c.id = a.counsellor_id AND a.is_active = true
-      WHERE c.approval_status = 'APPROVED'
+      WHERE c.approval_status = 'APPROVED' AND u.status = 'ACTIVE'
     `;
 
     const values: any[] = [];
@@ -322,6 +324,8 @@ export class CounsellingRepository {
         LOWER(u.first_name || ' ' || u.last_name) LIKE $${paramIndex}
         OR LOWER(c.qualification) LIKE $${paramIndex}
         OR LOWER(c.bio) LIKE $${paramIndex}
+        OR c.specialisations::text ILIKE $${paramIndex}
+        OR c.languages::text ILIKE $${paramIndex}
       )`;
       values.push(`%${filters.search.toLowerCase().trim()}%`);
       paramIndex++;
@@ -336,6 +340,24 @@ export class CounsellingRepository {
     if (filters?.language && filters.language !== "ALL") {
       query += ` AND c.languages @> $${paramIndex}::jsonb`;
       values.push(JSON.stringify([filters.language]));
+      paramIndex++;
+    }
+
+    if (filters?.experience && filters.experience !== "ALL") {
+      const minExp = parseInt(String(filters.experience), 10);
+      if (!isNaN(minExp)) {
+        query += ` AND c.experience_years >= $${paramIndex}`;
+        values.push(minExp);
+        paramIndex++;
+      }
+    }
+
+    if (filters?.day && filters.day !== "ALL") {
+      query += ` AND EXISTS (
+        SELECT 1 FROM counsellor_availability av
+        WHERE av.counsellor_id = c.id AND av.is_active = true AND LOWER(av.day) = LOWER($${paramIndex})
+      )`;
+      values.push(filters.day);
       paramIndex++;
     }
 
@@ -502,6 +524,44 @@ export class CounsellingRepository {
     }
 
     return this.findCounsellorById(user.id);
+  }
+
+  /**
+   * Checks if a counsellor already has an active or pending booking for a given date and time.
+   */
+  async checkSlotCollision(
+    counsellorId: string,
+    sessionDate: string,
+    sessionTime: string
+  ): Promise<boolean> {
+    const query = `
+      SELECT 1 FROM counselling_sessions
+      WHERE counsellor_id = $1
+        AND session_date = $2::date
+        AND LOWER(TRIM(session_time)) = LOWER(TRIM($3))
+        AND status IN ('PENDING', 'CONFIRMED')
+      LIMIT 1
+    `;
+    const res = await pool.query(query, [counsellorId, sessionDate, sessionTime]);
+    return res.rows.length > 0;
+  }
+
+  /**
+   * Retrieves all booked/pending slot times for a counsellor on a specific date.
+   */
+  async getBookedSlotsForDate(
+    counsellorId: string,
+    sessionDate: string
+  ): Promise<string[]> {
+    const query = `
+      SELECT session_time
+      FROM counselling_sessions
+      WHERE counsellor_id = $1
+        AND session_date = $2::date
+        AND status IN ('PENDING', 'CONFIRMED')
+    `;
+    const res = await pool.query(query, [counsellorId, sessionDate]);
+    return res.rows.map((r) => r.session_time);
   }
 
   /**

@@ -3,6 +3,7 @@
 import React, { use } from "react";
 import { DashboardShell } from "@/features/dashboard/components/shell/DashboardShell";
 import { ProtectedRouteGuard } from "@/features/dashboard/guards/ProtectedRouteGuard";
+import { FeatureRouteGuard } from "@/features/access-control/components/FeatureRouteGuard";
 import { CounsellorProfileView } from "@/features/counsellors/components/CounsellorProfileView";
 
 interface PageProps {
@@ -15,7 +16,9 @@ export default function CounsellorDetailPage({ params }: PageProps) {
   return (
     <ProtectedRouteGuard allowedRoles={["PARTICIPANT"]}>
       <DashboardShell allowedRoles={["PARTICIPANT"]}>
-        <CounsellorProfileView counsellorId={resolvedParams.id} />
+        <FeatureRouteGuard featureKey="participant.counsellor">
+          <CounsellorProfileView counsellorId={resolvedParams.id} />
+        </FeatureRouteGuard>
       </DashboardShell>
     </ProtectedRouteGuard>
   );

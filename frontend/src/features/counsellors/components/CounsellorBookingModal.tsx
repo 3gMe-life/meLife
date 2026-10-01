@@ -17,7 +17,10 @@ import {
   CounsellorDetailDTO,
   SessionType,
 } from "../types/counsellor.types";
-import { useRequestBooking } from "../hooks/useCounsellorQueries";
+import {
+  useRequestBooking,
+  useCounsellorDateAvailability,
+} from "../hooks/useCounsellorQueries";
 
 interface CounsellorBookingModalProps {
   counsellor: CounsellorCardDTO | CounsellorDetailDTO | null;
@@ -90,6 +93,12 @@ export const CounsellorBookingModal: React.FC<CounsellorBookingModalProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const requestBookingMutation = useRequestBooking();
+  const { data: dateAvailability, isLoading: isLoadingSlots } = useCounsellorDateAvailability(
+    counsellor?.id || "",
+    sessionDate
+  );
+
+  const bookedSlots = dateAvailability?.bookedSlots || [];
 
   if (!isOpen || !counsellor) return null;
 
@@ -99,6 +108,13 @@ export const CounsellorBookingModal: React.FC<CounsellorBookingModalProps> = ({
 
     if (!sessionDate || !sessionTime) {
       setErrorMessage("Please select a valid date and time slot.");
+      return;
+    }
+
+    if (bookedSlots.some((s) => s.toLowerCase().trim() === sessionTime.toLowerCase().trim())) {
+      setErrorMessage(
+        `The ${sessionTime} slot is already booked on ${sessionDate}. Please select another time.`
+      );
       return;
     }
 
@@ -266,27 +282,50 @@ export const CounsellorBookingModal: React.FC<CounsellorBookingModalProps> = ({
                     className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-900 shadow-sm focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20 dark:border-slate-800 dark:bg-slate-800 dark:text-white"
                   />
                 </div>
+                {dateAvailability && !dateAvailability.isAvailableDay && (
+                  <p className="mt-1.5 text-[11px] text-amber-600 dark:text-amber-400">
+                    ℹ️ Special request day (outside regular weekly schedule)
+                  </p>
+                )}
               </div>
 
               <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  3. Select Time Slot
-                </label>
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    3. Select Time Slot
+                  </label>
+                  {isLoadingSlots && (
+                    <span className="text-[10px] text-slate-400">Checking slots...</span>
+                  )}
+                </div>
                 <div className="grid grid-cols-3 gap-1.5">
                   {TIME_SLOTS.map((slot) => {
-                    const isSlotSelected = sessionTime === slot;
+                    const isSlotBooked = bookedSlots.some(
+                      (s) => s.toLowerCase().trim() === slot.toLowerCase().trim()
+                    );
+                    const isSlotSelected = sessionTime === slot && !isSlotBooked;
+
                     return (
                       <button
                         key={slot}
                         type="button"
+                        disabled={isSlotBooked}
                         onClick={() => setSessionTime(slot)}
-                        className={`rounded-lg border px-2 py-1.5 text-center text-xs font-medium transition ${
-                          isSlotSelected
+                        title={isSlotBooked ? "Slot already booked or pending" : undefined}
+                        className={`relative rounded-lg border px-2 py-1.5 text-center text-xs font-medium transition ${
+                          isSlotBooked
+                            ? "cursor-not-allowed border-dashed border-slate-200 bg-slate-100 text-slate-400 line-through opacity-60 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-500"
+                            : isSlotSelected
                             ? "border-indigo-600 bg-indigo-600 text-white shadow-xs"
-                            : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                            : "border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600"
                         }`}
                       >
                         {slot}
+                        {isSlotBooked && (
+                          <span className="block text-[9px] font-normal not-italic no-underline">
+                            Booked
+                          </span>
+                        )}
                       </button>
                     );
                   })}

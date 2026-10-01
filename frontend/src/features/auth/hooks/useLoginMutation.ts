@@ -17,6 +17,7 @@ export function useLoginMutation() {
             user: data.data.user,
             role: data.data.role,
             permissions: data.data.permissions || [],
+            dashboardFeatures: data.data.dashboardFeatures || [],
             onboarding: {
               completed: !data.data.requiresOnboarding,
             },

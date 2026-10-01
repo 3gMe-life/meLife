@@ -13,12 +13,16 @@ export class CounsellingController {
       const search = req.query.search as string;
       const specialisation = req.query.specialisation as string;
       const language = req.query.language as string;
+      const experience = req.query.experience as string;
+      const day = req.query.day as string;
       const userId = req.user?.id;
 
       const data = await counsellingService.getRecommendedCounsellors(userId, {
         search,
         specialisation,
         language,
+        experience,
+        day,
       });
 
       res.status(HttpStatus.OK).json({
@@ -39,6 +43,25 @@ export class CounsellingController {
     try {
       const counsellorId = String(req.params.id);
       const data = await counsellingService.getCounsellorDetail(counsellorId);
+
+      res.status(HttpStatus.OK).json({
+        success: true,
+        data,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /api/v1/counsellors/:id/availability?date=YYYY-MM-DD
+   * Retrieves date-specific slot availability with collision & booked status.
+   */
+  async getDateAvailability(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const counsellorId = String(req.params.id);
+      const dateStr = req.query.date ? String(req.query.date) : undefined;
+      const data = await counsellingService.getDateSlotAvailability(counsellorId, dateStr);
 
       res.status(HttpStatus.OK).json({
         success: true,
