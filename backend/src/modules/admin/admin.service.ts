@@ -40,6 +40,10 @@ import {
   AdminInstitutionListItemDTO,
   AdminInstitutionDetailDTO,
   AdminInstitutionFilterParams,
+  AdminCompanyListItemDTO,
+  AdminCompanyDetailDTO,
+  CreateAdminCompanyDTO,
+  AdminAuditLogItemDTO,
 } from "./admin.types";
 
 export class AdminService {
@@ -457,9 +461,45 @@ export class AdminService {
   async deleteInstitutionApplication(applicationId: string): Promise<void> {
     return adminRepository.deleteInstitutionApplication(applicationId);
   }
+
+  /**
+   * Retrieves list of registered platform companies.
+   */
+  async listCompanies(filters?: { search?: string; status?: string }): Promise<AdminCompanyListItemDTO[]> {
+    return adminRepository.findCompanies(filters);
+  }
+
+  /**
+   * Retrieves detailed company profile, members, and institutions.
+   */
+  async getCompanyById(companyId: string): Promise<AdminCompanyDetailDTO> {
+    return adminRepository.findCompanyById(companyId);
+  }
+
+  /**
+   * Creates a new company organization.
+   */
+  async createCompany(dto: CreateAdminCompanyDTO): Promise<AdminCompanyListItemDTO> {
+    return adminRepository.createCompany(dto);
+  }
+
+  /**
+   * Toggles company status.
+   */
+  async updateCompanyStatus(companyId: string, status: "ACTIVE" | "PENDING" | "SUSPENDED"): Promise<void> {
+    return adminRepository.updateCompanyStatus(companyId, status);
+  }
+
+  /**
+   * Retrieves platform audit log records.
+   */
+  async listAuditLogs(): Promise<AdminAuditLogItemDTO[]> {
+    return adminRepository.findAuditLogs();
+  }
 }
 
 export const adminService = new AdminService();
+
 
 
 

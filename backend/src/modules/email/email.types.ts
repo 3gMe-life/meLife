@@ -115,3 +115,15 @@ export interface AssessmentCompletedEmailPayload {
   reportUrl: string;
   completedAt?: string;
 }
+
+export interface StudentInvitationEmailPayload {
+  to: string;
+  studentName: string;
+  institutionName: string;
+  className?: string | null;
+  gradeLevel?: string | null;
+  division?: string | null;
+  inviteUrl: string;
+  expiresAt: Date | string;
+  hasExistingAccount?: boolean;
+}

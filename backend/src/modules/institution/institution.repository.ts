@@ -1,7 +1,5 @@
 import { pool } from "../../config/database";
 import { logger } from "../../common/utils/logger";
-import { hashPassword } from "../../common/utils/crypto";
-import { SEED_INSTITUTION } from "./institution.seed-data";
 import {
   InstitutionEntity,
   InstitutionClassEntity,
@@ -11,7 +9,13 @@ import {
   InstitutionStudentEntity,
   InstitutionAssessmentEntity,
   AssignAssessmentDTO,
+  InstitutionStudentInvitationEntity,
+  InstitutionStudentCampaignEntity,
+  InstitutionEmailJobEntity,
+  InvitationCampaignStatus,
+  InvitationDeliveryStatus,
 } from "./institution.types";
+import { PoolClient } from "pg";
 
 export class InstitutionRepository {
   /**
@@ -111,7 +115,94 @@ export class InstitutionRepository {
         );
       `);
 
-      // Indexes for performance and isolation
+      // 6. Institution Student Campaigns Table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS institution_student_campaigns (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          institution_id UUID NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+          class_id UUID NULL REFERENCES institution_classes(id) ON DELETE SET NULL,
+          created_by_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          name VARCHAR(255) NOT NULL,
+          total_count INT NOT NULL DEFAULT 0,
+          queued_count INT NOT NULL DEFAULT 0,
+          processing_count INT NOT NULL DEFAULT 0,
+          sent_count INT NOT NULL DEFAULT 0,
+          delivered_count INT NOT NULL DEFAULT 0,
+          failed_count INT NOT NULL DEFAULT 0,
+          bounced_count INT NOT NULL DEFAULT 0,
+          accepted_count INT NOT NULL DEFAULT 0,
+          status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          started_at TIMESTAMPTZ NULL,
+          completed_at TIMESTAMPTZ NULL,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+      `);
+
+      // 7. Institution Student Invitations Table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS institution_student_invitations (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          institution_id UUID NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+          campaign_id UUID NULL REFERENCES institution_student_campaigns(id) ON DELETE SET NULL,
+          class_id UUID NULL REFERENCES institution_classes(id) ON DELETE SET NULL,
+          email VARCHAR(255) NOT NULL,
+          first_name VARCHAR(100) NOT NULL,
+          last_name VARCHAR(100) NOT NULL,
+          roll_number VARCHAR(50) NULL,
+          academic_year VARCHAR(20) NOT NULL DEFAULT '2026-2027',
+          token_hash VARCHAR(64) UNIQUE NOT NULL,
+          status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+          delivery_status VARCHAR(50) NOT NULL DEFAULT 'QUEUED',
+          delivery_event_at TIMESTAMPTZ NULL,
+          provider_message_id VARCHAR(255) NULL,
+          failure_reason TEXT NULL,
+          invited_by_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          accepted_by_user_id UUID NULL REFERENCES users(id) ON DELETE SET NULL,
+          expires_at TIMESTAMPTZ NOT NULL,
+          sent_at TIMESTAMPTZ DEFAULT NOW(),
+          accepted_at TIMESTAMPTZ NULL,
+          revoked_at TIMESTAMPTZ NULL,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+      `);
+
+      // 8. Durable Asynchronous Email Jobs Table (PostgreSQL Outbox/Job Queue)
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS institution_email_jobs (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          campaign_id UUID NULL REFERENCES institution_student_campaigns(id) ON DELETE SET NULL,
+          invitation_id UUID NOT NULL REFERENCES institution_student_invitations(id) ON DELETE CASCADE,
+          institution_id UUID NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+          recipient_email VARCHAR(255) NOT NULL,
+          recipient_name VARCHAR(255) NOT NULL,
+          raw_token VARCHAR(255) NOT NULL DEFAULT '',
+          status VARCHAR(50) NOT NULL DEFAULT 'QUEUED',
+          attempts INT NOT NULL DEFAULT 0,
+          max_attempts INT NOT NULL DEFAULT 3,
+          scheduled_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          processed_at TIMESTAMPTZ NULL,
+          completed_at TIMESTAMPTZ NULL,
+          last_error TEXT NULL,
+          is_permanent_failure BOOLEAN NOT NULL DEFAULT false,
+          provider_message_id VARCHAR(255) NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          CONSTRAINT uq_invitation_job UNIQUE (invitation_id)
+        );
+      `);
+
+      // Ensure migrations for existing installations
+      await client.query(`
+        ALTER TABLE institution_student_invitations ADD COLUMN IF NOT EXISTS campaign_id UUID NULL REFERENCES institution_student_campaigns(id) ON DELETE SET NULL;
+        ALTER TABLE institution_student_invitations ADD COLUMN IF NOT EXISTS delivery_status VARCHAR(50) NOT NULL DEFAULT 'QUEUED';
+        ALTER TABLE institution_student_invitations ADD COLUMN IF NOT EXISTS delivery_event_at TIMESTAMPTZ NULL;
+        ALTER TABLE institution_student_invitations ADD COLUMN IF NOT EXISTS provider_message_id VARCHAR(255) NULL;
+        ALTER TABLE institution_student_invitations ADD COLUMN IF NOT EXISTS failure_reason TEXT NULL;
+      `);
+
+      // Indexes for performance, isolation, and queue polling
       await client.query(`
         CREATE INDEX IF NOT EXISTS idx_institutions_admin ON institutions(admin_user_id);
         CREATE INDEX IF NOT EXISTS idx_institution_classes_inst ON institution_classes(institution_id);
@@ -119,6 +210,17 @@ export class InstitutionRepository {
         CREATE INDEX IF NOT EXISTS idx_institution_students_student ON institution_students(student_id);
         CREATE INDEX IF NOT EXISTS idx_institution_students_class ON institution_students(class_id);
         CREATE INDEX IF NOT EXISTS idx_institution_assessments_inst ON institution_assessments(institution_id);
+        CREATE INDEX IF NOT EXISTS idx_inst_campaigns_inst ON institution_student_campaigns(institution_id);
+        CREATE INDEX IF NOT EXISTS idx_inst_campaigns_status ON institution_student_campaigns(status);
+        CREATE INDEX IF NOT EXISTS idx_inst_invitations_inst ON institution_student_invitations(institution_id);
+        CREATE INDEX IF NOT EXISTS idx_inst_invitations_camp ON institution_student_invitations(campaign_id);
+        CREATE INDEX IF NOT EXISTS idx_inst_invitations_email ON institution_student_invitations(LOWER(email));
+        CREATE INDEX IF NOT EXISTS idx_inst_invitations_token ON institution_student_invitations(token_hash);
+        CREATE INDEX IF NOT EXISTS idx_inst_invitations_status ON institution_student_invitations(status);
+        CREATE INDEX IF NOT EXISTS idx_inst_email_jobs_poll ON institution_email_jobs(status, scheduled_at) WHERE status = 'QUEUED';
+        CREATE INDEX IF NOT EXISTS idx_inst_email_jobs_inst ON institution_email_jobs(institution_id);
+        CREATE INDEX IF NOT EXISTS idx_inst_email_jobs_camp ON institution_email_jobs(campaign_id);
+        CREATE INDEX IF NOT EXISTS idx_inst_email_jobs_msg ON institution_email_jobs(provider_message_id);
       `);
 
       await client.query("COMMIT");
@@ -133,150 +235,85 @@ export class InstitutionRepository {
   }
 
   /**
-   * Seeds demo institution and default classes.
+   * Retrieves real database activity timeline for an institution.
    */
-  async seedInstitution(): Promise<void> {
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
+  async getRecentActivities(institutionId: string): Promise<Array<{
+    id: string;
+    type: "ENROLLMENT" | "ASSESSMENT" | "SESSION" | "PARENT";
+    title: string;
+    description: string;
+    timestamp: string;
+  }>> {
+    const query = `
+      SELECT * FROM (
+        -- 1. Student Enrollments
+        SELECT
+          CONCAT('act-enr-', ist.id::text) as id,
+          'ENROLLMENT' as type,
+          'Student Enrolled' as title,
+          CONCAT(TRIM(CONCAT(u.first_name, ' ', u.last_name)), ' enrolled into ', COALESCE(ic.name, 'Institution Cohort')) as description,
+          ist.joined_at as created_at
+        FROM institution_students ist
+        JOIN users u ON ist.student_id = u.id
+        LEFT JOIN institution_classes ic ON ist.class_id = ic.id
+        WHERE ist.institution_id = $1
 
-      const defaultPasswordHash = await hashPassword("Password123!");
+        UNION ALL
 
-      // 1. Upsert Admin User for Institution
-      let adminUserId: string;
-      const userRes = await client.query(
-        "SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1",
-        [SEED_INSTITUTION.adminEmail]
-      );
+        -- 2. Assessment Completions
+        SELECT
+          CONCAT('act-ass-', ar.id::text) as id,
+          'ASSESSMENT' as type,
+          'Assessment Completed' as title,
+          CONCAT(TRIM(CONCAT(u.first_name, ' ', u.last_name)), ' completed psychometric assessment') as description,
+          ar.created_at
+        FROM assessment_results ar
+        JOIN institution_students ist ON ar.participant_id = ist.student_id
+        JOIN users u ON ist.student_id = u.id
+        WHERE ist.institution_id = $1
 
-      if (userRes.rows.length > 0) {
-        adminUserId = userRes.rows[0].id;
-        await client.query(
-          "UPDATE users SET password_hash = $1 WHERE id = $2",
-          [defaultPasswordHash, adminUserId]
-        );
-      } else {
-        const newUserRes = await client.query(
-          `INSERT INTO users (email, password_hash, first_name, last_name, status, email_verified_at)
-           VALUES ($1, $2, $3, $4, 'ACTIVE', NOW())
-           RETURNING id`,
-          [
-            SEED_INSTITUTION.adminEmail,
-            defaultPasswordHash,
-            SEED_INSTITUTION.adminFirstName,
-            SEED_INSTITUTION.adminLastName,
-          ]
-        );
-        adminUserId = newUserRes.rows[0].id;
-      }
+        UNION ALL
 
-      // Assign INSTITUTION_ADMIN role
-      await client.query(
-        `INSERT INTO user_roles (user_id, role_id, is_primary)
-         SELECT $1, r.id, true
-         FROM roles r
-         WHERE r.name = 'INSTITUTION_ADMIN'
-         ON CONFLICT DO NOTHING`,
-        [adminUserId]
-      );
+        -- 3. Counselling Guidance Sessions
+        SELECT
+          CONCAT('act-ses-', cs.id::text) as id,
+          'SESSION' as type,
+          'Career Guidance Session' as title,
+          CONCAT('Guidance session with ', TRIM(CONCAT(uc.first_name, ' ', uc.last_name)), ' for ', TRIM(CONCAT(us.first_name, ' ', us.last_name))) as description,
+          cs.created_at
+        FROM counselling_sessions cs
+        JOIN institution_students ist ON cs.student_id = ist.student_id
+        JOIN users us ON ist.student_id = us.id
+        JOIN counsellors c ON cs.counsellor_id = c.id
+        JOIN users uc ON c.user_id = uc.id
+        WHERE ist.institution_id = $1
 
-      // 2. Upsert Institution Profile
-      const instRes = await client.query(
-        `INSERT INTO institutions (
-           admin_user_id, name, code, type, contact_email, phone,
-           address, city, state, country, student_capacity, is_active
-         )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true)
-         ON CONFLICT (admin_user_id) DO UPDATE
-         SET name = EXCLUDED.name,
-             type = EXCLUDED.type,
-             contact_email = EXCLUDED.contact_email,
-             phone = EXCLUDED.phone,
-             address = EXCLUDED.address,
-             city = EXCLUDED.city,
-             state = EXCLUDED.state,
-             country = EXCLUDED.country,
-             student_capacity = EXCLUDED.student_capacity,
-             updated_at = NOW()
-         RETURNING id`,
-        [
-          adminUserId,
-          SEED_INSTITUTION.name,
-          SEED_INSTITUTION.code,
-          SEED_INSTITUTION.type,
-          SEED_INSTITUTION.contactEmail,
-          SEED_INSTITUTION.phone,
-          SEED_INSTITUTION.address,
-          SEED_INSTITUTION.city,
-          SEED_INSTITUTION.state,
-          SEED_INSTITUTION.country,
-          SEED_INSTITUTION.studentCapacity,
-        ]
-      );
+        UNION ALL
 
-      const institutionId = instRes.rows[0].id;
+        -- 4. Parent Account Linkings
+        SELECT
+          CONCAT('act-par-', spl.id::text) as id,
+          'PARENT' as type,
+          'Parent Connected' as title,
+          CONCAT('Parent linked to student ', TRIM(CONCAT(u.first_name, ' ', u.last_name))) as description,
+          spl.created_at
+        FROM student_parent_links spl
+        JOIN institution_students ist ON spl.student_user_id = ist.student_id
+        JOIN users u ON ist.student_id = u.id
+        WHERE ist.institution_id = $1 AND spl.link_status = 'ACTIVE'
+      ) recent_events
+      ORDER BY created_at DESC
+      LIMIT 10
+    `;
 
-      // 3. Insert / Sync Classes
-      for (const cls of SEED_INSTITUTION.classes) {
-        await client.query(
-          `INSERT INTO institution_classes (
-             institution_id, academic_year, grade_level, division, name, coordinator_name, is_active
-           )
-           VALUES ($1, $2, $3, $4, $5, $6, true)
-           ON CONFLICT (institution_id, academic_year, grade_level, division) DO UPDATE
-           SET name = EXCLUDED.name,
-               coordinator_name = EXCLUDED.coordinator_name,
-               updated_at = NOW()`,
-          [
-            institutionId,
-            cls.academicYear,
-            cls.gradeLevel,
-            cls.division,
-            cls.name,
-            cls.coordinatorName,
-          ]
-        );
-      }
-
-      // 4. Auto-enroll any existing students whose school_name matches this institution or lack assignment
-      const firstClassRes = await client.query(
-        `SELECT id FROM institution_classes WHERE institution_id = $1 ORDER BY grade_level ASC LIMIT 1`,
-        [institutionId]
-      );
-      const defaultClassId = firstClassRes.rows[0]?.id || null;
-
-      await client.query(
-        `INSERT INTO institution_students (institution_id, class_id, student_id, roll_number, status, joined_at)
-         SELECT $1, $2, u.id, 'ROLL-' || SUBSTRING(u.id::text, 1, 4), 'ENROLLED', NOW()
-         FROM users u
-         JOIN user_roles ur ON u.id = ur.user_id
-         JOIN roles r ON ur.role_id = r.id AND r.name = 'PARTICIPANT'
-         WHERE NOT EXISTS (
-           SELECT 1 FROM institution_students ist WHERE ist.student_id = u.id
-         )
-         LIMIT 20
-         ON CONFLICT (institution_id, student_id) DO NOTHING`,
-        [institutionId, defaultClassId]
-      );
-
-      // Recalculate student counts on classes
-      await client.query(`
-        UPDATE institution_classes ic
-        SET student_count = (
-          SELECT COUNT(*)::int FROM institution_students is_stu
-          WHERE is_stu.class_id = ic.id AND is_stu.status IN ('ENROLLED', 'ACTIVE')
-        )
-        WHERE ic.institution_id = $1
-      `, [institutionId]);
-
-      await client.query("COMMIT");
-      logger.info("✨ Demo Institution and cohorts seeded successfully.");
-    } catch (err) {
-      await client.query("ROLLBACK");
-      logger.error({ err }, "Error seeding demo institution");
-    } finally {
-      client.release();
-    }
+    const res = await pool.query(query, [institutionId]);
+    return res.rows.map((r) => ({
+      id: r.id,
+      type: r.type,
+      title: r.title,
+      description: r.description,
+      timestamp: new Date(r.created_at).toISOString(),
+    }));
   }
 
   /**
@@ -585,6 +622,980 @@ export class InstitutionRepository {
       data.deadline || null,
     ]);
     return res.rows[0];
+  }
+
+  /**
+   * Creates a student invitation record.
+   */
+  async createInvitation(
+    data: {
+      institutionId: string;
+      campaignId?: string | null;
+      classId?: string | null;
+      email: string;
+      firstName: string;
+      lastName: string;
+      rollNumber?: string | null;
+      academicYear: string;
+      tokenHash: string;
+      deliveryStatus?: InvitationDeliveryStatus;
+      invitedByUserId: string;
+      expiresAt: Date;
+    },
+    client?: PoolClient
+  ): Promise<InstitutionStudentInvitationEntity> {
+    const db = client || pool;
+    const query = `
+      INSERT INTO institution_student_invitations (
+        institution_id, campaign_id, class_id, email, first_name, last_name, roll_number,
+        academic_year, token_hash, status, delivery_status, invited_by_user_id, expires_at, sent_at
+      )
+      VALUES ($1, $2, $3, LOWER($4), $5, $6, $7, $8, $9, 'PENDING', $10, $11, $12, NOW())
+      RETURNING id, institution_id as "institutionId", campaign_id as "campaignId", class_id as "classId",
+                email, first_name as "firstName", last_name as "lastName",
+                roll_number as "rollNumber", academic_year as "academicYear",
+                token_hash as "tokenHash", status, delivery_status as "deliveryStatus",
+                delivery_event_at as "deliveryEventAt", provider_message_id as "providerMessageId",
+                failure_reason as "failureReason", invited_by_user_id as "invitedByUserId",
+                accepted_by_user_id as "acceptedByUserId", expires_at as "expiresAt",
+                sent_at as "sentAt", accepted_at as "acceptedAt", revoked_at as "revokedAt",
+                created_at as "createdAt", updated_at as "updatedAt"
+    `;
+    const res = await db.query(query, [
+      data.institutionId,
+      data.campaignId || null,
+      data.classId || null,
+      data.email.trim(),
+      data.firstName.trim(),
+      data.lastName.trim(),
+      data.rollNumber || null,
+      data.academicYear || "2026-2027",
+      data.tokenHash,
+      data.deliveryStatus || "QUEUED",
+      data.invitedByUserId,
+      data.expiresAt,
+    ]);
+    return res.rows[0];
+  }
+
+  /**
+   * Finds invitation by its SHA-256 token hash with associated institution and class metadata.
+   */
+  async findInvitationByTokenHash(
+    tokenHash: string
+  ): Promise<InstitutionStudentInvitationEntity | null> {
+    const query = `
+      SELECT
+        isi.id,
+        isi.institution_id as "institutionId",
+        inst.name as "institutionName",
+        isi.class_id as "classId",
+        ic.name as "className",
+        ic.grade_level as "gradeLevel",
+        ic.division,
+        isi.email,
+        isi.first_name as "firstName",
+        isi.last_name as "lastName",
+        isi.roll_number as "rollNumber",
+        isi.academic_year as "academicYear",
+        isi.token_hash as "tokenHash",
+        isi.status,
+        isi.invited_by_user_id as "invitedByUserId",
+        isi.accepted_by_user_id as "acceptedByUserId",
+        isi.expires_at as "expiresAt",
+        isi.sent_at as "sentAt",
+        isi.accepted_at as "acceptedAt",
+        isi.revoked_at as "revokedAt",
+        isi.created_at as "createdAt",
+        isi.updated_at as "updatedAt"
+      FROM institution_student_invitations isi
+      JOIN institutions inst ON isi.institution_id = inst.id
+      LEFT JOIN institution_classes ic ON isi.class_id = ic.id
+      WHERE isi.token_hash = $1
+      LIMIT 1
+    `;
+    const res = await pool.query(query, [tokenHash]);
+    return res.rows[0] || null;
+  }
+
+  /**
+   * Finds invitation by ID (with optional institution check for strict tenant isolation).
+   */
+  async findInvitationById(
+    invitationId: string,
+    institutionId?: string
+  ): Promise<InstitutionStudentInvitationEntity | null> {
+    let query = `
+      SELECT
+        isi.id,
+        isi.institution_id as "institutionId",
+        inst.name as "institutionName",
+        isi.class_id as "classId",
+        ic.name as "className",
+        ic.grade_level as "gradeLevel",
+        ic.division,
+        isi.email,
+        isi.first_name as "firstName",
+        isi.last_name as "lastName",
+        isi.roll_number as "rollNumber",
+        isi.academic_year as "academicYear",
+        isi.token_hash as "tokenHash",
+        isi.status,
+        isi.invited_by_user_id as "invitedByUserId",
+        isi.accepted_by_user_id as "acceptedByUserId",
+        isi.expires_at as "expiresAt",
+        isi.sent_at as "sentAt",
+        isi.accepted_at as "acceptedAt",
+        isi.revoked_at as "revokedAt",
+        isi.created_at as "createdAt",
+        isi.updated_at as "updatedAt"
+      FROM institution_student_invitations isi
+      JOIN institutions inst ON isi.institution_id = inst.id
+      LEFT JOIN institution_classes ic ON isi.class_id = ic.id
+      WHERE isi.id = $1
+    `;
+    const params: any[] = [invitationId];
+    if (institutionId) {
+      params.push(institutionId);
+      query += ` AND isi.institution_id = $2`;
+    }
+    const res = await pool.query(query, params);
+    return res.rows[0] || null;
+  }
+
+  /**
+   * Finds all student invitations for an institution (supports filtering by status).
+   */
+  async findInvitationsByInstitutionId(
+    institutionId: string,
+    status?: string
+  ): Promise<InstitutionStudentInvitationEntity[]> {
+    let query = `
+      SELECT
+        isi.id,
+        isi.institution_id as "institutionId",
+        inst.name as "institutionName",
+        isi.class_id as "classId",
+        ic.name as "className",
+        ic.grade_level as "gradeLevel",
+        ic.division,
+        isi.email,
+        isi.first_name as "firstName",
+        isi.last_name as "lastName",
+        isi.roll_number as "rollNumber",
+        isi.academic_year as "academicYear",
+        isi.token_hash as "tokenHash",
+        isi.status,
+        isi.invited_by_user_id as "invitedByUserId",
+        isi.accepted_by_user_id as "acceptedByUserId",
+        isi.expires_at as "expiresAt",
+        isi.sent_at as "sentAt",
+        isi.accepted_at as "acceptedAt",
+        isi.revoked_at as "revokedAt",
+        isi.created_at as "createdAt",
+        isi.updated_at as "updatedAt"
+      FROM institution_student_invitations isi
+      JOIN institutions inst ON isi.institution_id = inst.id
+      LEFT JOIN institution_classes ic ON isi.class_id = ic.id
+      WHERE isi.institution_id = $1
+    `;
+    const params: any[] = [institutionId];
+    if (status) {
+      params.push(status);
+      query += ` AND isi.status = $2`;
+    }
+    query += ` ORDER BY isi.created_at DESC`;
+    const res = await pool.query(query, params);
+    return res.rows;
+  }
+
+  /**
+   * Checks for an existing active (PENDING) invitation for this email and institution.
+   */
+  async findActiveInvitationByEmail(
+    institutionId: string,
+    email: string
+  ): Promise<InstitutionStudentInvitationEntity | null> {
+    const query = `
+      SELECT id, institution_id as "institutionId", class_id as "classId",
+             email, first_name as "firstName", last_name as "lastName",
+             roll_number as "rollNumber", academic_year as "academicYear",
+             token_hash as "tokenHash", status, invited_by_user_id as "invitedByUserId",
+             expires_at as "expiresAt", sent_at as "sentAt",
+             created_at as "createdAt", updated_at as "updatedAt"
+      FROM institution_student_invitations
+      WHERE institution_id = $1 AND LOWER(email) = LOWER($2) AND status = 'PENDING' AND expires_at > NOW()
+      LIMIT 1
+    `;
+    const res = await pool.query(query, [institutionId, email.trim()]);
+    return res.rows[0] || null;
+  }
+
+  /**
+   * Retrieves a Set of all currently active pending invitation emails for an institution.
+   */
+  async findActiveInvitationEmailsByInstitutionId(institutionId: string): Promise<Set<string>> {
+    const query = `
+      SELECT LOWER(email) as email FROM institution_student_invitations
+      WHERE institution_id = $1 AND status = 'PENDING' AND expires_at > NOW()
+    `;
+    const res = await pool.query(query, [institutionId]);
+    return new Set(res.rows.map((r) => r.email));
+  }
+
+  /**
+   * Retrieves a Set of all currently enrolled student emails for an institution.
+   */
+  async findEnrolledEmailsByInstitutionId(institutionId: string): Promise<Set<string>> {
+    const query = `
+      SELECT LOWER(u.email) as email FROM institution_students ist
+      JOIN users u ON ist.student_id = u.id
+      WHERE ist.institution_id = $1
+    `;
+    const res = await pool.query(query, [institutionId]);
+    return new Set(res.rows.map((r) => r.email));
+  }
+
+  /**
+   * Checks if an email is already an enrolled student in this institution.
+   */
+  async findStudentByInstitutionAndEmail(
+    institutionId: string,
+    email: string
+  ): Promise<InstitutionStudentEntity | null> {
+    const query = `
+      SELECT ist.id, ist.institution_id as "institutionId", ist.class_id as "classId",
+             ist.student_id as "studentId", ist.roll_number as "rollNumber",
+             ist.academic_year as "academicYear", ist.status, ist.joined_at as "joinedAt"
+      FROM institution_students ist
+      JOIN users u ON ist.student_id = u.id
+      WHERE ist.institution_id = $1 AND LOWER(u.email) = LOWER($2)
+      LIMIT 1
+    `;
+    const res = await pool.query(query, [institutionId, email.trim()]);
+    return res.rows[0] || null;
+  }
+
+  /**
+   * Updates an invitation with a newly generated token and renewed expiration date (Resend flow).
+   */
+  async updateInvitationToken(
+    invitationId: string,
+    tokenHash: string,
+    expiresAt: Date
+  ): Promise<InstitutionStudentInvitationEntity | null> {
+    const query = `
+      UPDATE institution_student_invitations
+      SET token_hash = $1,
+          expires_at = $2,
+          sent_at = NOW(),
+          status = 'PENDING',
+          updated_at = NOW()
+      WHERE id = $3
+      RETURNING id, institution_id as "institutionId", class_id as "classId",
+                email, first_name as "firstName", last_name as "lastName",
+                roll_number as "rollNumber", academic_year as "academicYear",
+                token_hash as "tokenHash", status, invited_by_user_id as "invitedByUserId",
+                expires_at as "expiresAt", sent_at as "sentAt",
+                created_at as "createdAt", updated_at as "updatedAt"
+    `;
+    const res = await pool.query(query, [tokenHash, expiresAt, invitationId]);
+    return res.rows[0] || null;
+  }
+
+  /**
+   * Revokes a pending invitation.
+   */
+  async revokeInvitation(
+    invitationId: string,
+    institutionId: string
+  ): Promise<InstitutionStudentInvitationEntity | null> {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const query = `
+        UPDATE institution_student_invitations
+        SET status = 'REVOKED',
+            revoked_at = NOW(),
+            updated_at = NOW()
+        WHERE id = $1 AND institution_id = $2 AND status = 'PENDING'
+        RETURNING id, institution_id as "institutionId", status, revoked_at as "revokedAt"
+      `;
+      const res = await client.query(query, [invitationId, institutionId]);
+      if (res.rows[0]) {
+        await client.query(
+          `UPDATE institution_email_jobs
+           SET status = 'FAILED',
+               is_permanent_failure = true,
+               last_error = 'Invitation was revoked before dispatch',
+               updated_at = NOW()
+           WHERE invitation_id = $1 AND status = 'QUEUED'`,
+          [invitationId]
+        );
+      }
+      await client.query("COMMIT");
+      return res.rows[0] || null;
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Marks an invitation as ACCEPTED in a transaction.
+   */
+  async markInvitationAccepted(
+    invitationId: string,
+    acceptedByUserId: string,
+    client?: PoolClient
+  ): Promise<void> {
+    const db = client || pool;
+    const query = `
+      UPDATE institution_student_invitations
+      SET status = 'ACCEPTED',
+          accepted_by_user_id = $1,
+          accepted_at = NOW(),
+          updated_at = NOW()
+      WHERE id = $2
+    `;
+    await db.query(query, [acceptedByUserId, invitationId]);
+  }
+
+  /**
+   * Links a student user to an institution and cohort.
+   */
+  async linkStudentToInstitutionAndCohort(
+    institutionId: string,
+    studentId: string,
+    classId?: string | null,
+    rollNumber?: string | null,
+    academicYear?: string,
+    client?: PoolClient
+  ): Promise<void> {
+    const db = client || pool;
+    const query = `
+      INSERT INTO institution_students (
+        institution_id, class_id, student_id, roll_number, academic_year, status, joined_at
+      )
+      VALUES ($1, $2, $3, $4, $5, 'ENROLLED', NOW())
+      ON CONFLICT (institution_id, student_id)
+      DO UPDATE SET
+        class_id = COALESCE(EXCLUDED.class_id, institution_students.class_id),
+        roll_number = COALESCE(EXCLUDED.roll_number, institution_students.roll_number),
+        status = 'ENROLLED',
+        updated_at = NOW()
+    `;
+    await db.query(query, [
+      institutionId,
+      classId || null,
+      studentId,
+      rollNumber || null,
+      academicYear || "2026-2027",
+    ]);
+
+    // Update student count in cohort
+    if (classId) {
+      await db.query(
+        `UPDATE institution_classes
+         SET student_count = (
+           SELECT COUNT(*)::int FROM institution_students
+           WHERE class_id = $1 AND status IN ('ENROLLED', 'ACTIVE')
+         ),
+         updated_at = NOW()
+         WHERE id = $1`,
+        [classId]
+      );
+    }
+  }
+
+  // =========================================================================
+  // CAMPAIGN & QUEUE OUTBOX REPOSITORY METHODS
+  // =========================================================================
+
+  /**
+   * Creates an invitation campaign record.
+   */
+  async createCampaign(
+    data: {
+      institutionId: string;
+      classId?: string | null;
+      createdByUserId: string;
+      name: string;
+      totalCount: number;
+      queuedCount?: number;
+    },
+    client?: PoolClient
+  ): Promise<InstitutionStudentCampaignEntity> {
+    const db = client || pool;
+    const query = `
+      INSERT INTO institution_student_campaigns (
+        institution_id, class_id, created_by_user_id, name, total_count, queued_count, status, started_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, 'PROCESSING', NOW())
+      RETURNING id, institution_id as "institutionId", class_id as "classId",
+                created_by_user_id as "createdByUserId", name, total_count as "totalCount",
+                queued_count as "queuedCount", processing_count as "processingCount",
+                sent_count as "sentCount", delivered_count as "deliveredCount",
+                failed_count as "failedCount", bounced_count as "bouncedCount",
+                accepted_count as "acceptedCount", status, created_at as "createdAt",
+                started_at as "startedAt", completed_at as "completedAt",
+                updated_at as "updatedAt"
+    `;
+    const res = await db.query(query, [
+      data.institutionId,
+      data.classId || null,
+      data.createdByUserId,
+      data.name,
+      data.totalCount,
+      data.queuedCount !== undefined ? data.queuedCount : data.totalCount,
+    ]);
+    return res.rows[0];
+  }
+
+  /**
+   * Finds a campaign by ID with associated institution and class metadata.
+   */
+  async findCampaignById(
+    campaignId: string,
+    institutionId?: string
+  ): Promise<InstitutionStudentCampaignEntity | null> {
+    let query = `
+      SELECT
+        c.id,
+        c.institution_id as "institutionId",
+        inst.name as "institutionName",
+        c.class_id as "classId",
+        ic.name as "className",
+        c.created_by_user_id as "createdByUserId",
+        TRIM(CONCAT(u.first_name, ' ', u.last_name)) as "createdByName",
+        c.name,
+        c.total_count as "totalCount",
+        c.queued_count as "queuedCount",
+        c.processing_count as "processingCount",
+        c.sent_count as "sentCount",
+        c.delivered_count as "deliveredCount",
+        c.failed_count as "failedCount",
+        c.bounced_count as "bouncedCount",
+        c.accepted_count as "acceptedCount",
+        c.status,
+        c.created_at as "createdAt",
+        c.started_at as "startedAt",
+        c.completed_at as "completedAt",
+        c.updated_at as "updatedAt"
+      FROM institution_student_campaigns c
+      JOIN institutions inst ON c.institution_id = inst.id
+      JOIN users u ON c.created_by_user_id = u.id
+      LEFT JOIN institution_classes ic ON c.class_id = ic.id
+      WHERE c.id = $1
+    `;
+    const params: any[] = [campaignId];
+    if (institutionId) {
+      params.push(institutionId);
+      query += ` AND c.institution_id = $2`;
+    }
+    const res = await pool.query(query, params);
+    return res.rows[0] || null;
+  }
+
+  /**
+   * Finds all campaigns for an institution with optional status filter.
+   */
+  async findCampaignsByInstitutionId(
+    institutionId: string,
+    status?: string
+  ): Promise<InstitutionStudentCampaignEntity[]> {
+    let query = `
+      SELECT
+        c.id,
+        c.institution_id as "institutionId",
+        inst.name as "institutionName",
+        c.class_id as "classId",
+        ic.name as "className",
+        c.created_by_user_id as "createdByUserId",
+        TRIM(CONCAT(u.first_name, ' ', u.last_name)) as "createdByName",
+        c.name,
+        c.total_count as "totalCount",
+        c.queued_count as "queuedCount",
+        c.processing_count as "processingCount",
+        c.sent_count as "sentCount",
+        c.delivered_count as "deliveredCount",
+        c.failed_count as "failedCount",
+        c.bounced_count as "bouncedCount",
+        c.accepted_count as "acceptedCount",
+        c.status,
+        c.created_at as "createdAt",
+        c.started_at as "startedAt",
+        c.completed_at as "completedAt",
+        c.updated_at as "updatedAt"
+      FROM institution_student_campaigns c
+      JOIN institutions inst ON c.institution_id = inst.id
+      JOIN users u ON c.created_by_user_id = u.id
+      LEFT JOIN institution_classes ic ON c.class_id = ic.id
+      WHERE c.institution_id = $1
+    `;
+    const params: any[] = [institutionId];
+    if (status) {
+      params.push(status);
+      query += ` AND c.status = $2`;
+    }
+    query += ` ORDER BY c.created_at DESC`;
+    const res = await pool.query(query, params);
+    return res.rows;
+  }
+
+  /**
+   * Updates campaign counts atomically based on current job and invitation states.
+   */
+  async updateCampaignCounts(campaignId: string, client?: PoolClient): Promise<void> {
+    const db = client || pool;
+    const query = `
+      WITH job_stats AS (
+        SELECT
+          COUNT(*) FILTER (WHERE status = 'QUEUED')::int AS queued_cnt,
+          COUNT(*) FILTER (WHERE status = 'PROCESSING')::int AS proc_cnt,
+          COUNT(*) FILTER (WHERE status IN ('SENT', 'DELIVERED'))::int AS sent_cnt,
+          COUNT(*) FILTER (WHERE status = 'FAILED')::int AS failed_cnt
+        FROM institution_email_jobs
+        WHERE campaign_id = $1
+      ),
+      inv_stats AS (
+        SELECT
+          COUNT(*) FILTER (WHERE delivery_status = 'DELIVERED')::int AS deliv_cnt,
+          COUNT(*) FILTER (WHERE delivery_status = 'BOUNCED')::int AS bounce_cnt,
+          COUNT(*) FILTER (WHERE status = 'ACCEPTED')::int AS accepted_cnt
+        FROM institution_student_invitations
+        WHERE campaign_id = $1
+      )
+      UPDATE institution_student_campaigns c
+      SET
+        queued_count = COALESCE(j.queued_cnt, 0),
+        processing_count = COALESCE(j.proc_cnt, 0),
+        sent_count = COALESCE(j.sent_cnt, 0),
+        failed_count = COALESCE(j.failed_cnt, 0),
+        delivered_count = COALESCE(i.deliv_cnt, 0),
+        bounced_count = COALESCE(i.bounce_cnt, 0),
+        accepted_count = COALESCE(i.accepted_cnt, 0),
+        status = CASE
+          WHEN (COALESCE(j.queued_cnt, 0) + COALESCE(j.proc_cnt, 0)) = 0 AND c.total_count > 0 THEN 'COMPLETED'
+          ELSE 'PROCESSING'
+        END,
+        completed_at = CASE
+          WHEN (COALESCE(j.queued_cnt, 0) + COALESCE(j.proc_cnt, 0)) = 0 AND c.total_count > 0 AND c.completed_at IS NULL THEN NOW()
+          ELSE c.completed_at
+        END,
+        updated_at = NOW()
+      FROM job_stats j, inv_stats i
+      WHERE c.id = $1
+    `;
+    await db.query(query, [campaignId]);
+  }
+
+  /**
+   * Updates campaign status.
+   */
+  async updateCampaignStatus(
+    campaignId: string,
+    status: InvitationCampaignStatus,
+    client?: PoolClient
+  ): Promise<void> {
+    const db = client || pool;
+    const query = `
+      UPDATE institution_student_campaigns
+      SET status = $1,
+          completed_at = CASE WHEN $1 = 'COMPLETED' THEN NOW() ELSE completed_at END,
+          updated_at = NOW()
+      WHERE id = $2
+    `;
+    await db.query(query, [status, campaignId]);
+  }
+
+  /**
+   * Enqueues a durable email job into the PostgreSQL Outbox queue.
+   */
+  async createEmailJob(
+    data: {
+      campaignId?: string | null;
+      invitationId: string;
+      institutionId: string;
+      recipientEmail: string;
+      recipientName: string;
+      rawToken: string;
+    },
+    client?: PoolClient
+  ): Promise<InstitutionEmailJobEntity> {
+    const db = client || pool;
+    const query = `
+      INSERT INTO institution_email_jobs (
+        campaign_id, invitation_id, institution_id, recipient_email, recipient_name, raw_token, status, attempts
+      )
+      VALUES ($1, $2, $3, LOWER($4), $5, $6, 'QUEUED', 0)
+      ON CONFLICT (invitation_id) DO UPDATE SET
+        raw_token = EXCLUDED.raw_token,
+        status = 'QUEUED',
+        attempts = 0,
+        scheduled_at = NOW(),
+        updated_at = NOW()
+      RETURNING id, campaign_id as "campaignId", invitation_id as "invitationId",
+                institution_id as "institutionId", recipient_email as "recipientEmail",
+                recipient_name as "recipientName", status, attempts, max_attempts as "maxAttempts",
+                scheduled_at as "scheduledAt", processed_at as "processedAt",
+                completed_at as "completedAt", last_error as "lastError",
+                is_permanent_failure as "isPermanentFailure",
+                provider_message_id as "providerMessageId",
+                created_at as "createdAt", updated_at as "updatedAt"
+    `;
+    const res = await db.query(query, [
+      data.campaignId || null,
+      data.invitationId,
+      data.institutionId,
+      data.recipientEmail.trim(),
+      data.recipientName.trim(),
+      data.rawToken,
+    ]);
+    return res.rows[0];
+  }
+
+  /**
+   * Atomically claims a batch of pending email jobs using SELECT FOR UPDATE SKIP LOCKED.
+   */
+  async claimQueuedEmailJobs(limit = 10): Promise<Array<InstitutionEmailJobEntity & {
+    institutionName: string;
+    className: string | null;
+    gradeLevel: string | null;
+    division: string | null;
+    expiresAt: string;
+  }>> {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const selectQuery = `
+        SELECT
+          j.id,
+          j.campaign_id as "campaignId",
+          j.invitation_id as "invitationId",
+          j.institution_id as "institutionId",
+          inst.name as "institutionName",
+          ic.name as "className",
+          ic.grade_level as "gradeLevel",
+          ic.division,
+          j.recipient_email as "recipientEmail",
+          j.recipient_name as "recipientName",
+          j.raw_token as "rawToken",
+          j.status,
+          j.attempts,
+          j.max_attempts as "maxAttempts",
+          j.scheduled_at as "scheduledAt",
+          j.processed_at as "processedAt",
+          j.completed_at as "completedAt",
+          j.last_error as "lastError",
+          j.is_permanent_failure as "isPermanentFailure",
+          j.provider_message_id as "providerMessageId",
+          isi.expires_at as "expiresAt",
+          j.created_at as "createdAt",
+          j.updated_at as "updatedAt"
+        FROM institution_email_jobs j
+        JOIN institutions inst ON j.institution_id = inst.id
+        JOIN institution_student_invitations isi ON j.invitation_id = isi.id
+        LEFT JOIN institution_classes ic ON isi.class_id = ic.id
+        WHERE j.status = 'QUEUED' AND j.scheduled_at <= NOW() AND isi.status = 'PENDING'
+        ORDER BY j.scheduled_at ASC
+        LIMIT $1
+        FOR UPDATE OF j SKIP LOCKED
+      `;
+
+      const res = await client.query(selectQuery, [limit]);
+      if (res.rows.length === 0) {
+        await client.query("COMMIT");
+        return [];
+      }
+
+      const jobIds = res.rows.map((r) => r.id);
+      await client.query(
+        `UPDATE institution_email_jobs
+         SET status = 'PROCESSING',
+             processed_at = NOW(),
+             updated_at = NOW()
+         WHERE id = ANY($1::uuid[])`,
+        [jobIds]
+      );
+
+      await client.query("COMMIT");
+      return res.rows;
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Marks an email job as successfully sent, clears raw token for security, and updates invitation & campaign.
+   */
+  async updateEmailJobSuccess(
+    jobId: string,
+    providerMessageId?: string
+  ): Promise<void> {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const updateJobRes = await client.query(
+        `UPDATE institution_email_jobs
+         SET status = 'SENT',
+             raw_token = '',
+             provider_message_id = $1,
+             completed_at = NOW(),
+             updated_at = NOW()
+         WHERE id = $2
+         RETURNING campaign_id, invitation_id`,
+        [providerMessageId || null, jobId]
+      );
+
+      const job = updateJobRes.rows[0];
+      if (job) {
+        await client.query(
+          `UPDATE institution_student_invitations
+           SET delivery_status = 'SENT',
+               provider_message_id = $1,
+               sent_at = NOW(),
+               updated_at = NOW()
+           WHERE id = $2`,
+          [providerMessageId || null, job.invitation_id]
+        );
+
+        if (job.campaign_id) {
+          await this.updateCampaignCounts(job.campaign_id, client);
+        }
+      }
+
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Records failure on an email job, handling retries or permanent failure.
+   */
+  async updateEmailJobFailure(
+    jobId: string,
+    error: string,
+    isPermanent: boolean,
+    nextScheduledAt?: Date
+  ): Promise<void> {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const nextStatus = isPermanent ? "FAILED" : "QUEUED";
+
+      const updateJobRes = await client.query(
+        `UPDATE institution_email_jobs
+         SET status = $1,
+             attempts = attempts + 1,
+             scheduled_at = COALESCE($2, NOW()),
+             last_error = $3,
+             is_permanent_failure = $4,
+             updated_at = NOW()
+         WHERE id = $5
+         RETURNING campaign_id, invitation_id, attempts, max_attempts`,
+        [
+          nextStatus,
+          nextScheduledAt || null,
+          error.slice(0, 500),
+          isPermanent,
+          jobId,
+        ]
+      );
+
+      const job = updateJobRes.rows[0];
+      if (job && isPermanent) {
+        await client.query(
+          `UPDATE institution_student_invitations
+           SET delivery_status = 'FAILED',
+               failure_reason = $1,
+               updated_at = NOW()
+           WHERE id = $2`,
+          [error.slice(0, 500), job.invitation_id]
+        );
+
+        if (job.campaign_id) {
+          await this.updateCampaignCounts(job.campaign_id, client);
+        }
+      }
+
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Updates job and invitation to DELIVERED status from provider webhook event.
+   */
+  async updateEmailJobDelivered(providerMessageId: string): Promise<void> {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const jobRes = await client.query(
+        `UPDATE institution_email_jobs
+         SET status = 'DELIVERED',
+             updated_at = NOW()
+         WHERE provider_message_id = $1
+         RETURNING campaign_id, invitation_id`,
+        [providerMessageId]
+      );
+
+      const job = jobRes.rows[0];
+      if (job) {
+        await client.query(
+          `UPDATE institution_student_invitations
+           SET delivery_status = 'DELIVERED',
+               delivery_event_at = NOW(),
+               updated_at = NOW()
+           WHERE id = $1`,
+          [job.invitation_id]
+        );
+
+        if (job.campaign_id) {
+          await this.updateCampaignCounts(job.campaign_id, client);
+        }
+      }
+
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Updates job and invitation to BOUNCED status from provider webhook event.
+   */
+  async updateEmailJobBounced(
+    providerMessageId: string,
+    bounceType?: string
+  ): Promise<void> {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const reason = `Bounced (${bounceType || "Hard Bounce"})`;
+
+      const jobRes = await client.query(
+        `UPDATE institution_email_jobs
+         SET status = 'BOUNCED',
+             is_permanent_failure = true,
+             last_error = $1,
+             updated_at = NOW()
+         WHERE provider_message_id = $2
+         RETURNING campaign_id, invitation_id`,
+        [reason, providerMessageId]
+      );
+
+      const job = jobRes.rows[0];
+      if (job) {
+        await client.query(
+          `UPDATE institution_student_invitations
+           SET delivery_status = 'BOUNCED',
+               failure_reason = $1,
+               delivery_event_at = NOW(),
+               updated_at = NOW()
+           WHERE id = $2`,
+          [reason, job.invitation_id]
+        );
+
+        if (job.campaign_id) {
+          await this.updateCampaignCounts(job.campaign_id, client);
+        }
+      }
+
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Finds all student invitations associated with a campaign.
+   */
+  async findInvitationsByCampaignId(
+    campaignId: string
+  ): Promise<InstitutionStudentInvitationEntity[]> {
+    const query = `
+      SELECT
+        isi.id,
+        isi.institution_id as "institutionId",
+        inst.name as "institutionName",
+        isi.campaign_id as "campaignId",
+        isi.class_id as "classId",
+        ic.name as "className",
+        ic.grade_level as "gradeLevel",
+        ic.division,
+        isi.email,
+        isi.first_name as "firstName",
+        isi.last_name as "lastName",
+        isi.roll_number as "rollNumber",
+        isi.academic_year as "academicYear",
+        isi.token_hash as "tokenHash",
+        isi.status,
+        isi.delivery_status as "deliveryStatus",
+        isi.delivery_event_at as "deliveryEventAt",
+        isi.provider_message_id as "providerMessageId",
+        isi.failure_reason as "failureReason",
+        isi.invited_by_user_id as "invitedByUserId",
+        isi.accepted_by_user_id as "acceptedByUserId",
+        isi.expires_at as "expiresAt",
+        isi.sent_at as "sentAt",
+        isi.accepted_at as "acceptedAt",
+        isi.revoked_at as "revokedAt",
+        isi.created_at as "createdAt",
+        isi.updated_at as "updatedAt"
+      FROM institution_student_invitations isi
+      JOIN institutions inst ON isi.institution_id = inst.id
+      LEFT JOIN institution_classes ic ON isi.class_id = ic.id
+      WHERE isi.campaign_id = $1
+      ORDER BY isi.created_at ASC
+    `;
+    const res = await pool.query(query, [campaignId]);
+    return res.rows;
+  }
+
+  /**
+   * Retries only failed email jobs for a campaign without resending successful ones.
+   */
+  async retryFailedCampaignJobs(
+    campaignId: string,
+    institutionId: string
+  ): Promise<number> {
+    const query = `
+      UPDATE institution_email_jobs
+      SET status = 'QUEUED',
+          attempts = 0,
+          scheduled_at = NOW(),
+          is_permanent_failure = false,
+          updated_at = NOW()
+      WHERE campaign_id = $1 AND institution_id = $2 AND status = 'FAILED'
+    `;
+    const res = await pool.query(query, [campaignId, institutionId]);
+    await this.updateCampaignCounts(campaignId);
+    return res.rowCount || 0;
   }
 }
 

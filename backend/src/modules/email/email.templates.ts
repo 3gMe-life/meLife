@@ -12,6 +12,7 @@ import {
   SessionBookedEmailPayload,
   SessionCancelledEmailPayload,
   AssessmentCompletedEmailPayload,
+  StudentInvitationEmailPayload,
 } from "./email.types";
 
 /**
@@ -613,6 +614,48 @@ export const emailTemplates = {
     );
 
     const text = `Hello ${payload.studentName},\n\nYour report for ${payload.assessmentTitle} is ready. View it here: ${payload.reportUrl}`;
+
+    return { subject, html, text };
+  },
+
+  /**
+   * 14. Student Institutional Onboarding Invitation
+   */
+  studentInvitation(payload: StudentInvitationEmailPayload): {
+    subject: string;
+    html: string;
+    text: string;
+  } {
+    const cohortDisplay = payload.className || (payload.gradeLevel ? `Grade ${payload.gradeLevel}${payload.division ? `-${payload.division}` : ""}` : "Academic Cohort");
+    const subject = `Invitation to join ${payload.institutionName} on 3G MeLife`;
+    const expiryStr = typeof payload.expiresAt === "string" ? new Date(payload.expiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : payload.expiresAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+    const html = baseTemplate(
+      subject,
+      `
+      <h1>Institutional Student Invitation 🎓</h1>
+      <p>Hello <strong>${payload.studentName}</strong>,</p>
+      <p><strong>${payload.institutionName}</strong> has invited you to join their digital student cohort on the 3G MeLife Psychometric & Career Guidance Platform.</p>
+
+      <div class="callout">
+        <strong>Institution:</strong> ${payload.institutionName}<br>
+        <strong>Assigned Cohort:</strong> ${cohortDisplay}<br>
+        <strong>Invited Email:</strong> ${payload.to}
+      </div>
+
+      <p>${payload.hasExistingAccount ? "Since you already have a 3G MeLife account, you can sign in to securely link your profile to this cohort." : "Click below to activate your student account, set your password, and access your assigned assessments and psychometric reports."}</p>
+
+      <div class="btn-container">
+        <a href="${payload.inviteUrl}" class="btn">Accept Invitation & Get Started →</a>
+      </div>
+
+      <div class="callout callout-warning">
+        <strong>Security Notice:</strong> This invitation is secure, single-use, and valid until <strong>${expiryStr}</strong>. Do not forward or share this link with anyone.
+      </div>
+    `
+    );
+
+    const text = `Hello ${payload.studentName},\n\n${payload.institutionName} has invited you to join ${cohortDisplay} on 3G MeLife.\n\nAccept your invitation here: ${payload.inviteUrl}\n(Valid until ${expiryStr})`;
 
     return { subject, html, text };
   },

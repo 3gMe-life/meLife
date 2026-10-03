@@ -115,7 +115,21 @@ adminRouter.get("/institutions", adminController.listInstitutions);
 adminRouter.get("/institutions/:id", adminController.getInstitutionById);
 adminRouter.patch("/institutions/:id/status", adminController.updateInstitutionStatus);
 
+/**
+ * Company & Enterprise Tenant Management Routes
+ */
+adminRouter.get("/companies", adminController.listCompanies);
+adminRouter.get("/companies/:id", adminController.getCompanyById);
+adminRouter.post("/companies", adminController.createCompany);
+adminRouter.patch("/companies/:id/status", adminController.updateCompanyStatus);
+
+/**
+ * Audit Logs
+ */
+adminRouter.get("/audit-logs", adminController.listAuditLogs);
+
 export { adminRouter };
+
 
 
 

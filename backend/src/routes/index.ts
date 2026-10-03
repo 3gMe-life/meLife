@@ -13,6 +13,7 @@ import { careerReportRouter } from "../modules/careers/reports/career-report.rou
 import { counsellorsRouter, counsellingRouter, notificationRouter } from "../modules/counselling/counselling.routes";
 import { parentRouter } from "../modules/parent/parent.routes";
 import { institutionRouter } from "../modules/institution/institution.routes";
+import { companyRouter } from "../modules/company/company.routes";
 import { authenticate } from "../middleware/authenticate.middleware";
 import { requireRole } from "../middleware/authorization.middleware";
 
@@ -23,6 +24,9 @@ apiRouter.use(healthRoutes);
 
 // Mount administrative management module routes (/api/v1/admin)
 apiRouter.use("/admin", adminRouter);
+
+// Mount company tenant management module routes (/api/v1/company)
+apiRouter.use("/company", companyRouter);
 
 // Mount authentication module routes (/api/v1/auth)
 apiRouter.use("/auth", authRouter);

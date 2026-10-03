@@ -44,6 +44,10 @@ import {
   AdminInstitutionListItemDTO,
   AdminInstitutionDetailDTO,
   AdminInstitutionFilterParams,
+  AdminCompanyListItemDTO,
+  AdminCompanyDetailDTO,
+  CreateAdminCompanyDTO,
+  AdminAuditLogItemDTO,
 } from "./admin.types";
 
 export class AdminRepository {
@@ -3103,9 +3107,209 @@ export class AdminRepository {
       throw AppError.notFound("Institution application not found.", "APPLICATION_NOT_FOUND");
     }
   }
+
+  /**
+   * Lists companies across the platform with stats and filters.
+   */
+  async findCompanies(filters?: { search?: string; status?: string }): Promise<AdminCompanyListItemDTO[]> {
+    let query = `
+      SELECT c.id, c.name, c.code, c.contact_email, c.phone, c.city, c.state, c.country,
+             c.status, c.student_capacity, c.created_at,
+             (SELECT COUNT(*)::int FROM company_users cu WHERE cu.company_id = c.id) as users_count,
+             (SELECT COUNT(*)::int FROM company_institutions ci WHERE ci.company_id = c.id) as insts_count
+      FROM companies c
+      WHERE 1=1
+    `;
+    const params: unknown[] = [];
+    if (filters?.status && filters.status.toUpperCase() !== "ALL") {
+      params.push(filters.status.toUpperCase());
+      query += ` AND c.status = $${params.length}`;
+    }
+    if (filters?.search && filters.search.trim()) {
+      params.push(`%${filters.search.trim().toLowerCase()}%`);
+      query += ` AND (LOWER(c.name) LIKE $${params.length} OR LOWER(c.code) LIKE $${params.length} OR LOWER(c.contact_email) LIKE $${params.length})`;
+    }
+    query += ` ORDER BY c.created_at DESC`;
+
+    const res = await pool.query(query, params);
+    return res.rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      code: row.code,
+      contactEmail: row.contact_email,
+      phone: row.phone,
+      city: row.city,
+      state: row.state,
+      country: row.country || "India",
+      status: row.status,
+      studentCapacity: row.student_capacity,
+      usersCount: row.users_count || 0,
+      institutionsCount: row.insts_count || 0,
+      createdAt: row.created_at?.toISOString?.() || row.created_at,
+    }));
+  }
+
+  /**
+   * Finds company detail by ID with associated users and institutions.
+   */
+  async findCompanyById(companyId: string): Promise<AdminCompanyDetailDTO> {
+    const compRes = await pool.query(`SELECT * FROM companies WHERE id = $1`, [companyId]);
+    if (!compRes.rows[0]) {
+      throw AppError.notFound("Company organization not found.", "COMPANY_NOT_FOUND");
+    }
+    const c = compRes.rows[0];
+
+    const usersRes = await pool.query(
+      `SELECT cu.id, cu.user_id, cu.role, cu.is_active,
+              u.first_name, u.last_name, u.email
+       FROM company_users cu
+       JOIN users u ON cu.user_id = u.id
+       WHERE cu.company_id = $1`,
+      [companyId]
+    );
+
+    const instsRes = await pool.query(
+      `SELECT i.id, i.name, i.code, i.type, i.contact_email, i.is_active,
+              (SELECT COUNT(*)::int FROM institution_students ist WHERE ist.institution_id = i.id) as student_count
+       FROM institutions i
+       JOIN company_institutions ci ON i.id = ci.institution_id
+       WHERE ci.company_id = $1`,
+      [companyId]
+    );
+
+    return {
+      id: c.id,
+      name: c.name,
+      code: c.code,
+      contactEmail: c.contact_email,
+      phone: c.phone,
+      address: c.address,
+      city: c.city,
+      state: c.state,
+      country: c.country || "India",
+      status: c.status,
+      studentCapacity: c.student_capacity,
+      logoUrl: c.logo_url,
+      usersCount: usersRes.rows.length,
+      institutionsCount: instsRes.rows.length,
+      createdAt: c.created_at?.toISOString?.() || c.created_at,
+      updatedAt: c.updated_at?.toISOString?.() || c.updated_at,
+      users: usersRes.rows.map((u) => ({
+        id: u.id,
+        userId: u.user_id,
+        name: `${u.first_name || ""} ${u.last_name || ""}`.trim() || u.email,
+        email: u.email,
+        role: u.role,
+        isActive: u.is_active,
+      })),
+      institutions: instsRes.rows.map((i) => ({
+        id: i.id,
+        name: i.name,
+        code: i.code,
+        type: i.type,
+        contactEmail: i.contact_email,
+        studentCount: i.student_count || 0,
+        isActive: i.is_active,
+      })),
+    };
+  }
+
+  /**
+   * Creates a new company organization.
+   */
+  async createCompany(dto: CreateAdminCompanyDTO): Promise<AdminCompanyListItemDTO> {
+    const code = dto.code?.toUpperCase().trim() || `COMP-${Date.now().toString(36).toUpperCase()}`;
+    const insert = `
+      INSERT INTO companies (name, code, contact_email, phone, address, city, state, country, student_capacity, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'ACTIVE')
+      RETURNING *
+    `;
+    const res = await pool.query(insert, [
+      dto.name.trim(),
+      code,
+      dto.contactEmail.toLowerCase().trim(),
+      dto.phone?.trim() || null,
+      dto.address?.trim() || null,
+      dto.city?.trim() || null,
+      dto.state?.trim() || null,
+      dto.country?.trim() || "India",
+      dto.studentCapacity || 1000,
+    ]);
+
+    const created = res.rows[0];
+
+    // If an admin user was specified, link them as COMPANY_ADMIN
+    if (dto.adminUserId) {
+      await pool.query(
+        `INSERT INTO company_users (company_id, user_id, role, is_active)
+         VALUES ($1, $2, 'COMPANY_ADMIN', true)
+         ON CONFLICT (company_id, user_id) DO NOTHING`,
+        [created.id, dto.adminUserId]
+      );
+    }
+
+    return {
+      id: created.id,
+      name: created.name,
+      code: created.code,
+      contactEmail: created.contact_email,
+      phone: created.phone,
+      city: created.city,
+      state: created.state,
+      country: created.country,
+      status: created.status,
+      studentCapacity: created.student_capacity,
+      usersCount: dto.adminUserId ? 1 : 0,
+      institutionsCount: 0,
+      createdAt: created.created_at?.toISOString?.() || created.created_at,
+    };
+  }
+
+  /**
+   * Updates company status (ACTIVE, SUSPENDED, PENDING).
+   */
+  async updateCompanyStatus(companyId: string, status: "ACTIVE" | "PENDING" | "SUSPENDED"): Promise<void> {
+    const res = await pool.query(
+      `UPDATE companies SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING id`,
+      [status, companyId]
+    );
+    if (!res.rows[0]) {
+      throw AppError.notFound("Company not found.");
+    }
+  }
+
+  /**
+   * Retrieves platform-wide audit log events.
+   */
+  async findAuditLogs(): Promise<AdminAuditLogItemDTO[]> {
+    const featureLogs = await pool.query(
+      `SELECT rfal.id, rfal.feature_key, rfal.previous_state, rfal.new_state, rfal.created_at,
+              u.first_name, u.last_name, u.email,
+              r.name as role_name
+       FROM role_feature_audit_logs rfal
+       JOIN users u ON rfal.admin_user_id = u.id
+       JOIN roles r ON rfal.role_id = r.id
+       ORDER BY rfal.created_at DESC
+       LIMIT 50`
+    );
+
+    const logs: AdminAuditLogItemDTO[] = featureLogs.rows.map((row) => ({
+      id: row.id,
+      action: `Feature '${row.feature_key}' ${row.new_state ? "Enabled" : "Disabled"} for role '${row.role_name}'`,
+      category: "RBAC",
+      actorName: `${row.first_name || ""} ${row.last_name || ""}`.trim() || row.email,
+      actorEmail: row.email,
+      targetResource: `role:${row.role_name}`,
+      status: "SUCCESS",
+      timestamp: row.created_at?.toISOString?.() || row.created_at,
+    }));
+
+    return logs;
+  }
 }
 
 export const adminRepository = new AdminRepository();
+
 
 
 

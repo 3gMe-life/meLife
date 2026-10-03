@@ -77,7 +77,7 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify({
         ...payload,
-        email: payload.professionalEmail || (payload as any).email,
+        email: payload.professionalEmail || (payload as Record<string, unknown>).email,
       }),
     });
     storeAuthToken(res);
@@ -92,7 +92,7 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify({
         ...payload,
-        email: payload.officialEmail || (payload as any).email,
+        email: payload.officialEmail || (payload as Record<string, unknown>).email,
       }),
     });
     storeAuthToken(res);

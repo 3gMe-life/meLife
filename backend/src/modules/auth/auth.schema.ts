@@ -93,7 +93,7 @@ export const googleAuthSchema = z.object({
   credential: z
     .string()
     .min(1, "Google ID token credential is required"),
-  registrationPath: registrationPathEnum.optional().default("STUDENT"),
+  registrationPath: registrationPathEnum.optional(),
 });
 
 export const changePasswordSchema = z.object({

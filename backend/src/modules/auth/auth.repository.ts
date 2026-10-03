@@ -198,6 +198,44 @@ export class AuthRepository {
         UNIQUE(parent_user_id, student_user_id)
       );
 
+      -- 16. Companies / Enterprise Tenants
+      CREATE TABLE IF NOT EXISTS companies (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(255) NOT NULL,
+        code VARCHAR(50) UNIQUE NOT NULL,
+        contact_email VARCHAR(255) NOT NULL,
+        phone VARCHAR(50) NULL,
+        address VARCHAR(255) NULL,
+        city VARCHAR(100) NULL,
+        state VARCHAR(100) NULL,
+        country VARCHAR(100) NOT NULL DEFAULT 'India',
+        status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+        student_capacity INT NOT NULL DEFAULT 1000,
+        logo_url VARCHAR(500) NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      -- 17. Company Users & Role Links
+      CREATE TABLE IF NOT EXISTS company_users (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role VARCHAR(50) NOT NULL DEFAULT 'COMPANY_ADMIN',
+        is_active BOOLEAN NOT NULL DEFAULT true,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(company_id, user_id)
+      );
+
+      -- 18. Company - Institution Associations
+      CREATE TABLE IF NOT EXISTS company_institutions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+        institution_id UUID NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(company_id, institution_id)
+      );
+
       -- Indexes
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(LOWER(email));
       CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
@@ -215,6 +253,11 @@ export class AuthRepository {
       CREATE INDEX IF NOT EXISTS idx_student_parent_links_parent ON student_parent_links(parent_user_id);
       CREATE INDEX IF NOT EXISTS idx_student_parent_links_student ON student_parent_links(student_user_id);
       CREATE INDEX IF NOT EXISTS idx_student_parent_links_status ON student_parent_links(link_status);
+      CREATE INDEX IF NOT EXISTS idx_companies_code ON companies(code);
+      CREATE INDEX IF NOT EXISTS idx_companies_status ON companies(status);
+      CREATE INDEX IF NOT EXISTS idx_company_users_user ON company_users(user_id);
+      CREATE INDEX IF NOT EXISTS idx_company_users_company ON company_users(company_id);
+      CREATE INDEX IF NOT EXISTS idx_company_institutions_company ON company_institutions(company_id);
     `;
 
     await db.query(query);
@@ -251,6 +294,11 @@ export class AuthRepository {
       "parent.read",
       "staff.manage",
       "voucher.manage",
+      "company.read",
+      "company.manage",
+      "company.dashboard",
+      "platform.manage",
+      "audit.read",
     ];
     for (const p of standardPerms) {
       await db.query(
@@ -457,11 +505,44 @@ export class AuthRepository {
         },
         {
           role: "PLATFORM_ADMIN",
-          permissions: ["admin.all", "student.read", "student.manage", "institution.manage"],
+          permissions: [
+            "admin.all",
+            "student.read",
+            "student.manage",
+            "institution.manage",
+            "company.read",
+            "company.manage",
+            "counsellor.view",
+            "class.read",
+            "class.manage",
+            "assessment.assign",
+            "session.manage",
+            "parent.read",
+            "staff.manage",
+            "voucher.manage",
+            "platform.manage",
+            "audit.read",
+          ],
         },
         {
           role: "COMPANY_ADMIN",
-          permissions: ["admin.all"],
+          permissions: [
+            "company.dashboard",
+            "company.read",
+            "company.manage",
+            "student.read",
+            "student.manage",
+            "institution.manage",
+            "class.read",
+            "class.manage",
+            "assessment.assign",
+            "session.manage",
+            "parent.read",
+            "staff.manage",
+            "voucher.manage",
+            "counsellor.view",
+            "result.read_own",
+          ],
         },
         {
           role: "SUPER_ADMIN",
@@ -671,6 +752,116 @@ export class AuthRepository {
           route: "/institution/vouchers",
           requiredPermission: "voucher.manage",
           sortOrder: 18,
+        },
+        {
+          key: "admin.companies",
+          name: "Companies & Organizations",
+          description: "Manage enterprise tenants and corporate organizations",
+          category: "MANAGEMENT",
+          icon: "Building2",
+          route: "/admin/companies",
+          requiredPermission: "admin.all",
+          sortOrder: 19,
+        },
+        {
+          key: "company.overview",
+          name: "Company Dashboard",
+          description: "Company overview metrics, throughput, and operational activity",
+          category: "CORE",
+          icon: "LayoutDashboard",
+          route: "/company/dashboard",
+          requiredPermission: "company.dashboard",
+          sortOrder: 20,
+        },
+        {
+          key: "company.users",
+          name: "Company Users",
+          description: "Manage corporate users and staff members",
+          category: "MANAGEMENT",
+          icon: "Users",
+          route: "/company/users",
+          requiredPermission: "company.manage",
+          sortOrder: 21,
+        },
+        {
+          key: "company.students",
+          name: "Students Directory",
+          description: "Supervise enrolled students across company institutions",
+          category: "CORE",
+          icon: "GraduationCap",
+          route: "/company/students",
+          requiredPermission: "student.read",
+          sortOrder: 22,
+        },
+        {
+          key: "company.institutions",
+          name: "Institutions & Branches",
+          description: "Oversee affiliated institutions, colleges, and campuses",
+          category: "MANAGEMENT",
+          icon: "School",
+          route: "/company/institutions",
+          requiredPermission: "institution.manage",
+          sortOrder: 23,
+        },
+        {
+          key: "company.counsellors",
+          name: "Counsellors Network",
+          description: "Inspect available counsellors and practitioner availability",
+          category: "MANAGEMENT",
+          icon: "UserCheck",
+          route: "/company/counsellors",
+          requiredPermission: "counsellor.view",
+          sortOrder: 24,
+        },
+        {
+          key: "company.assessments",
+          name: "Assessments & Allocations",
+          description: "Allocate and supervise psychometric assessments",
+          category: "ASSESSMENTS & REPORTS",
+          icon: "ClipboardCheck",
+          route: "/company/assessments",
+          requiredPermission: "assessment.assign",
+          sortOrder: 25,
+        },
+        {
+          key: "company.sessions",
+          name: "Guidance Sessions",
+          description: "Track booked student and employee career counselling sessions",
+          category: "CORE",
+          icon: "Calendar",
+          route: "/company/sessions",
+          requiredPermission: "session.manage",
+          sortOrder: 26,
+        },
+        {
+          key: "company.reports",
+          name: "Company Reports",
+          description: "Analytics, cohort completion rates, and psychometric insights",
+          category: "INSIGHTS",
+          icon: "FileText",
+          route: "/company/reports",
+          requiredPermission: "result.read_own",
+          sortOrder: 27,
+        },
+        {
+          key: "company.invitations",
+          name: "Bulk Invitations",
+          description: "Batch student and user onboarding invitation campaigns",
+          category: "COMMUNICATION",
+          icon: "Send",
+          route: "/company/invitations",
+          requiredPermission: "student.manage",
+          sortOrder: 28,
+        },
+        {
+          key: "company.settings",
+          name: "Company Settings",
+          description: "Corporate tenant profile, branding, and notification preferences",
+          category: "ACCOUNT",
+          icon: "Settings",
+          route: "/company/settings",
+          requiredPermission: "company.manage",
+          sortOrder: 29,
         },
       ];
 

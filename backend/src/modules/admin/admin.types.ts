@@ -576,6 +576,71 @@ export interface AdminInstitutionFilterParams {
   limit?: number;
 }
 
+export interface AdminCompanyListItemDTO {
+  id: string;
+  name: string;
+  code: string;
+  contactEmail: string;
+  phone: string | null;
+  city: string | null;
+  state: string | null;
+  country: string;
+  status: "ACTIVE" | "PENDING" | "SUSPENDED";
+  studentCapacity: number;
+  usersCount: number;
+  institutionsCount: number;
+  createdAt: string;
+}
+
+export interface AdminCompanyDetailDTO extends AdminCompanyListItemDTO {
+  address: string | null;
+  logoUrl: string | null;
+  updatedAt: string;
+  users: Array<{
+    id: string;
+    userId: string;
+    name: string;
+    email: string;
+    role: string;
+    isActive: boolean;
+  }>;
+  institutions: Array<{
+    id: string;
+    name: string;
+    code: string;
+    type: string;
+    contactEmail: string;
+    studentCount: number;
+    isActive: boolean;
+  }>;
+}
+
+export interface CreateAdminCompanyDTO {
+  name: string;
+  code?: string;
+  contactEmail: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  studentCapacity?: number;
+  adminUserId?: string;
+}
+
+export interface AdminAuditLogItemDTO {
+  id: string;
+  action: string;
+  category: "RBAC" | "INSTITUTION" | "COUNSELLOR" | "COMPANY" | "USER" | "SYSTEM";
+  actorName: string;
+  actorEmail: string;
+  targetResource: string;
+  status: "SUCCESS" | "WARNING" | "FAILURE";
+  details?: Record<string, any>;
+  timestamp: string;
+}
+
+
 
 
 

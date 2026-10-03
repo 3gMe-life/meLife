@@ -788,9 +788,118 @@ export class AdminController {
       next(err);
     }
   }
+
+  // ==========================================
+  // COMPANY / ORGANIZATION MANAGEMENT
+  // ==========================================
+
+  /**
+   * GET /api/v1/admin/companies
+   * Lists companies across the platform.
+   */
+  async listCompanies(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const search = req.query.search as string;
+      const status = req.query.status as string;
+      const companies = await adminService.listCompanies({ search, status });
+      res.status(HttpStatus.OK).json({
+        success: true,
+        data: companies,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /api/v1/admin/companies/:id
+   * Detailed company metadata.
+   */
+  async getCompanyById(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const companyId = req.params.id as string;
+      const company = await adminService.getCompanyById(companyId);
+      res.status(HttpStatus.OK).json({
+        success: true,
+        data: company,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * POST /api/v1/admin/companies
+   * Creates a new company organization.
+   */
+  async createCompany(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { name, code, contactEmail, phone, address, city, state, country, studentCapacity, adminUserId } = req.body;
+      if (!name || !contactEmail) {
+        throw AppError.badRequest("Company name and contact email are required.");
+      }
+      const company = await adminService.createCompany({
+        name,
+        code,
+        contactEmail,
+        phone,
+        address,
+        city,
+        state,
+        country,
+        studentCapacity: studentCapacity ? Number(studentCapacity) : undefined,
+        adminUserId,
+      });
+      res.status(HttpStatus.CREATED).json({
+        success: true,
+        message: "Company organization created successfully.",
+        data: company,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * PATCH /api/v1/admin/companies/:id/status
+   * Toggles company status.
+   */
+  async updateCompanyStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const companyId = req.params.id as string;
+      const { status } = req.body;
+      if (!status || !["ACTIVE", "PENDING", "SUSPENDED"].includes(status)) {
+        throw AppError.badRequest("Valid status ('ACTIVE', 'PENDING', 'SUSPENDED') is required.");
+      }
+      await adminService.updateCompanyStatus(companyId, status);
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: `Company status updated to ${status}.`,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /api/v1/admin/audit-logs
+   * Retrieves platform audit log records.
+   */
+  async listAuditLogs(_req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const logs = await adminService.listAuditLogs();
+      res.status(HttpStatus.OK).json({
+        success: true,
+        data: logs,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const adminController = new AdminController();
+
 
 
 

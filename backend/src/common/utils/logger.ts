@@ -43,6 +43,9 @@ export const httpLogger = pinoHttp({
       id: req.id,
       method: req.method,
       url: req.url,
+      originalUrl: (req as any).originalUrl,
+      forwardedHost: (req as any).headers?.["x-forwarded-host"],
+      forwardedProto: (req as any).headers?.["x-forwarded-proto"],
     }),
     res: (res) => ({
       statusCode: res.statusCode,

@@ -25,14 +25,18 @@ export class AuthGoogleService {
    * and extracts verified identity claims.
    */
   async verifyGoogleCredential(idToken: string): Promise<VerifiedGoogleIdentity> {
-    try {
-      if (!env.GOOGLE_CLIENT_ID) {
-        logger.warn("GOOGLE_CLIENT_ID is not configured in backend environment.");
-      }
+    if (!env.GOOGLE_CLIENT_ID) {
+      logger.error("GOOGLE_CLIENT_ID is not configured in backend environment.");
+      throw AppError.internal(
+        "Google authentication is not configured.",
+        "AUTH_GOOGLE_NOT_CONFIGURED"
+      );
+    }
 
+    try {
       const ticket = await this.client.verifyIdToken({
         idToken,
-        audience: env.GOOGLE_CLIENT_ID || undefined,
+        audience: env.GOOGLE_CLIENT_ID,
       });
 
       const payload = ticket.getPayload();

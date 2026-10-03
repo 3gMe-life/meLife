@@ -18,6 +18,7 @@ import {
   SessionBookedEmailPayload,
   SessionCancelledEmailPayload,
   AssessmentCompletedEmailPayload,
+  StudentInvitationEmailPayload,
 } from "./email.types";
 
 export class EmailService {
@@ -303,6 +304,21 @@ export class EmailService {
     payload: AssessmentCompletedEmailPayload
   ): Promise<EmailSendResult> {
     const template = emailTemplates.assessmentCompleted(payload);
+    return this.sendEmail({
+      to: payload.to,
+      subject: template.subject,
+      html: template.html,
+      text: template.text,
+    });
+  }
+
+  /**
+   * Dispatches institutional student invitation email with secure token URL.
+   */
+  async sendStudentInvitation(
+    payload: StudentInvitationEmailPayload
+  ): Promise<EmailSendResult> {
+    const template = emailTemplates.studentInvitation(payload);
     return this.sendEmail({
       to: payload.to,
       subject: template.subject,

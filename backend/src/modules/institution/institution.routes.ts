@@ -5,7 +5,29 @@ import { institutionController } from "./institution.controller";
 
 const institutionRouter = Router();
 
-// All institution routes require authentication and appropriate roles
+// =========================================================================
+// PUBLIC STUDENT INVITATION & WEBHOOK ROUTES (No admin auth required)
+// =========================================================================
+institutionRouter.get(
+  "/invitations/validate",
+  institutionController.validateInvitationToken
+);
+institutionRouter.get(
+  "/invitations/verify/:token",
+  institutionController.validateInvitationToken
+);
+institutionRouter.post(
+  "/invitations/accept",
+  institutionController.acceptInvitation
+);
+institutionRouter.post(
+  "/webhooks/resend",
+  institutionController.handleResendWebhook
+);
+
+// =========================================================================
+// PROTECTED INSTITUTION PORTAL ROUTES (Requires authenticated admin)
+// =========================================================================
 institutionRouter.use(authenticate);
 institutionRouter.use(
   requireRole("INSTITUTION_ADMIN", "SUPER_ADMIN", "PLATFORM_ADMIN", "COMPANY_ADMIN")
@@ -40,10 +62,46 @@ institutionRouter.post(
   institutionController.createClass
 );
 
-// Students
+// Students Directory
 institutionRouter.get(
   "/students",
   institutionController.getStudents
+);
+
+// Student Invitations & Campaigns Management
+institutionRouter.get(
+  "/invitations",
+  institutionController.getInvitations
+);
+institutionRouter.post(
+  "/invitations",
+  institutionController.inviteStudent
+);
+institutionRouter.post(
+  "/invitations/bulk",
+  institutionController.bulkImportStudents
+);
+institutionRouter.post(
+  "/invitations/:id/resend",
+  institutionController.resendInvitation
+);
+institutionRouter.post(
+  "/invitations/:id/revoke",
+  institutionController.revokeInvitation
+);
+
+// Invitation Campaigns
+institutionRouter.get(
+  "/campaigns",
+  institutionController.getCampaigns
+);
+institutionRouter.get(
+  "/campaigns/:id",
+  institutionController.getCampaignDetails
+);
+institutionRouter.post(
+  "/campaigns/:id/retry-failed",
+  institutionController.retryFailedCampaign
 );
 
 // Assessments

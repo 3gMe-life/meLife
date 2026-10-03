@@ -39,7 +39,8 @@ interface GoogleAuthButtonProps {
   text?: string;
 }
 
-let isGlobalGoogleInitialized = false;
+let activeGoogleCallback: ((credential: string) => void) | null = null;
+let isGisInitialized = false;
 
 export function GoogleAuthButton({
   onCredentialReceived,
@@ -48,32 +49,36 @@ export function GoogleAuthButton({
   text = "Continue with Google",
 }: GoogleAuthButtonProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const callbackRef = useRef(onCredentialReceived);
 
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
-  // Keep callback ref updated via effect (pure component compliance)
+  // Keep the active module-level callback pointer updated to the currently mounted/focused button handler
   useEffect(() => {
-    callbackRef.current = onCredentialReceived;
+    activeGoogleCallback = onCredentialReceived;
+    return () => {
+      if (activeGoogleCallback === onCredentialReceived) {
+        activeGoogleCallback = null;
+      }
+    };
   }, [onCredentialReceived]);
 
   const renderGoogleButton = useCallback(() => {
     if (!window.google?.accounts?.id || !clientId || !containerRef.current) return;
 
-    // 1. Initialize Google Identity Services once globally per window
-    if (!isGlobalGoogleInitialized) {
+    // 1. Initialize Google Identity Services once globally with the active dispatcher callback
+    if (!isGisInitialized) {
       try {
         window.google.accounts.id.initialize({
           client_id: clientId,
           callback: (response) => {
-            if (response?.credential && callbackRef.current) {
-              callbackRef.current(response.credential);
+            if (response?.credential && activeGoogleCallback) {
+              activeGoogleCallback(response.credential);
             }
           },
           auto_select: false,
           cancel_on_tap_outside: true,
         });
-        isGlobalGoogleInitialized = true;
+        isGisInitialized = true;
       } catch (err) {
         console.warn("Google Identity Services initialization warning:", err);
       }

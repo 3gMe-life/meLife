@@ -29,6 +29,7 @@ import { careerReportRepository } from "./modules/careers/reports/career-report.
 import { counsellingRepository } from "./modules/counselling/counselling.repository";
 import { parentRepository } from "./modules/parent/parent.repository";
 import { institutionRepository } from "./modules/institution/institution.repository";
+import { institutionInvitationQueueWorker } from "./modules/institution/institution-invitation.worker";
 import { adminRepository } from "./modules/admin/admin.repository";
 import http from "http";
 
@@ -37,86 +38,26 @@ const bootstrap = async () => {
     // 1. Connect to PostgreSQL database
     await connectDatabase();
 
-    // 2. Initialize Auth, User, Role, Permission, Session & Dashboard Features schema
+    // 2. Initialize Core Database Schemas
     await authRepository.initSchema();
     await authRepository.seedRolePermissions();
     await authRepository.seedDashboardFeatures();
-
-    // 3. Initialize participant schema & migrations
     await participantRepository.initSchema();
-
-    // 3b. Initialize Parent Connect schema (parent_invitations & student_parent_links)
     await parentRepository.initSchema();
-
-    // 4. Initialize assessment catalog schema & seed official catalog
     await assessmentRepository.initSchema();
-    await assessmentRepository.seedCatalog();
-
-    // 5. Initialize assessment runner schema & seed Skill Finder + Stream Finder question bank & versions
     await assessmentContentRepository.initSchema();
-    await assessmentContentRepository.seedSkillFinderContent();
-    await skillFinderQuestionSelectionService.seedSkillFinderVersions();
-    await skillFinderTranslationsService.seedSkillFinderTranslations();
-
-    // 5b. Stream Finder Question Bank & Versions & Translations
-    await assessmentContentRepository.seedStreamFinderContent();
-    await streamFinderQuestionSelectionService.seedStreamFinderVersions();
-    await streamFinderTranslationsService.seedStreamFinderTranslations();
-
-    // 5c. Engineering Branch Finder Question Bank & Versions & Translations
-    await assessmentContentRepository.seedEngineeringBranchFinderContent();
-    await engineeringBranchFinderQuestionSelectionService.seedEngineeringBranchFinderVersions();
-    await engineeringBranchFinderTranslationsService.seedEngineeringBranchFinderTranslations();
-
-    // 5d. Commerce Career Finder Question Bank & Versions & Translations
-    await assessmentContentRepository.seedCommerceCareerFinderContent();
-    await commerceCareerFinderQuestionSelectionService.seedCommerceCareerFinderVersions();
-    await commerceCareerFinderTranslationsService.seedCommerceCareerFinderTranslations();
-
-    // 5e. Humanities Career Finder Question Bank & Versions & Translations
-    await assessmentContentRepository.seedHumanitiesCareerFinderContent();
-    await humanitiesCareerFinderQuestionSelectionService.seedHumanitiesCareerFinderVersions();
-    await humanitiesCareerFinderTranslationsService.seedHumanitiesCareerFinderTranslations();
-
-    // 5f. Right Career Finder Question Bank & Versions & Translations
-    await assessmentContentRepository.seedRightCareerFinderContent();
-    await rightCareerFinderQuestionSelectionService.seedRightCareerFinderVersions();
-    await rightCareerFinderTranslationsService.seedRightCareerFinderTranslations();
-
-    // 5g. AI Job Risk Finder Question Bank & Versions & Translations
-    await assessmentContentRepository.seedAiJobRiskFinderContent();
-    await aiJobRiskFinderQuestionSelectionService.seedAiJobRiskFinderVersions();
-    await aiJobRiskFinderTranslationsService.seedAiJobRiskFinderTranslations();
-
-    // 5h. Entrepreneur Development Test Question Bank & Versions & Translations
-    await assessmentContentRepository.seedEntrepreneurDevelopmentContent();
-    await entrepreneurDevelopmentQuestionSelectionService.seedEntrepreneurDevelopmentVersions();
-    await entrepreneurDevelopmentTranslationsService.seedEntrepreneurDevelopmentTranslations();
-
-    // 6. Initialize psychometric reports schema
     await reportRepository.initSchema();
-
-    // 7. Initialize career pathways schema & seed curated career library
     await careerRepository.initSchema();
-    await careerRepository.seedCareers();
-
-    // 8. Initialize career guidance reports schema
     await careerReportRepository.initSchema();
-
-    // 9. Initialize counsellor connect schema & seed certified counsellors
     await counsellingRepository.initSchema();
-    await counsellingRepository.seedCounsellors();
-
-    // 10. Initialize institution schema & seed demo institution
     await institutionRepository.initSchema();
-    await institutionRepository.seedInstitution();
     await adminRepository.initInstitutionApplicationsSchema();
 
-    // 11. Initialize Express application
+    // 3. Initialize Express application & HTTP Server
     const app = createApp();
     const server = http.createServer(app);
 
-    // 7. Start HTTP server
+    // 4. Start HTTP server immediately so frontend requests never get connection refused
     server.listen(env.PORT, () => {
       logger.info(
         `🚀 ${APP_CONFIG.serviceName} started in [${env.NODE_ENV}] mode on port ${env.PORT}`
@@ -127,9 +68,47 @@ const bootstrap = async () => {
       logger.info(`🌐 Allowed Frontend: ${env.FRONTEND_URL}`);
     });
 
+    // 5. Start background email queue worker
+    institutionInvitationQueueWorker.start();
+
+    // 6. Asynchronously seed content catalogs in the background (non-blocking)
+    (async () => {
+      try {
+        await assessmentRepository.seedCatalog();
+        await assessmentContentRepository.seedSkillFinderContent();
+        await skillFinderQuestionSelectionService.seedSkillFinderVersions();
+        await skillFinderTranslationsService.seedSkillFinderTranslations();
+        await assessmentContentRepository.seedStreamFinderContent();
+        await streamFinderQuestionSelectionService.seedStreamFinderVersions();
+        await streamFinderTranslationsService.seedStreamFinderTranslations();
+        await assessmentContentRepository.seedEngineeringBranchFinderContent();
+        await engineeringBranchFinderQuestionSelectionService.seedEngineeringBranchFinderVersions();
+        await engineeringBranchFinderTranslationsService.seedEngineeringBranchFinderTranslations();
+        await assessmentContentRepository.seedCommerceCareerFinderContent();
+        await commerceCareerFinderQuestionSelectionService.seedCommerceCareerFinderVersions();
+        await commerceCareerFinderTranslationsService.seedCommerceCareerFinderTranslations();
+        await assessmentContentRepository.seedHumanitiesCareerFinderContent();
+        await humanitiesCareerFinderQuestionSelectionService.seedHumanitiesCareerFinderVersions();
+        await humanitiesCareerFinderTranslationsService.seedHumanitiesCareerFinderTranslations();
+        await assessmentContentRepository.seedRightCareerFinderContent();
+        await rightCareerFinderQuestionSelectionService.seedRightCareerFinderVersions();
+        await rightCareerFinderTranslationsService.seedRightCareerFinderTranslations();
+        await assessmentContentRepository.seedAiJobRiskFinderContent();
+        await aiJobRiskFinderQuestionSelectionService.seedAiJobRiskFinderVersions();
+        await aiJobRiskFinderTranslationsService.seedAiJobRiskFinderTranslations();
+        await assessmentContentRepository.seedEntrepreneurDevelopmentContent();
+        await entrepreneurDevelopmentQuestionSelectionService.seedEntrepreneurDevelopmentVersions();
+        await entrepreneurDevelopmentTranslationsService.seedEntrepreneurDevelopmentTranslations();
+        await careerRepository.seedCareers();
+      } catch (seedErr) {
+        logger.warn({ err: seedErr }, "Background assessment content seed notice (non-fatal)");
+      }
+    })();
+
     // Graceful shutdown handling
     const shutdown = async (signal: string) => {
       logger.warn(`Received ${signal}. Starting graceful shutdown...`);
+      institutionInvitationQueueWorker.stop();
 
       server.close(async (err) => {
         if (err) {

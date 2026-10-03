@@ -136,3 +136,177 @@ export interface AssignAssessmentDTO {
   title?: string;
   deadline?: string;
 }
+
+export type StudentInvitationStatus = "PENDING" | "ACCEPTED" | "EXPIRED" | "REVOKED";
+
+export type InvitationCampaignStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "PAUSED" | "FAILED";
+
+export type InvitationDeliveryStatus =
+  | "QUEUED"
+  | "SENDING"
+  | "SENT"
+  | "DELIVERED"
+  | "BOUNCED"
+  | "FAILED"
+  | "CANCELLED";
+
+export interface InstitutionStudentCampaignEntity {
+  id: string;
+  institutionId: string;
+  institutionName?: string;
+  classId: string | null;
+  className?: string;
+  createdByUserId: string;
+  createdByName?: string;
+  name: string;
+  totalCount: number;
+  queuedCount: number;
+  processingCount: number;
+  sentCount: number;
+  deliveredCount: number;
+  failedCount: number;
+  bouncedCount: number;
+  acceptedCount: number;
+  status: InvitationCampaignStatus;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  updatedAt: string;
+}
+
+export interface InstitutionEmailJobEntity {
+  id: string;
+  campaignId: string | null;
+  invitationId: string;
+  institutionId: string;
+  recipientEmail: string;
+  recipientName: string;
+  rawToken?: string;
+  status: InvitationDeliveryStatus;
+  attempts: number;
+  maxAttempts: number;
+  scheduledAt: string;
+  processedAt: string | null;
+  completedAt: string | null;
+  lastError: string | null;
+  isPermanentFailure: boolean;
+  providerMessageId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InstitutionStudentInvitationEntity {
+  id: string;
+  institutionId: string;
+  institutionName?: string;
+  campaignId?: string | null;
+  classId: string | null;
+  className?: string;
+  gradeLevel?: string;
+  division?: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  rollNumber: string | null;
+  academicYear: string;
+  tokenHash: string;
+  status: StudentInvitationStatus;
+  deliveryStatus?: InvitationDeliveryStatus;
+  deliveryEventAt?: string | null;
+  providerMessageId?: string | null;
+  failureReason?: string | null;
+  invitedByUserId: string;
+  acceptedByUserId: string | null;
+  expiresAt: string;
+  sentAt: string;
+  acceptedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateStudentInvitationDTO {
+  email: string;
+  firstName: string;
+  lastName: string;
+  classId?: string | null;
+  rollNumber?: string | null;
+  academicYear?: string;
+}
+
+export interface BulkImportStudentInvitationRowDTO {
+  firstName: string;
+  lastName: string;
+  email: string;
+  classId?: string | null;
+  className?: string | null;
+  gradeLevel?: string | null;
+  division?: string | null;
+  rollNumber?: string | null;
+  academicYear?: string;
+}
+
+export interface BulkImportStudentInvitationsRequestDTO {
+  campaignName?: string;
+  previewOnly?: boolean;
+  invitations: BulkImportStudentInvitationRowDTO[];
+  defaultClassId?: string | null;
+  defaultAcademicYear?: string;
+}
+
+export interface BulkImportRowResult {
+  row: number;
+  email: string;
+  name: string;
+  status: "IMPORTED" | "SKIPPED" | "FAILED" | "DUPLICATE_IN_FILE" | "ALREADY_ENROLLED" | "ALREADY_INVITED" | "INVALID_EMAIL";
+  message?: string;
+  invitationId?: string;
+}
+
+export interface BulkImportStudentInvitationsResultDTO {
+  campaignId?: string;
+  totalProcessed: number;
+  importedCount: number;
+  skippedCount: number;
+  failedCount: number;
+  results: BulkImportRowResult[];
+}
+
+export interface StudentInvitationValidationDTO {
+  isValid: boolean;
+  status: StudentInvitationStatus;
+  invitationId?: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  rollNumber?: string | null;
+  academicYear?: string;
+  institutionName?: string;
+  className?: string | null;
+  gradeLevel?: string | null;
+  division?: string | null;
+  hasExistingAccount?: boolean;
+  error?: string;
+}
+
+export interface AcceptStudentInvitationDTO {
+  token: string;
+  password?: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+export interface ResendWebhookEventDTO {
+  type: "email.sent" | "email.delivered" | "email.bounced" | "email.complained" | "email.delivery_delayed";
+  created_at: string;
+  data: {
+    email_id?: string;
+    id?: string;
+    to?: string[];
+    from?: string;
+    subject?: string;
+    status?: string;
+    bounce_type?: string;
+  };
+}
+
