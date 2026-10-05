@@ -42,6 +42,7 @@ export interface CounsellorApplicationPayload {
   firstName: string;
   lastName: string;
   professionalEmail: string;
+  email?: string;
   password: string;
   qualification?: string;
   organization?: string;
@@ -51,6 +52,7 @@ export interface InstitutionApplicationPayload {
   institutionName: string;
   institutionType: string;
   officialEmail: string;
+  email?: string;
   contactName: string;
   phoneNumber: string;
 }

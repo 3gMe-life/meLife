@@ -82,7 +82,7 @@ export function useStudentOnboardingMutation() {
     mutationFn: (payload) => authApi.submitStudentOnboarding(payload),
     onSuccess: (_data, variables) => {
       // 1. Synchronously update currentUser cache with completed onboarding state
-      queryClient.setQueryData(["currentUser"], (old: any) => {
+      queryClient.setQueryData<CurrentUserResponse>(["currentUser"], (old) => {
         if (!old?.data) return old;
         return {
           ...old,
