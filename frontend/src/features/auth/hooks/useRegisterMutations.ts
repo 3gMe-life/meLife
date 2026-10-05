@@ -9,6 +9,7 @@ import type {
   InstitutionApplicationPayload,
   StudentOnboardingPayload,
   AuthResponse,
+  CurrentUserResponse,
 } from "../types/auth.types";
 
 export function useRegisterStudentMutation() {
