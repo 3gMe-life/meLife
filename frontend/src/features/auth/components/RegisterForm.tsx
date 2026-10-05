@@ -12,7 +12,6 @@ import { StudentRegistrationForm } from "./StudentRegistrationForm";
 import { ParentRegistrationForm } from "./ParentRegistrationForm";
 import { CounsellorRegistrationForm } from "./CounsellorRegistrationForm";
 import { InstitutionRegistrationForm } from "./InstitutionRegistrationForm";
-import { StudentOnboardingModal } from "./StudentOnboardingModal";
 import { useAuthFlowStore } from "../store/auth-flow.store";
 import { useGoogleAuthMutation } from "../hooks/useGoogleAuthMutation";
 import { resolveDashboardRoute } from "../constants/auth.constants";
@@ -24,7 +23,6 @@ export function RegisterForm() {
   const submissionFeedback = useAuthFlowStore((s) => s.submissionFeedback);
   const setSubmissionFeedback = useAuthFlowStore((s) => s.setSubmissionFeedback);
   const resetFlow = useAuthFlowStore((s) => s.resetFlow);
-  const setOnboardingModalOpen = useAuthFlowStore((s) => s.setOnboardingModalOpen);
 
   const googleMutation = useGoogleAuthMutation();
   const [serverError, setServerError] = useState<string | null>(null);
@@ -65,12 +63,8 @@ export function RegisterForm() {
             return;
           }
 
-          if (selectedPath === "STUDENT" || (role === "PARTICIPANT" && !counsellorApplication)) {
-            setOnboardingModalOpen(true);
-          } else {
-            const targetPath = resolveDashboardRoute(role, userStatus, counsellorApplication);
-            router.push(targetPath);
-          }
+          const targetPath = resolveDashboardRoute(role, userStatus, counsellorApplication);
+          router.push(targetPath);
         },
         onError: (err) => {
           setServerError(
@@ -83,9 +77,6 @@ export function RegisterForm() {
 
   return (
     <div className="relative w-full max-w-[450px] mx-auto rounded-3xl bg-slate-900/85 backdrop-blur-xl border border-white/12 p-5 sm:p-7 shadow-[0_25px_60px_-15px_rgba(2,6,23,0.7)] text-white animate-in fade-in zoom-in-95 duration-300">
-      {/* Student Onboarding Modal Wizard */}
-      <StudentOnboardingModal />
-
       {/* 1. Official MeLife Brand Header */}
       <AuthHeader />
 

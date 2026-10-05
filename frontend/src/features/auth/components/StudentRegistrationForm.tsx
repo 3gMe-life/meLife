@@ -2,15 +2,16 @@
 
 import React, { useState } from "react";
 import { Mail, User, AlertCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { FormInput } from "./FormInput";
 import { PasswordField } from "./PasswordField";
 import { AuthSubmitButton } from "./AuthSubmitButton";
 import { studentRegisterSchema } from "../schemas/register.schema";
 import { useRegisterStudentMutation } from "../hooks/useRegisterMutations";
-import { useAuthFlowStore } from "../store/auth-flow.store";
 import type { StudentRegistrationPayload } from "../types/auth.types";
 
 export function StudentRegistrationForm() {
+  const router = useRouter();
   const [formData, setFormData] = useState<StudentRegistrationPayload & { confirmPassword: string }>({
     firstName: "",
     lastName: "",
@@ -23,7 +24,6 @@ export function StudentRegistrationForm() {
   const [serverError, setServerError] = useState<string | null>(null);
 
   const registerMutation = useRegisterStudentMutation();
-  const setOnboardingModalOpen = useAuthFlowStore((s) => s.setOnboardingModalOpen);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -60,7 +60,7 @@ export function StudentRegistrationForm() {
 
     registerMutation.mutate(validation.data, {
       onSuccess: () => {
-        setOnboardingModalOpen(true);
+        router.push("/participant/dashboard");
       },
       onError: (err) => {
         setServerError(err.message || "Registration failed. Please try again.");
