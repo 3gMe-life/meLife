@@ -11,6 +11,14 @@ export function useAssessmentResultQuery(attemptId: string, language = "en") {
   });
 }
 
+export interface CompletedAssessmentResultSummary {
+  resultId: string;
+  attemptId: string;
+  assessmentCode: string;
+  completedAt: string;
+  result?: any;
+}
+
 export function useLatestAssessmentResultQuery(language = "en") {
   return useQuery({
     queryKey: ["assessmentResult", "latest", language],
@@ -19,3 +27,16 @@ export function useLatestAssessmentResultQuery(language = "en") {
     refetchOnWindowFocus: false,
   });
 }
+
+export function useAllAssessmentResultsQuery() {
+  return useQuery<CompletedAssessmentResultSummary[], Error>({
+    queryKey: ["allAssessmentResults"],
+    queryFn: async () => {
+      const data = await assessmentApi.getAllResults();
+      return (data || []) as CompletedAssessmentResultSummary[];
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
+}
+

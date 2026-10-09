@@ -143,7 +143,7 @@ export class ReportService {
       templateVer = engineeringBranchFinderReportTemplate.templateVersion;
       reportTitle = `${safeProfile.name} - Engineering Branch Finder Exploration Report`;
       archetype = reportDto.explorationFocus?.primaryBranchName || null;
-    } else {
+    } else if (resultEntity.assessment_code === "SKILL_FINDER") {
       reportDto = await skillFinderReportTemplate.generateReport({
         reportId,
         result: resultData,
@@ -151,6 +151,19 @@ export class ReportService {
         languageCode: lang,
       });
       archetype = reportDto.executiveSummary?.archetypeTitle || null;
+    } else {
+      // Clean structured fallback for assessments without dedicated multi-page template (e.g. STREAM_FINDER, AI_JOB_RISK_FINDER)
+      reportDto = {
+        reportId,
+        assessmentCode: resultEntity.assessment_code,
+        studentProfile: safeProfile,
+        resultData,
+        language: lang,
+        generatedAt: new Date().toISOString(),
+      };
+      templateVer = "1.0.0";
+      reportTitle = `${safeProfile.name} - ${resultEntity.assessment_code.replace(/_/g, " ")} Psychometric Report`;
+      archetype = null;
     }
 
     // 7. Persist Report in PostgreSQL
@@ -332,19 +345,26 @@ export class ReportService {
     requestingUserRole: UserRole,
     languageCode?: string
   ): Promise<{ buffer: Buffer; filename: string }> {
-    const { reportData } = await this.getReportById(
+    const { report, reportData } = await this.getReportById(
       reportId,
       requestingUserId,
       requestingUserRole,
       languageCode
     );
 
+    if (report.assessment_code && report.assessment_code !== "SKILL_FINDER") {
+      throw AppError.badRequest(
+        "Formal PDF report download is currently configured for Skill Finder. View interactive psychometric analytics in your result dashboard.",
+        "PDF_REPORT_UNSUPPORTED"
+      );
+    }
+
     const pdfBuffer = await reportPdfGenerator.generatePdf(reportData);
 
-    const sanitizedName = reportData.studentProfile.studentName
+    const sanitizedName = (reportData.studentProfile?.studentName || "Student")
       .replace(/[^a-zA-Z0-9]/g, "_")
       .toLowerCase();
-    const filename = `MeLife_Skill_Finder_Report_${sanitizedName}_${reportData.language}.pdf`;
+    const filename = `MeLife_Skill_Finder_Report_${sanitizedName}_${reportData.language || "en"}.pdf`;
 
     return {
       buffer: pdfBuffer,
