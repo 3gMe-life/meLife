@@ -156,7 +156,7 @@ export const StrengthsInActionGrid: React.FC<StrengthsInActionGridProps> = ({
                   </span>
                   <div className="text-right">
                     <span className="text-xs font-mono font-black text-white print:text-[#172B2A]">{score}%</span>
-                    <span className="text-[9px] uppercase tracking-wider text-white/40 block print:text-[#688582]">Percentile</span>
+                    <span className="text-[9px] uppercase tracking-wider text-white/50 block print:text-[#688582]">Score Indicator</span>
                   </div>
                 </div>
 

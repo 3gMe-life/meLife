@@ -51,7 +51,7 @@ export const CounsellorInsightsSection: React.FC<CounsellorInsightsSectionProps>
                 <tr>
                   <th className="px-4 py-2.5 font-semibold">Scale Code</th>
                   <th className="px-4 py-2.5 font-semibold">Dimension Name</th>
-                  <th className="px-4 py-2.5 font-semibold">Percentile Score</th>
+                  <th className="px-4 py-2.5 font-semibold">Normalized Score (0-100)</th>
                   <th className="px-4 py-2.5 font-semibold">Readiness Band</th>
                 </tr>
               </thead>

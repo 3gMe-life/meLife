@@ -75,8 +75,8 @@ export const ExplainableCareerCard: React.FC<ExplainableCareerCardProps> = ({
     <div
       className={`rounded-2xl border transition-all duration-300 overflow-hidden ${
         isOpen
-          ? "bg-white/[0.04] border-[#00BFA5]/50 shadow-xl shadow-[#00BFA5]/10"
-          : "bg-white/[0.02] border-white/10 hover:border-white/20 hover:bg-white/[0.03]"
+          ? "bg-[#0E2623] border-[#00BFA5]/60 shadow-xl shadow-[#00BFA5]/15 text-white"
+          : "bg-[#0A1A18] border-white/10 hover:border-[#00BFA5]/40 hover:bg-[#0E2623] text-white"
       } print:bg-[#F7FAF9] print:border-[#E3ECEA] print:text-[#172B2A]`}
     >
       {/* Clickable Header Bar */}
@@ -110,7 +110,7 @@ export const ExplainableCareerCard: React.FC<ExplainableCareerCardProps> = ({
               <Zap className="w-4 h-4 fill-current text-[#00BFA5]" />
               {matchScore}%
             </div>
-            <span className="text-[9px] uppercase tracking-wider text-white/40 block print:text-[#688582]">Profile Fit Match</span>
+            <span className="text-[9px] uppercase tracking-wider text-white/50 block print:text-[#688582]">Profile Fit Match</span>
           </div>
 
           <button
@@ -126,13 +126,13 @@ export const ExplainableCareerCard: React.FC<ExplainableCareerCardProps> = ({
       {isOpen && (
         <div className="p-5 pt-0 border-t border-white/5 space-y-4 print:border-[#E3ECEA] print:block">
           {/* Summary */}
-          <p className="text-xs sm:text-sm text-[#C5D6D3] leading-relaxed pt-3 print:text-[#415654]">
+          <p className="text-xs sm:text-sm text-[#D1E2DF] leading-relaxed pt-3 print:text-[#415654]">
             {summary}
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
             {/* Left: Why this matches evidence */}
-            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-2.5 print:bg-white print:border-[#E3ECEA]">
+            <div className="p-4 rounded-xl bg-[#061211] border border-white/10 space-y-2.5 print:bg-white print:border-[#E3ECEA]">
               <div className="text-[11px] font-black uppercase tracking-wider text-[#00BFA5] flex items-center gap-1.5 print:text-[#008F83]">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 <span>Explainable Evidence: Why You Match</span>
@@ -148,7 +148,7 @@ export const ExplainableCareerCard: React.FC<ExplainableCareerCardProps> = ({
             </div>
 
             {/* Right: Skills & Development */}
-            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-3 print:bg-white print:border-[#E3ECEA]">
+            <div className="p-4 rounded-xl bg-[#061211] border border-white/10 space-y-3 print:bg-white print:border-[#E3ECEA]">
               <div>
                 <div className="text-[11px] font-black uppercase tracking-wider text-[#38BDF8] flex items-center gap-1.5 mb-2 print:text-[#0284C7]">
                   <Sparkles className="w-3.5 h-3.5" />
@@ -158,7 +158,7 @@ export const ExplainableCareerCard: React.FC<ExplainableCareerCardProps> = ({
                   {skills.map((skill, i) => (
                     <span
                       key={i}
-                      className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-white/5 text-white/90 border border-white/10 print:bg-[#F0FDF4] print:border-[#00BFA5]/30 print:text-[#172B2A]"
+                      className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-[#13302C] text-white border border-[#00BFA5]/30 print:bg-[#F0FDF4] print:border-[#00BFA5]/30 print:text-[#172B2A]"
                     >
                       {skill}
                     </span>
@@ -171,11 +171,11 @@ export const ExplainableCareerCard: React.FC<ExplainableCareerCardProps> = ({
                   <span className="text-[10px] font-black uppercase tracking-wider text-[#F59E0B] block mb-1">
                     🌱 Growth Horizon in this Field:
                   </span>
-                  <ul className="text-xs text-[#9FB3B0] space-y-1 print:text-[#526866]">
+                  <ul className="text-xs text-[#CBD5E1] space-y-1 print:text-[#526866]">
                     {growthHorizon.map((g, idx) => (
                       <li key={idx} className="flex items-center gap-1.5">
                         <span className="text-[#F59E0B]">•</span>
-                        <span>{g}</span>
+                        <span className="print:text-[#2A4442]">{g}</span>
                       </li>
                     ))}
                   </ul>
