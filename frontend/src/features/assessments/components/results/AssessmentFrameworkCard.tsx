@@ -14,17 +14,17 @@ export function AssessmentFrameworkCard({ className = "" }: AssessmentFrameworkC
       code: "RIASEC",
       weight: "25%",
       dimensions: "6 Dimensions",
-      desc: "Intrinsic vocational curiosity & task affinity",
+      desc: "Intrinsic vocational attraction across task environments",
       icon: <Compass className="w-4 h-4 text-[#008F83] dark:text-[#00BFA5]" />,
       barColor: "bg-[#00BFA5]",
       bgBadge: "bg-[#00BFA5]/10 text-[#008F83] dark:text-[#00BFA5] border-[#00BFA5]/25",
     },
     {
       title: "Skill Behaviours",
-      code: "EXECUTION",
+      code: "STYLE",
       weight: "30%",
       dimensions: "8 Dimensions",
-      desc: "Self-reported problem solving & collaboration instincts",
+      desc: "Self-reported problem solving, communication & collaboration style",
       icon: <Activity className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />,
       barColor: "bg-emerald-500",
       bgBadge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/25",
@@ -34,7 +34,7 @@ export function AssessmentFrameworkCard({ className = "" }: AssessmentFrameworkC
       code: "ACCURACY",
       weight: "25%",
       dimensions: "8 Dimensions",
-      desc: "Task performance across spatial, logic & reasoning challenges",
+      desc: "Objective task performance across reasoning & logic challenges",
       icon: <Brain className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />,
       barColor: "bg-cyan-500",
       bgBadge: "bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border-cyan-500/25",
@@ -44,7 +44,7 @@ export function AssessmentFrameworkCard({ className = "" }: AssessmentFrameworkC
       code: "GROWTH",
       weight: "20%",
       dimensions: "7 Dimensions",
-      desc: "Learning persistence, curiosity, adaptability & drive",
+      desc: "Trainable learning habits, curiosity, adaptability & drive",
       icon: <Target className="w-4 h-4 text-amber-600 dark:text-amber-400" />,
       barColor: "bg-amber-500",
       bgBadge: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/25",
@@ -62,17 +62,17 @@ export function AssessmentFrameworkCard({ className = "" }: AssessmentFrameworkC
           </div>
           <div>
             <h3 className="text-sm sm:text-base font-black text-[#172B2A] dark:text-[#F7FAF9] tracking-tight">
-              Assessment Framework
+              Four-Layer Assessment Framework
             </h3>
             <p className="text-[11px] text-[#728B88] dark:text-[#9FB3B0]">
-              Standardized 29-Dimension Psychometric Construct Model
+              29 Dimensions evaluated across 4 complementary evidence layers
             </p>
           </div>
         </div>
         <div className="inline-flex items-center gap-1.5 self-start sm:self-auto px-2.5 py-1 rounded-full bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 text-[10px] font-mono font-bold text-[#526866] dark:text-[#9FB3B0]">
-          <span>29 Evaluated Constructs</span>
+          <span>29 Dimensions Evaluated</span>
           <span>•</span>
-          <span className="text-[#008F83] dark:text-[#00BFA5] font-black">100% Calibrated</span>
+          <span className="text-[#008F83] dark:text-[#00BFA5] font-black">Balanced Multi-Layer Model</span>
         </div>
       </div>
 

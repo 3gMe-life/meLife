@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ShieldCheck, CheckCircle2, Award } from "lucide-react";
+import { Activity, CheckCircle2 } from "lucide-react";
 import { DimensionScoreItem } from "../../types/assessment.types";
 
 interface StrengthCardProps {
@@ -13,8 +13,8 @@ interface StrengthCardProps {
 
 export function StrengthCard({
   strengths,
-  title = "Top Skill Strengths",
-  subtitle = "Demonstrated high-performing behavioral capabilities & cognitive instincts",
+  title = "Strongly Reported Skill Behaviours",
+  subtitle = "Patterns in how you describe your usual approach to problem solving, communication, collaboration, and practical tasks.",
   className = "",
 }: StrengthCardProps) {
   if (!strengths || strengths.length === 0) return null;
@@ -23,10 +23,10 @@ export function StrengthCard({
     <div
       className={`rounded-3xl bg-white dark:bg-[#172B2A] border border-emerald-500/30 p-6 sm:p-7 shadow-sm space-y-4 print:p-5 print:rounded-2xl print:border-[#E3ECEA] print:shadow-none print-break-avoid ${className}`}
     >
-      <div className="flex items-center justify-between border-b border-[#E3ECEA] dark:border-white/10 pb-3 print:pb-2.5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E3ECEA] dark:border-white/10 pb-3 print:pb-2.5">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-            <ShieldCheck className="w-4 h-4" />
+            <Activity className="w-4 h-4" />
           </div>
           <div>
             <h3 className="text-sm sm:text-base font-black text-[#172B2A] dark:text-[#F7FAF9] tracking-tight">
@@ -37,8 +37,8 @@ export function StrengthCard({
             </p>
           </div>
         </div>
-        <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 shrink-0 print:border-[#00BFA5]/30 print:text-[#065F46]">
-          High Performing
+        <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 shrink-0 self-start sm:self-auto print:border-[#00BFA5]/30 print:text-[#065F46]">
+          Self-Reported Style
         </span>
       </div>
 
@@ -53,12 +53,17 @@ export function StrengthCard({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <h4 className="text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9] uppercase tracking-wide">
-                    {item.name}
-                  </h4>
+                  <div>
+                    <h4 className="text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9] uppercase tracking-wide">
+                      {item.name}
+                    </h4>
+                    <span className="text-[9.5px] font-mono text-[#008F83] dark:text-[#00BFA5] block">
+                      Self-Reported Behaviour Indicator
+                    </span>
+                  </div>
                 </div>
-                <span className="font-mono font-black text-xs text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                  {score}%
+                <span className="font-mono font-black text-xs text-emerald-700 dark:text-emerald-400 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                  {score} / 100
                 </span>
               </div>
 
@@ -68,7 +73,7 @@ export function StrengthCard({
                 </p>
               ) : (
                 <p className="text-[11px] text-[#526866] dark:text-[#9FB3B0] leading-relaxed pl-6">
-                  Demonstrates consistent behavioral confidence and applied proficiency in structured tasks.
+                  Consistently endorsed as a primary working style and problem-solving preference in learning contexts.
                 </p>
               )}
             </div>

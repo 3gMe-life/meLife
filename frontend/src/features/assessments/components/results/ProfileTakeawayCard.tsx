@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Sparkles, Compass, Lightbulb, ArrowUpRight, CheckCircle2 } from "lucide-react";
+import { Sparkles, Compass, Lightbulb, CheckCircle2 } from "lucide-react";
 
 interface ProfileTakeawayCardProps {
   archetypeTitle?: string;
@@ -36,7 +36,7 @@ export function ProfileTakeawayCard({
       <div className="absolute top-0 right-0 w-80 h-80 bg-[#00BFA5]/10 rounded-full blur-3xl pointer-events-none print:hidden" />
 
       {/* Header */}
-      <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 dark:border-white/10 pb-4 print:border-[#E3ECEA] print:pb-3">
+      <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4 print:border-[#E3ECEA] print:pb-3">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-[#00BFA5]/20 text-[#00C896] flex items-center justify-center shrink-0 print:border print:border-[#00BFA5]/30 print:text-[#008F83]">
             <Sparkles className="w-4 h-4" />
@@ -46,7 +46,7 @@ export function ProfileTakeawayCard({
               What This Profile Suggests
             </h3>
             <p className="text-[11px] text-[#A7C2BF] print:text-[#688582]">
-              Non-prescriptive synthesis & actionable directional guide
+              Non-prescriptive directional synthesis and exploratory roadmap
             </p>
           </div>
         </div>
@@ -64,7 +64,7 @@ export function ProfileTakeawayCard({
             <span>01. Current Alignment</span>
           </div>
           <p className="text-xs text-[#E0EBE8] print:text-[#2A4442] leading-relaxed">
-            Your current profile indicates strong natural resonance with <strong className="text-white print:text-[#172B2A]">{archetypeTitle}</strong> patterns
+            Your current profile indicates strong exploratory alignment with <strong className="text-white print:text-[#172B2A]">{archetypeTitle}</strong> patterns
             {topInterests.length > 0 && ` (especially across ${topInterests.slice(0, 2).join(" & ")})`}.
           </p>
         </div>
@@ -73,10 +73,10 @@ export function ProfileTakeawayCard({
         <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2.5 print:bg-[#F7FAF9] print:border-[#E3ECEA]">
           <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-400 print:text-[#059669]">
             <CheckCircle2 className="w-4 h-4" />
-            <span>02. Strongest Vectors</span>
+            <span>02. Strongest Reported Vectors</span>
           </div>
           <p className="text-xs text-[#E0EBE8] print:text-[#2A4442] leading-relaxed">
-            Your highest performing dimensions show standout capability in{" "}
+            Your most strongly endorsed behaviours show standout preference in{" "}
             <strong className="text-white print:text-[#172B2A]">
               {topSkills.length > 0 ? topSkills.slice(0, 2).join(" & ") : "analytical and creative problem solving"}
             </strong>
@@ -91,7 +91,7 @@ export function ProfileTakeawayCard({
             <span>03. Next Explorations</span>
           </div>
           <p className="text-xs text-[#E0EBE8] print:text-[#2A4442] leading-relaxed">
-            You may benefit from exploring hands-on projects, participating in collaborative maker challenges, and discussing your findings with a career mentor.
+            You will benefit from trying tangible starter projects, participating in collaborative school challenges, and discussing your findings with a career counsellor.
           </p>
         </div>
       </div>
@@ -113,7 +113,7 @@ export function ProfileTakeawayCard({
 
       {/* Non-Deterministic Disclaimer */}
       <div className="relative z-10 text-[10.5px] text-[#A7C2BF] print:text-[#688582] italic leading-relaxed border-t border-white/10 print:border-[#E3ECEA] pt-3">
-        * Important: This assessment highlights exploratory affinity and cognitive instincts. It is not a fixed career prediction. Use these insights as an informed foundation for open-ended learning and self-discovery.
+        * Important: This assessment highlights exploratory affinity and current task performance. It is an exploratory synthesis, not a fixed identity or career prescription.
       </div>
     </div>
   );

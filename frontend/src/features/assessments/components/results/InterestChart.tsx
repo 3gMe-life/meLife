@@ -94,8 +94,8 @@ export function InterestChart({ dimensions, profileVector, className = "" }: Int
 
   const interestItems = riasecOrderedKeys.map((key) => {
     let score = 50;
-    if (profileVector && typeof (profileVector as any)[key] === "number") {
-      score = (profileVector as any)[key];
+    if (profileVector && typeof profileVector[key as keyof StudentProfileVector] === "number") {
+      score = profileVector[key as keyof StudentProfileVector];
     } else if (dimensions && dimensions.length > 0) {
       const match = dimensions.find(
         (d) =>
@@ -142,7 +142,7 @@ export function InterestChart({ dimensions, profileVector, className = "" }: Int
         <div className="inline-flex items-center gap-1.5 self-start sm:self-auto px-2.5 py-1 rounded-full bg-[#F4F8F7] dark:bg-white/5 border border-[#E3ECEA] dark:border-white/10 text-[10px] font-mono font-bold text-[#526866] dark:text-[#9FB3B0]">
           <span>Holland RIASEC Framework</span>
           <span>•</span>
-          <span className="text-[#008F83] dark:text-[#00BFA5] font-black">Standardized Scale</span>
+          <span className="text-[#008F83] dark:text-[#00BFA5] font-black">Normalized Interest Score</span>
         </div>
       </div>
 
@@ -151,11 +151,18 @@ export function InterestChart({ dimensions, profileVector, className = "" }: Int
         {interestItems.map((item) => {
           const { meta, score } = item;
           const isTopTier = score >= 75;
+          const alignmentText =
+            score >= 75
+              ? "Dominant Alignment"
+              : score >= 50
+              ? "Moderate Alignment"
+              : "Emerging Exploration";
+
           return (
             <div
               key={item.key}
               className={`p-4 rounded-2xl bg-[#F4F8F7] dark:bg-white/5 border ${
-                isTopTier ? "border-[#00BFA5]/40" : "border-[#E3ECEA] dark:border-white/10"
+                isTopTier ? "border-[#00BFA5]/40 shadow-xs" : "border-[#E3ECEA] dark:border-white/10"
               } space-y-3 transition-all print:bg-[#F9FCFB] print:border-[#E3ECEA] print:p-3.5`}
             >
               <div className="flex items-center justify-between">
@@ -167,14 +174,19 @@ export function InterestChart({ dimensions, profileVector, className = "" }: Int
                     <h4 className="text-xs font-bold text-[#172B2A] dark:text-[#F7FAF9]">
                       {meta.label} ({meta.code})
                     </h4>
-                    <span className="text-[9.5px] font-mono text-[#728B88] dark:text-[#9FB3B0]">
-                      {score >= 75 ? "Dominant Affinity" : score >= 50 ? "Moderate Affinity" : "Emerging Focus"}
+                    <span className="text-[9.5px] font-mono font-bold text-[#008F83] dark:text-[#00BFA5]">
+                      {alignmentText}
                     </span>
                   </div>
                 </div>
-                <span className="text-sm font-mono font-black text-[#172B2A] dark:text-white px-2 py-0.5 rounded-lg bg-white/80 dark:bg-white/10 border border-[#E3ECEA] dark:border-white/15">
-                  {score}%
-                </span>
+                <div className="text-right">
+                  <span className="text-sm font-mono font-black text-[#172B2A] dark:text-white px-2 py-0.5 rounded-lg bg-white/80 dark:bg-white/10 border border-[#E3ECEA] dark:border-white/15 block">
+                    {score} / 100
+                  </span>
+                  <span className="text-[9px] font-mono text-[#728B88] dark:text-[#9FB3B0]">
+                    Interest Scale
+                  </span>
+                </div>
               </div>
 
               <div className="space-y-1">
@@ -203,7 +215,7 @@ export function InterestChart({ dimensions, profileVector, className = "" }: Int
               <span>Dominant Interest Pattern</span>
             </div>
             <p className="text-xs font-bold text-[#172B2A] dark:text-white print:text-[#172B2A]">
-              {dominant1?.meta.label} ({dominant1?.score}%) + {dominant2?.meta.label} ({dominant2?.score}%)
+              {dominant1?.meta.label} ({dominant1?.score}/100) + {dominant2?.meta.label} ({dominant2?.score}/100)
             </p>
           </div>
           <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-white/80 dark:bg-white/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20 shrink-0 print:border-[#00BFA5]/30 print:text-[#065F46]">
@@ -219,7 +231,7 @@ export function InterestChart({ dimensions, profileVector, className = "" }: Int
               <span>Supporting Interest Pattern</span>
             </div>
             <p className="text-xs font-bold text-[#172B2A] dark:text-white print:text-[#172B2A]">
-              {supporting1?.meta.label} ({supporting1?.score}%) + {supporting2?.meta.label} ({supporting2?.score}%)
+              {supporting1?.meta.label} ({supporting1?.score}/100) + {supporting2?.meta.label} ({supporting2?.score}/100)
             </p>
           </div>
           <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-white/80 dark:bg-white/10 text-cyan-800 dark:text-cyan-300 border border-cyan-500/20 shrink-0 print:border-cyan-200 print:text-[#0369A1]">
