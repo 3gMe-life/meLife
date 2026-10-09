@@ -217,7 +217,7 @@ export function SkillFinderReportView({
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Assessment Results</span>
         </Link>
-        <span className="text-[11px] font-mono text-white/50">
+        <span className="text-[11px] font-mono text-[#728B88] dark:text-white/50">
           Template v{report.templateVersion || "2.4.0"} • Attempt #{report.studentProfile.attemptNumber || 1}
         </span>
       </div>
@@ -395,23 +395,31 @@ export function SkillFinderReportView({
       {/* ========================================================================= */}
       {/* SECTION 08: EXPLAINABLE CAREER MATCH EVIDENCE DRAWER */}
       {/* ========================================================================= */}
-      <section id="section-evidence" className="space-y-4 print-break-avoid">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 dark:border-white/10 pb-3">
+      <section
+        id="section-evidence"
+        className="print-break-avoid rounded-3xl bg-gradient-to-br from-[#0B1B19] via-[#112926] to-[#0A1615] border border-[#00BFA5]/30 p-6 sm:p-8 text-white shadow-2xl relative overflow-hidden space-y-6 print:p-5 print:rounded-2xl print:bg-none print:bg-white print:text-[#172B2A] print:border-[#E3ECEA]"
+      >
+        {/* Ambient Glows */}
+        <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-[#00BFA5]/15 blur-3xl print:hidden" />
+        <div className="pointer-events-none absolute -left-20 -bottom-20 h-72 w-72 rounded-full bg-[#38BDF8]/15 blur-3xl print:hidden" />
+
+        {/* Header */}
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4 print:border-[#E3ECEA] print:pb-3">
           <div>
-            <span className="text-[11px] font-black uppercase tracking-wider text-[#00BFA5] flex items-center gap-1.5">
+            <span className="text-[11px] font-black uppercase tracking-wider text-[#00BFA5] flex items-center gap-1.5 print:text-[#008F83]">
               <Compass className="w-3.5 h-3.5" />
               <span>08. Deep-Dive Career Fit Evidence</span>
             </span>
-            <h2 className="text-xl sm:text-2xl font-black text-white dark:text-[#F7FAF9] tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight print:text-[#172B2A]">
               Curated High-Synergy Career Horizons
             </h2>
           </div>
-          <span className="text-xs text-[#9FB3B0]">
+          <span className="text-xs text-[#9FB3B0] print:text-[#526866]">
             Click any career card to inspect match evidence & skill blueprints
           </span>
         </div>
 
-        <div className="space-y-3.5">
+        <div className="relative z-10 space-y-3.5">
           {report.explorationAreas?.clusters?.map((cluster, idx) => (
             <ExplainableCareerCard
               key={idx}
