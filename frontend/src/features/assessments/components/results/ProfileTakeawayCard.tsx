@@ -45,7 +45,7 @@ export function ProfileTakeawayCard({
             <h3 className="text-base sm:text-lg font-black text-white print:text-[#172B2A] tracking-tight">
               What This Profile Suggests
             </h3>
-            <p className="text-[11px] text-[#A7C2BF] print:text-[#688582]">
+            <p className="text-[11px] text-[#A7C2BF] print:text-[#526866]">
               Non-prescriptive directional synthesis and exploratory roadmap
             </p>
           </div>
@@ -76,11 +76,11 @@ export function ProfileTakeawayCard({
             <span>02. Strongest Reported Vectors</span>
           </div>
           <p className="text-xs text-[#E0EBE8] print:text-[#2A4442] leading-relaxed">
-            Your most strongly endorsed behaviours show standout preference in{" "}
+            Your most strongly endorsed self-reported behaviours show standout confidence in{" "}
             <strong className="text-white print:text-[#172B2A]">
               {topSkills.length > 0 ? topSkills.slice(0, 2).join(" & ") : "analytical and creative problem solving"}
             </strong>
-            {topTraits.length > 0 && `, reinforced by ${topTraits[0]}`}.
+            {topTraits.length > 0 && `, reinforced by ${topTraits[0]}`}. Explore whether this confidence is reinforced through repeated hands-on experience.
           </p>
         </div>
 
@@ -112,7 +112,7 @@ export function ProfileTakeawayCard({
       </div>
 
       {/* Non-Deterministic Disclaimer */}
-      <div className="relative z-10 text-[10.5px] text-[#A7C2BF] print:text-[#688582] italic leading-relaxed border-t border-white/10 print:border-[#E3ECEA] pt-3">
+      <div className="relative z-10 text-[10.5px] text-[#A7C2BF] print:text-[#526866] italic leading-relaxed border-t border-white/10 print:border-[#E3ECEA] pt-3">
         * Important: This assessment highlights exploratory affinity and current task performance. It is an exploratory synthesis, not a fixed identity or career prescription.
       </div>
     </div>

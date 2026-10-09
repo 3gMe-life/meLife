@@ -33,7 +33,7 @@ export function CrossEvidenceSynthesis({ result, className = "" }: CrossEvidence
   const needMoreEvidenceNames =
     lowAptDims.length > 0
       ? lowAptDims.slice(0, 2).map((d) => d.name).join(" and ")
-      : "further advanced reasoning challenges";
+      : "further complex reasoning challenges";
 
   // Synthesize cross-layer narrative deterministically
   let taskNarrative = "";
@@ -41,9 +41,9 @@ export function CrossEvidenceSynthesis({ result, className = "" }: CrossEvidence
   if (accuracy >= 70) {
     taskNarrative = `Your objective task performance (${totalEarnedPoints}/${totalPossiblePoints} pts, ${accuracy}%) shows strong positive congruence with your self-reported strengths in ${topSkill1}.`;
   } else if (accuracy >= 45) {
-    taskNarrative = `Your objective task performance (${totalEarnedPoints}/${totalPossiblePoints} pts, ${accuracy}%) shows moderate alignment, with solid logic foundations and opportunities to sharpen speed and accuracy.`;
+    taskNarrative = `Your objective task performance (${totalEarnedPoints}/${totalPossiblePoints} pts, ${accuracy}%) shows moderate alignment, with solid reasoning foundations and opportunities to sharpen speed and accuracy through practice.`;
   } else {
-    taskNarrative = `Current performance on several objective reasoning tasks (${totalEarnedPoints}/${totalPossiblePoints} pts, ${accuracy}%) provides less supporting evidence today compared to your high self-reported confidence in ${topSkill1}. This does not rule out technical pathways; rather, it highlights areas where structured practice, repeated exposure, and future reassessment will provide clearer clarity.`;
+    taskNarrative = `Current performance on several objective reasoning tasks (${totalEarnedPoints}/${totalPossiblePoints} pts, ${accuracy}%) provides less supporting evidence today compared to your high self-reported confidence in ${topSkill1}. This does not rule out technical pathways; rather, it highlights areas where structured practice, repeated exposure, and future reassessment will build stronger evidence of developing capability.`;
   }
 
   const explorationNext = result.explorationDirections?.[0]?.clusterTitle || `${topInterest1} Projects`;
@@ -63,15 +63,15 @@ export function CrossEvidenceSynthesis({ result, className = "" }: CrossEvidence
           </div>
           <div>
             <h3 className="text-base sm:text-lg font-black text-white print:text-[#172B2A] tracking-tight">
-              What the Combined Evidence Suggests
+              Putting Your Results Together
             </h3>
             <p className="text-[11px] text-[#A7C2BF] print:text-[#688582]">
-              Synthesizing interests, self-reported behaviours, and objective task performance together
+              Cross-Evidence Synthesis • Comparing interests, self-reported behaviours, and objective task performance
             </p>
           </div>
         </div>
         <span className="text-[10px] font-mono font-bold px-3 py-1 rounded-full bg-white/10 text-white/90 border border-white/15 self-start sm:self-auto print:border-[#00BFA5] print:text-[#008F83] print:bg-[#F0FDF4]">
-          Cross-Evidence Synthesis
+          Combined Synthesis
         </span>
       </div>
 
@@ -134,10 +134,10 @@ export function CrossEvidenceSynthesis({ result, className = "" }: CrossEvidence
       </div>
 
       {/* Reassurance Disclaimer */}
-      <div className="relative z-10 text-[11px] text-[#A7C2BF] print:text-[#688582] italic leading-relaxed border-t border-white/10 print:border-[#E3ECEA] pt-3 flex items-start gap-2">
+      <div className="relative z-10 text-[11px] text-[#A7C2BF] print:text-[#526866] italic leading-relaxed border-t border-white/10 print:border-[#E3ECEA] pt-3 flex items-start gap-2">
         <CheckCircle2 className="w-4 h-4 text-[#00BFA5] shrink-0 mt-0.5" />
         <span>
-          A gap between self-reported style and current task performance is completely normal for students. It simply signals where hands-on practice, mentorship, and repeated exposure can build verified mastery over time.
+          Differences between self-reported style and current task performance can occur, especially when students have different levels of familiarity, practice, attention, or experience with the task format. It highlights where hands-on practice, mentorship, and repeated exposure can build stronger evidence of developing capability over time.
         </span>
       </div>
     </div>

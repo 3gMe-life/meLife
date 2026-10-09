@@ -36,6 +36,7 @@ import { CrossEvidenceSynthesis } from "./skill-finder/CrossEvidenceSynthesis";
 import { ParentMentorNote } from "./skill-finder/ParentMentorNote";
 import { ActionPlan30_60 } from "./skill-finder/ActionPlan30_60";
 import { CareerExplorationEvidenceCard } from "./skill-finder/CareerExplorationEvidenceCard";
+import { TechnicalInterpretationAppendix } from "./skill-finder/TechnicalInterpretationAppendix";
 import { useLatestAssessmentComparisonQuery } from "../../hooks/useLatestAssessmentComparisonQuery";
 import { useAssessmentHistoryQuery } from "../../hooks/useAssessmentHistoryQuery";
 import { useStartRetakeMutation } from "../../hooks/useStartRetakeMutation";
@@ -551,8 +552,8 @@ export function SkillFinderResultView({
             />
             <DevelopmentCard
               developmentAreas={devGrowthAreas}
-              title="Developmental Habit Focus Areas"
-              subtitle="Learning habits and target areas for experiential expansion"
+              title="Priority Development Areas"
+              subtitle="Areas where practice, experience, or additional evidence may be useful."
             />
           </div>
 
@@ -1011,6 +1012,11 @@ export function SkillFinderResultView({
           )}
         </div>
       )}
+
+      {/* Technical & Counsellor Interpretation Appendix */}
+      <div className="print-break-avoid">
+        <TechnicalInterpretationAppendix result={result} />
+      </div>
 
       {/* ========================================================================= */}
       {/* RUNNING FOOTER (Print & Screen) */}
