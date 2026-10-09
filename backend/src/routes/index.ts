@@ -79,6 +79,7 @@ apiRouter.use("/attempts", attemptRouter);
 const resultRouter = Router();
 resultRouter.use(authenticate);
 resultRouter.use(requireRole("PARTICIPANT"));
+resultRouter.get("/", assessmentController.getAllUserResults);
 resultRouter.get("/compare/latest", assessmentController.compareLatestResults);
 resultRouter.get("/compare", assessmentController.compareResults);
 resultRouter.get("/history", assessmentController.getAssessmentHistory);

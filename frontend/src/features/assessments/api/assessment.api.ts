@@ -178,8 +178,13 @@ export const assessmentApi = {
    * Fetches all completed assessment results for the participant.
    */
   async getAllResults(): Promise<unknown[]> {
-    const res = await fetchApi<ApiResponse<unknown[]>>("/results");
-    return res.data;
+    try {
+      const res = await fetchApi<ApiResponse<unknown[]>>("/results");
+      return res.data || [];
+    } catch {
+      const fallbackRes = await fetchApi<ApiResponse<unknown[]>>("/assessments/results");
+      return fallbackRes.data || [];
+    }
   },
 };
 
