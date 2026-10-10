@@ -119,11 +119,21 @@ export class InterestScoringEngine {
       };
     });
 
+    // Check for score ties among top dimensions (e.g. 3 or more dimensions tied at top score)
+    const topScore = sorted[0]?.scalePositionPercentage ?? 50;
+    const tiedAtTop = sorted.filter(
+      (d) => Math.abs(d.scalePositionPercentage - topScore) < 0.001
+    );
+    const isBroadInterestPattern = tiedAtTop.length >= 3;
+    const tiedTopDomains = isBroadInterestPattern ? tiedAtTop.map((d) => d.name) : undefined;
+
     return {
       topClusters,
       dimensions,
-      primaryOrientation: sorted[0]?.name,
-      secondaryOrientation: sorted[1]?.name,
+      primaryOrientation: isBroadInterestPattern ? "Broad Interest Pattern" : sorted[0]?.name,
+      secondaryOrientation: isBroadInterestPattern ? undefined : sorted[1]?.name,
+      isBroadInterestPattern,
+      tiedTopDomains,
     };
   }
 }

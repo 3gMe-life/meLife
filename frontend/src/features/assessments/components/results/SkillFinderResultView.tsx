@@ -463,7 +463,7 @@ export function SkillFinderResultView({
           {learningProfile.primaryTraits && learningProfile.primaryTraits.length > 0 && (
             <div className="space-y-1.5 pt-1">
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#728B88] dark:text-[#9FB3B0] block">
-                Primary Cognitive Traits & Behavioural Drivers:
+                Key Profile Themes & Distinctive Qualities:
               </span>
               <div className="flex flex-wrap gap-2">
                 {learningProfile.primaryTraits.map((trait, tIdx) => (

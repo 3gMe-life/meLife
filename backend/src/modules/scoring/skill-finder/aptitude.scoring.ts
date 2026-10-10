@@ -146,6 +146,8 @@ export class AptitudeScoringEngine {
 
     return {
       overallAccuracyPercentage,
+      rawScore: totalEarned,
+      maxScore: totalPossible,
       dimensions,
     };
   }

@@ -199,37 +199,108 @@ export class ReportPdfGenerator {
           .text(report.executiveSummary.explorationFraming, { width: 465, lineGap: 2 });
 
         // Primary Traits Pills
-        doc.font("Helvetica-Bold").fontSize(8).fillColor(colors.mutedGray).text("Primary Cognitive Drivers:", 54, heroBoxY + 180);
-        let traitX = 185;
+        doc.font("Helvetica-Bold").fontSize(8).fillColor(colors.mutedGray).text("Key Profile Themes:", 54, heroBoxY + 180);
+        let traitX = 175;
         for (const trait of report.executiveSummary.primaryTraits.slice(0, 3)) {
-          doc.roundedRect(traitX, heroBoxY + 175, 105, 18, 4).fillAndStroke(colors.white, colors.primaryTeal);
+          doc.roundedRect(traitX, heroBoxY + 175, 110, 18, 4).fillAndStroke(colors.white, colors.primaryTeal);
           doc
             .font("Helvetica-Bold")
             .fontSize(7.5)
             .fillColor(colors.primaryTeal)
-            .text(trait, traitX + 2, heroBoxY + 180, { width: 101, align: "center" });
-          traitX += 114;
+            .text(trait, traitX + 2, heroBoxY + 180, { width: 106, align: "center" });
+          traitX += 116;
         }
 
         // 5. Executive Takeaway & Foundation Note
-        const noteY = heroBoxY + heroBoxH + 16;
-        doc.roundedRect(40, noteY, 515, 78, 6).fillAndStroke(colors.lightBg, colors.cardBorder);
+        const noteY = heroBoxY + heroBoxH + 12;
+        doc.roundedRect(40, noteY, 515, 66, 6).fillAndStroke(colors.lightBg, colors.cardBorder);
 
         doc
           .font("Helvetica-Bold")
-          .fontSize(9)
+          .fontSize(8.5)
           .fillColor(colors.tealDark)
-          .text("Key Educational & Exploratory Guidance Note", 54, noteY + 12);
+          .text("Key Educational & Exploratory Guidance Note", 54, noteY + 10);
 
         doc
           .font("Helvetica")
           .fontSize(8)
           .fillColor(colors.mutedGray)
           .text(
-            "This assessment represents a foundational exploratory baseline. The student demonstrates clear natural inquisitiveness and cognitive potential. Optimal learning combines academic theory with practical, self-directed experiential exploration.",
+            "This assessment provides an exploratory baseline of the student's current interests, self-reported behaviours, developmental indicators, and task performance. Continued practice, academic evidence, and real-world experience can provide stronger evidence over time.",
             54,
-            noteY + 28,
+            noteY + 24,
             { width: 485, lineGap: 2.5 }
+          );
+
+        // 6. Compact "How to Read This Report" (Four Distinct Evidence Pillars)
+        const howToReadY = noteY + 74;
+        doc.roundedRect(40, howToReadY, 515, 118, 6).fillAndStroke(colors.white, colors.cardBorder);
+
+        doc
+          .font("Helvetica-Bold")
+          .fontSize(8.5)
+          .fillColor(colors.tealDark)
+          .text("HOW TO READ THIS REPORT — FOUR DISTINCT EVIDENCE PILLARS", 54, howToReadY + 10);
+
+        doc
+          .font("Helvetica")
+          .fontSize(7.5)
+          .fillColor(colors.mutedGray)
+          .text(
+            "These evidence sources measure different constructs and should not be directly compared as equivalent.",
+            54,
+            howToReadY + 23,
+            { width: 485 }
+          );
+
+        // 4 Horizontal Pillar Boxes
+        const pillars = [
+          {
+            title: "INTEREST EVIDENCE",
+            desc: "What types of activities and environments currently attract you.",
+            color: colors.primaryTeal,
+            bg: colors.tealLightBg,
+          },
+          {
+            title: "SELF-REPORTED BEHAVIOUR",
+            desc: "How you describe your typical way of working and solving problems.",
+            color: colors.emeraldGreen,
+            bg: colors.emeraldBg,
+          },
+          {
+            title: "TASK PERFORMANCE",
+            desc: "How you performed on objective tasks during this assessment session.",
+            color: colors.accentCyan,
+            bg: "#EBF6FB",
+          },
+          {
+            title: "DEVELOPMENTAL HABITS",
+            desc: "Learning patterns and study habits that strengthen with practice.",
+            color: colors.amberWarn,
+            bg: colors.amberBg,
+          },
+        ];
+
+        let pilX = 52;
+        const pilW = 115;
+        const pilH = 54;
+        const pilY = howToReadY + 36;
+        for (const p of pillars) {
+          doc.roundedRect(pilX, pilY, pilW, pilH, 4).fillAndStroke(p.bg, p.color);
+          doc.font("Helvetica-Bold").fontSize(7).fillColor(p.color).text(p.title, pilX + 6, pilY + 6, { width: pilW - 12 });
+          doc.font("Helvetica").fontSize(6.5).fillColor(colors.tealDark).text(p.desc, pilX + 6, pilY + 18, { width: pilW - 12, lineGap: 1.5 });
+          pilX += 123;
+        }
+
+        doc
+          .font("Helvetica-Oblique")
+          .fontSize(6.5)
+          .fillColor(colors.mutedGray)
+          .text(
+            "* Self-reported interest and confidence can differ from session-specific task performance. This divergence provides valuable developmental guidance.",
+            54,
+            howToReadY + 98,
+            { width: 485 }
           );
 
         // ========================================================
@@ -278,7 +349,7 @@ export class ReportPdfGenerator {
         });
 
         // Render 3x2 Grid (3 cards per row, 2 rows)
-        let gridY = 80;
+        let gridY = Math.max(88, doc.y + 8);
         for (let row = 0; row < 2; row++) {
           let cardX = 40;
           for (let col = 0; col < 3; col++) {
@@ -314,41 +385,65 @@ export class ReportPdfGenerator {
           gridY += 66;
         }
 
-        // Dominant & Supporting Patterns Sub-block
+        // Dominant & Supporting Patterns Sub-block / Broad Interest Pattern
         const patternY = gridY + 4;
         const sortedRiasec = [...riasecGridData].sort((a, b) => b.score - a.score);
-        const dom1 = sortedRiasec[0];
-        const dom2 = sortedRiasec[1];
-        const sup1 = sortedRiasec[2];
-        const sup2 = sortedRiasec[3];
+        const topScore = sortedRiasec[0]?.score ?? 0;
+        const tiedTop = sortedRiasec.filter((d) => d.score === topScore);
+        const isBroad = report.interestProfile.isBroadInterestPattern || tiedTop.length >= 3;
 
-        // Dominant Box (Left)
-        doc.roundedRect(40, patternY, 250, 32, 5).fillAndStroke(colors.emeraldBg, colors.emeraldGreen);
-        doc.font("Helvetica-Bold").fontSize(7.5).fillColor("#007958").text("DOMINANT INTEREST PATTERN", 50, patternY + 6);
-        doc.font("Helvetica-Bold").fontSize(8.5).fillColor(colors.tealDark).text(`${dom1?.label} (${dom1?.score}%) + ${dom2?.label} (${dom2?.score}%)`, 50, patternY + 18);
+        if (isBroad) {
+          // Broad Interest Pattern (Full-width box)
+          const tiedNames = report.interestProfile.tiedTopDomains?.join(", ") || tiedTop.map((d) => d.label).join(", ");
+          const broadBoxH = 50;
+          doc.roundedRect(40, patternY, 515, broadBoxH, 5).fillAndStroke(colors.tealLightBg, colors.primaryTeal);
+          doc.font("Helvetica-Bold").fontSize(7.5).fillColor(colors.primaryTeal).text("BROAD INTEREST PATTERN (DISTRIBUTED ORIENTATION)", 50, patternY + 6);
+          doc
+            .font("Helvetica-Bold")
+            .fontSize(7.5)
+            .fillColor(colors.tealDark)
+            .text(`${tiedNames} currently show similarly elevated interest scores (${topScore}%).`, 50, patternY + 17, { width: 495 });
+          const subY = Math.max(doc.y + 2, patternY + 35);
+          doc
+            .font("Helvetica")
+            .fontSize(7)
+            .fillColor(colors.mutedGray)
+            .text("These results suggest broad exploratory interest rather than a sharply dominant RIASEC pattern.", 50, subY, { width: 495 });
+        } else {
+          const dom1 = sortedRiasec[0];
+          const dom2 = sortedRiasec[1];
+          const sup1 = sortedRiasec[2];
+          const sup2 = sortedRiasec[3];
 
-        // Supporting Box (Right)
-        doc.roundedRect(305, patternY, 250, 32, 5).fillAndStroke(colors.tealLightBg, colors.primaryTeal);
-        doc.font("Helvetica-Bold").fontSize(7.5).fillColor(colors.primaryTeal).text("SUPPORTING INTEREST PATTERN", 315, patternY + 6);
-        doc.font("Helvetica-Bold").fontSize(8.5).fillColor(colors.tealDark).text(`${sup1?.label} (${sup1?.score}%) + ${sup2?.label} (${sup2?.score}%)`, 315, patternY + 18);
+          // Dominant Box (Left)
+          doc.roundedRect(40, patternY, 250, 32, 5).fillAndStroke(colors.emeraldBg, colors.emeraldGreen);
+          doc.font("Helvetica-Bold").fontSize(7.5).fillColor("#007958").text("DOMINANT INTEREST PATTERN", 50, patternY + 6);
+          doc.font("Helvetica-Bold").fontSize(8.5).fillColor(colors.tealDark).text(`${dom1?.label} (${dom1?.score}%) + ${dom2?.label} (${dom2?.score}%)`, 50, patternY + 18);
+
+          // Supporting Box (Right)
+          doc.roundedRect(305, patternY, 250, 32, 5).fillAndStroke(colors.tealLightBg, colors.primaryTeal);
+          doc.font("Helvetica-Bold").fontSize(7.5).fillColor(colors.primaryTeal).text("SUPPORTING INTEREST PATTERN", 315, patternY + 6);
+          doc.font("Helvetica-Bold").fontSize(8.5).fillColor(colors.tealDark).text(`${sup1?.label} (${sup1?.score}%) + ${sup2?.label} (${sup2?.score}%)`, 315, patternY + 18);
+        }
 
         // Divider
-        doc.rect(40, patternY + 42, 515, 0.8).fill(colors.cardBorder);
+        const dividerY = isBroad ? patternY + 58 : patternY + 42;
+        doc.rect(40, dividerY, 515, 0.8).fill(colors.cardBorder);
 
-        // 3. Section 3: Behavioral Skill Instincts & Growth Opportunities
-        const skillSecY = patternY + 52;
+        // 3. Section 3: Strongly Reported Skill Behaviours & Emerging Growth Opportunities
+        const skillSecY = dividerY + 10;
         doc
           .font("Helvetica-Bold")
           .fontSize(12)
           .fillColor(colors.tealDark)
-          .text("3. Top Skill Strengths & Emerging Growth Opportunities", 40, skillSecY);
+          .text("3. Strongly Reported Skill Behaviours & Growth Opportunities", 40, skillSecY);
 
         doc
           .font("Helvetica")
           .fontSize(8)
           .fillColor(colors.mutedGray)
           .text(
-            report.skillBehaviour.summary || "Evaluates instinctive problem-solving and collaboration habits.",
+            report.skillBehaviour.summary || "Evaluates self-reported problem-solving and collaboration habits (Evidence Source: Self-Reported Behaviour).",
             40,
             skillSecY + 16,
             { width: 515 }
@@ -358,15 +453,20 @@ export class ReportPdfGenerator {
         const skillBoxY = skillSecY + 30;
         const skillBoxH = 175;
 
-        // Left Card: Top Skill Strengths
+        // Left Card: Strongly Reported Skill Behaviours
         doc.roundedRect(40, skillBoxY, 250, skillBoxH, 6).fillAndStroke(colors.emeraldBg, colors.emeraldGreen);
         doc
           .font("Helvetica-Bold")
           .fontSize(8.5)
           .fillColor("#007958")
-          .text("TOP SKILL STRENGTHS", 52, skillBoxY + 10);
+          .text("STRONGLY REPORTED BEHAVIOURS", 52, skillBoxY + 8);
+        doc
+          .font("Helvetica")
+          .fontSize(6.5)
+          .fillColor("#007958")
+          .text("Evidence Source: Self-Reported Behaviour", 52, skillBoxY + 18);
 
-        let strongItemY = skillBoxY + 28;
+        let strongItemY = skillBoxY + 30;
         for (const str of report.skillBehaviour.strongestIndicators.slice(0, 3)) {
           doc.font("Helvetica-Bold").fontSize(8.5).fillColor(colors.tealDark).text(`•  ${str.name}`, 54, strongItemY);
           doc
@@ -387,9 +487,14 @@ export class ReportPdfGenerator {
           .font("Helvetica-Bold")
           .fontSize(8.5)
           .fillColor("#B45309")
-          .text("EMERGING GROWTH OPPORTUNITIES", 317, skillBoxY + 10);
+          .text("EMERGING GROWTH OPPORTUNITIES", 317, skillBoxY + 8);
+        doc
+          .font("Helvetica")
+          .fontSize(6.5)
+          .fillColor("#B45309")
+          .text("Evidence Source: Self-Reported Behaviour", 317, skillBoxY + 18);
 
-        let growItemY = skillBoxY + 28;
+        let growItemY = skillBoxY + 30;
         for (const grw of report.skillBehaviour.developmentOpportunities.slice(0, 3)) {
           doc.font("Helvetica-Bold").fontSize(8.5).fillColor(colors.tealDark).text(`•  ${grw.name}`, 319, growItemY);
           doc
@@ -412,45 +517,76 @@ export class ReportPdfGenerator {
         // 1. Top Brand Accent Line
         doc.rect(40, 35, 515, 4).fill(colors.primaryTeal);
 
-        // 2. Section 4: Demonstrated Cognitive Aptitude
+        // 2. Section 4: Demonstrated Task Performance & Problem Solving
         doc
           .font("Helvetica-Bold")
           .fontSize(11.5)
           .fillColor(colors.tealDark)
-          .text("4. Demonstrated Cognitive Aptitude & Problem Solving", 40, 48);
+          .text("4. Demonstrated Task Performance & Problem Solving", 40, 48);
 
-        // Overall Accuracy Badge
+        // Current Task Performance Banner
         const aptBannerY = 64;
-        doc.roundedRect(40, aptBannerY, 515, 24, 5).fillAndStroke("#EBF6FB", colors.accentCyan);
-        doc.font("Helvetica-Bold").fontSize(8.5).fillColor(colors.tealDark).text("Overall Problem-Solving Accuracy Rate:", 54, aptBannerY + 7);
+        const bannerH = 36;
+        doc.roundedRect(40, aptBannerY, 515, bannerH, 5).fillAndStroke("#EBF6FB", colors.accentCyan);
+
+        const rawPointsStr =
+          report.aptitudeInsights.rawScore !== undefined && report.aptitudeInsights.maxScore !== undefined
+            ? ` (${report.aptitudeInsights.rawScore} / ${report.aptitudeInsights.maxScore} scored points)`
+            : "";
+
         doc
           .font("Helvetica-Bold")
-          .fontSize(11)
-          .fillColor(colors.accentCyan)
-          .text(`${report.aptitudeInsights.overallAccuracyPercentage}%`, 480, aptBannerY + 6);
+          .fontSize(8)
+          .fillColor(colors.tealDark)
+          .text("CURRENT TASK PERFORMANCE (OBJECTIVE SESSION TASKS):", 52, aptBannerY + 7);
 
-        // Aptitude Dimensions (2-column compact bars)
-        let aptGridY = aptBannerY + 30;
+        doc
+          .font("Helvetica-Bold")
+          .fontSize(9.5)
+          .fillColor(colors.accentCyan)
+          .text(
+            `${report.aptitudeInsights.overallAccuracyPercentage}% of available points${rawPointsStr}`,
+            52,
+            aptBannerY + 20,
+            { width: 495 }
+          );
+
+        // Context Note beneath banner
+        doc
+          .font("Helvetica-Oblique")
+          .fontSize(6.5)
+          .fillColor(colors.mutedGray)
+          .text(
+            "* This reflects performance on the objective tasks completed during this assessment session. It is not a fixed measure of intelligence or future potential.",
+            40,
+            aptBannerY + bannerH + 4,
+            { width: 515 }
+          );
+
+        // Aptitude Dimensions (2-column stacked layout with full-width bars to avoid text clipping)
+        let aptGridY = aptBannerY + bannerH + 16;
         const halfCount = Math.ceil(report.aptitudeInsights.dimensions.length / 2);
         for (let i = 0; i < Math.min(3, halfCount); i++) {
           const leftDim = report.aptitudeInsights.dimensions[i];
           const rightDim = report.aptitudeInsights.dimensions[i + halfCount];
 
           if (leftDim) {
-            doc.font("Helvetica-Bold").fontSize(7.5).fillColor(colors.tealDark).text(leftDim.name, 40, aptGridY);
-            doc.font("Helvetica-Bold").fontSize(7.5).fillColor(colors.primaryTeal).text(`${Math.round(leftDim.scalePositionPercentage)}%`, 245, aptGridY);
-            doc.roundedRect(135, aptGridY + 1, 95, 5, 2.5).fill(colors.trackBg);
-            doc.roundedRect(135, aptGridY + 1, Math.max(4, (leftDim.scalePositionPercentage / 100) * 95), 5, 2.5).fill(colors.primaryTeal);
+            const leftPct = Math.round(leftDim.scalePositionPercentage);
+            doc.font("Helvetica-Bold").fontSize(7.5).fillColor(colors.tealDark).text(leftDim.name, 40, aptGridY, { width: 195, height: 10, ellipsis: true });
+            doc.font("Helvetica-Bold").fontSize(7.5).fillColor(colors.primaryTeal).text(`${leftPct}%`, 235, aptGridY, { width: 45, align: "right" });
+            doc.roundedRect(40, aptGridY + 11, 240, 4, 2).fill(colors.trackBg);
+            doc.roundedRect(40, aptGridY + 11, Math.max(4, (leftPct / 100) * 240), 4, 2).fill(colors.primaryTeal);
           }
 
           if (rightDim) {
-            doc.font("Helvetica-Bold").fontSize(7.5).fillColor(colors.tealDark).text(rightDim.name, 305, aptGridY);
-            doc.font("Helvetica-Bold").fontSize(7.5).fillColor(colors.primaryTeal).text(`${Math.round(rightDim.scalePositionPercentage)}%`, 515, aptGridY);
-            doc.roundedRect(405, aptGridY + 1, 95, 5, 2.5).fill(colors.trackBg);
-            doc.roundedRect(405, aptGridY + 1, Math.max(4, (rightDim.scalePositionPercentage / 100) * 95), 5, 2.5).fill(colors.primaryTeal);
+            const rightPct = Math.round(rightDim.scalePositionPercentage);
+            doc.font("Helvetica-Bold").fontSize(7.5).fillColor(colors.tealDark).text(rightDim.name, 315, aptGridY, { width: 195, height: 10, ellipsis: true });
+            doc.font("Helvetica-Bold").fontSize(7.5).fillColor(colors.primaryTeal).text(`${rightPct}%`, 510, aptGridY, { width: 45, align: "right" });
+            doc.roundedRect(315, aptGridY + 11, 240, 4, 2).fill(colors.trackBg);
+            doc.roundedRect(315, aptGridY + 11, Math.max(4, (rightPct / 100) * 240), 4, 2).fill(colors.primaryTeal);
           }
 
-          aptGridY += 15;
+          aptGridY += 21;
         }
 
         // 3. Section 5: Assessment Framework (29-Dimension Construct Model)
@@ -478,71 +614,88 @@ export class ReportPdfGenerator {
           pX += 131;
         }
 
-        // 4. Section 6: What This Profile Suggests (Clear Takeaway)
-        const takeSecY = frameBoxY + 50;
+        // Model Weight Clarification Note
+        doc
+          .font("Helvetica-Oblique")
+          .fontSize(6.5)
+          .fillColor(colors.mutedGray)
+          .text(
+            "* Note: These percentages represent ME LIFE model weights used in profile synthesis; they are not the student's individual scores.",
+            40,
+            frameBoxY + 46,
+            { width: 515 }
+          );
+
+        // 4. Section 6: What This Profile Suggests (Cross-Evidence Synthesis)
+        const takeSecY = frameBoxY + 58;
         doc
           .font("Helvetica-Bold")
           .fontSize(11.5)
           .fillColor(colors.tealDark)
-          .text("6. What This Profile Suggests", 40, takeSecY);
+          .text("6. What This Profile Suggests (Cross-Evidence Synthesis)", 40, takeSecY);
 
         const takeBoxY = takeSecY + 14;
-        const takeBoxH = 150;
+        const takeBoxH = 162;
         doc.roundedRect(40, takeBoxY, 515, takeBoxH, 6).fillAndStroke(colors.tealLightBg, "#B2DFDB");
 
+        let curY = takeBoxY + 8;
         doc
           .font("Helvetica-Bold")
-          .fontSize(8.5)
+          .fontSize(8)
           .fillColor(colors.primaryTeal)
-          .text("01. Current Alignment:", 54, takeBoxY + 10);
+          .text("01. Current Alignment & Interests:", 54, curY);
+        curY = doc.y + 2;
         doc
           .font("Helvetica")
-          .fontSize(8)
+          .fontSize(7.5)
           .fillColor(colors.tealDark)
           .text(
-            `Your current profile indicates strong natural resonance with ${report.executiveSummary.archetypeTitle} patterns, especially across hands-on creation and analytical inquiry.`,
+            `Your present profile suggests alignment with ${report.executiveSummary.archetypeTitle} patterns, reflecting exploratory interest across practical and investigative domains.`,
             54,
-            takeBoxY + 22,
+            curY,
             { width: 485 }
           );
+        curY = doc.y + 6;
 
         doc
           .font("Helvetica-Bold")
-          .fontSize(8.5)
+          .fontSize(8)
           .fillColor(colors.primaryTeal)
-          .text("02. Strongest Vectors:", 54, takeBoxY + 44);
+          .text("02. Current Profile Highlights (Self-Report vs Task Performance):", 54, curY);
+        curY = doc.y + 2;
         doc
           .font("Helvetica")
-          .fontSize(8)
+          .fontSize(7.5)
           .fillColor(colors.tealDark)
           .text(
-            `Your highest performing dimensions show standout capability in ${report.executiveSummary.primaryTraits.join(", ")}, providing a solid foundation for multidisciplinary problem solving.`,
+            `You report strong confidence in practical and leadership behaviours (${report.executiveSummary.primaryTraits.join(", ")}), while objective session tasks show emerging foundational performance (${report.aptitudeInsights.overallAccuracyPercentage}%). Hands-on practice and future reassessment will help calibrate these indicators.`,
             54,
-            takeBoxY + 56,
+            curY,
             { width: 485 }
           );
+        curY = doc.y + 6;
 
         doc
           .font("Helvetica-Bold")
-          .fontSize(8.5)
+          .fontSize(8)
           .fillColor(colors.primaryTeal)
-          .text("03. Actionable Next Steps:", 54, takeBoxY + 78);
+          .text("03. Actionable Next Steps (Targeted Growth):", 54, curY);
+        curY = doc.y + 3;
 
-        let sugY = takeBoxY + 90;
         for (const sug of (report.developmentalStrengths.growthSuggestions || []).slice(0, 3)) {
-          doc.font("Helvetica").fontSize(7.5).fillColor(colors.tealDark).text(`•  ${sug}`, 54, sugY, { width: 485, height: 14, ellipsis: true });
-          sugY += 15;
+          doc.font("Helvetica").fontSize(7.5).fillColor(colors.tealDark).text(`•  ${sug}`, 54, curY, { width: 485, height: 14, ellipsis: true });
+          curY += 14;
         }
 
         // Disclaimer Note
         doc
           .font("Helvetica-Oblique")
-          .fontSize(7)
+          .fontSize(6.5)
           .fillColor(colors.mutedGray)
           .text(
             "* This report provides exploratory guidance for student development, not deterministic career predictions. Use as a starting point for inquiry.",
             54,
-            takeBoxY + 135,
+            takeBoxY + takeBoxH - 14,
             { width: 485 }
           );
 
@@ -552,6 +705,8 @@ export class ReportPdfGenerator {
         const range = doc.bufferedPageRange();
         for (let i = range.start; i < range.start + range.count; i++) {
           doc.switchToPage(i);
+          const prevBottom = doc.page.margins.bottom;
+          doc.page.margins.bottom = 0;
 
           // Subtle footer separator line
           doc.rect(40, 795, 515, 0.5).fill(colors.cardBorder);
@@ -561,7 +716,7 @@ export class ReportPdfGenerator {
             .fontSize(7)
             .fillColor(colors.mutedGray)
             .text(
-              `3G MeLife • Skill Finder  •  ${t.confidentialNotice || "Confidential Student Report"}  •  Report Ref: ${report.reportId.slice(0, 8)}`,
+              `3G MeLife • Skill Finder  •  ${t.confidentialNotice || "CONFIDENTIAL — Intended for the student, parent/guardian, and authorized educational counsellor."}  •  Report Ref: ${report.reportId.slice(0, 8)}`,
               40,
               802,
               { width: 420, lineBreak: false }
@@ -572,6 +727,8 @@ export class ReportPdfGenerator {
             .fontSize(7.5)
             .fillColor(colors.tealDark)
             .text(`Page ${i + 1} of ${range.count}`, 465, 802, { width: 90, align: "right", lineBreak: false });
+
+          doc.page.margins.bottom = prevBottom;
         }
 
         doc.end();

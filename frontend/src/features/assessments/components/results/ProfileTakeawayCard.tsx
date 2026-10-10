@@ -64,23 +64,23 @@ export function ProfileTakeawayCard({
             <span>01. Current Alignment</span>
           </div>
           <p className="text-xs text-[#E0EBE8] print:text-[#2A4442] leading-relaxed">
-            Your current profile indicates strong exploratory alignment with <strong className="text-white print:text-[#172B2A]">{archetypeTitle}</strong> patterns
+            Your current profile indicates exploratory alignment with <strong className="text-white print:text-[#172B2A]">{archetypeTitle}</strong> patterns
             {topInterests.length > 0 && ` (especially across ${topInterests.slice(0, 2).join(" & ")})`}.
           </p>
         </div>
 
-        {/* Pillar 2: Core Strength Vectors */}
+        {/* Pillar 2: Current Profile Highlights */}
         <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2.5 print:bg-[#F7FAF9] print:border-[#E3ECEA]">
           <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-400 print:text-[#059669]">
             <CheckCircle2 className="w-4 h-4" />
-            <span>02. Strongest Reported Vectors</span>
+            <span>02. Current Profile Highlights</span>
           </div>
           <p className="text-xs text-[#E0EBE8] print:text-[#2A4442] leading-relaxed">
-            Your most strongly endorsed self-reported behaviours show standout confidence in{" "}
+            Your most strongly endorsed self-reported behaviours indicate stronger current indicators in{" "}
             <strong className="text-white print:text-[#172B2A]">
               {topSkills.length > 0 ? topSkills.slice(0, 2).join(" & ") : "analytical and creative problem solving"}
             </strong>
-            {topTraits.length > 0 && `, reinforced by ${topTraits[0]}`}. Explore whether this confidence is reinforced through repeated hands-on experience.
+            {topTraits.length > 0 && `, reinforced by ${topTraits[0]}`}. Explore whether this confidence is reinforced through repeated hands-on experience and task performance.
           </p>
         </div>
 

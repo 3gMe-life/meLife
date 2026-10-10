@@ -116,6 +116,11 @@ export function AssessmentFrameworkCard({ className = "" }: AssessmentFrameworkC
           </div>
         ))}
       </div>
+
+      {/* Model Weight Clarification Note */}
+      <p className="text-[11px] text-[#728B88] dark:text-[#9FB3B0] italic border-t border-[#E3ECEA] dark:border-white/10 pt-3">
+        * Note: These percentages represent ME LIFE model synthesis weights used to evaluate multi-source alignment; they are not the student&apos;s individual scores.
+      </p>
     </div>
   );
 }

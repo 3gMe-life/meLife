@@ -113,8 +113,12 @@ export function InterestChart({ dimensions, profileVector, className = "" }: Int
     };
   });
 
-  // Calculate dominant & supporting patterns from scores
+  // Calculate dominant & supporting patterns or broad tie from scores
   const sortedByScore = [...interestItems].sort((a, b) => b.score - a.score);
+  const topScore = sortedByScore[0]?.score ?? 0;
+  const tiedWithTop = sortedByScore.filter((item) => item.score === topScore);
+  const isBroadTie = tiedWithTop.length >= 3;
+
   const dominant1 = sortedByScore[0];
   const dominant2 = sortedByScore[1];
   const supporting1 = sortedByScore[2];
@@ -206,39 +210,59 @@ export function InterestChart({ dimensions, profileVector, className = "" }: Int
       </div>
 
       {/* Pattern Interpretation Block */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-        {/* Dominant Interest Pattern */}
-        <div className="p-3.5 rounded-2xl bg-emerald-500/10 dark:bg-emerald-950/20 border border-emerald-500/20 flex items-center justify-between gap-3 print:bg-[#F0FDF4] print:border-[#00BFA5]/30">
-          <div className="space-y-0.5">
-            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-300 print:text-[#065F46]">
+      {isBroadTie ? (
+        <div className="p-4 rounded-2xl bg-teal-500/10 dark:bg-teal-950/20 border border-teal-500/30 space-y-1.5 print:bg-[#F0FDF4] print:border-[#00BFA5]/30">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-teal-800 dark:text-teal-300 print:text-[#008F83]">
               <Sparkles className="w-3.5 h-3.5 text-[#00BFA5]" />
-              <span>Dominant Interest Pattern</span>
+              <span>Broad Interest Pattern (Distributed Orientation)</span>
             </div>
-            <p className="text-xs font-bold text-[#172B2A] dark:text-white print:text-[#172B2A]">
-              {dominant1?.meta.label} ({dominant1?.score}/100) + {dominant2?.meta.label} ({dominant2?.score}/100)
-            </p>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-teal-500/20 text-teal-800 dark:text-teal-300">
+              Exploratory
+            </span>
           </div>
-          <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-white/80 dark:bg-white/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20 shrink-0 print:border-[#00BFA5]/30 print:text-[#065F46]">
-            Primary Driver
-          </span>
+          <p className="text-xs font-bold text-[#172B2A] dark:text-white print:text-[#172B2A]">
+            {tiedWithTop.map((item) => item.meta.label).join(", ")} currently show similarly elevated interest scores ({topScore}/100).
+          </p>
+          <p className="text-[11px] text-[#728B88] dark:text-[#9FB3B0] print:text-[#526866]">
+            These results suggest broad exploratory interest across multiple domains rather than a sharply dominant RIASEC pattern.
+          </p>
         </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          {/* Dominant Interest Pattern */}
+          <div className="p-3.5 rounded-2xl bg-emerald-500/10 dark:bg-emerald-950/20 border border-emerald-500/20 flex items-center justify-between gap-3 print:bg-[#F0FDF4] print:border-[#00BFA5]/30">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-300 print:text-[#065F46]">
+                <Sparkles className="w-3.5 h-3.5 text-[#00BFA5]" />
+                <span>Dominant Interest Pattern</span>
+              </div>
+              <p className="text-xs font-bold text-[#172B2A] dark:text-white print:text-[#172B2A]">
+                {dominant1?.meta.label} ({dominant1?.score}/100) + {dominant2?.meta.label} ({dominant2?.score}/100)
+              </p>
+            </div>
+            <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-white/80 dark:bg-white/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20 shrink-0 print:border-[#00BFA5]/30 print:text-[#065F46]">
+              Primary Driver
+            </span>
+          </div>
 
-        {/* Supporting Pattern */}
-        <div className="p-3.5 rounded-2xl bg-cyan-500/10 dark:bg-cyan-950/20 border border-cyan-500/20 flex items-center justify-between gap-3 print:bg-[#F0F9FF] print:border-cyan-200">
-          <div className="space-y-0.5">
-            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-cyan-800 dark:text-cyan-300 print:text-[#0369A1]">
-              <TrendingUp className="w-3.5 h-3.5 text-cyan-500" />
-              <span>Supporting Interest Pattern</span>
+          {/* Supporting Pattern */}
+          <div className="p-3.5 rounded-2xl bg-cyan-500/10 dark:bg-cyan-950/20 border border-cyan-500/20 flex items-center justify-between gap-3 print:bg-[#F0F9FF] print:border-cyan-200">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-cyan-800 dark:text-cyan-300 print:text-[#0369A1]">
+                <TrendingUp className="w-3.5 h-3.5 text-cyan-500" />
+                <span>Supporting Interest Pattern</span>
+              </div>
+              <p className="text-xs font-bold text-[#172B2A] dark:text-white print:text-[#172B2A]">
+                {supporting1?.meta.label} ({supporting1?.score}/100) + {supporting2?.meta.label} ({supporting2?.score}/100)
+              </p>
             </div>
-            <p className="text-xs font-bold text-[#172B2A] dark:text-white print:text-[#172B2A]">
-              {supporting1?.meta.label} ({supporting1?.score}/100) + {supporting2?.meta.label} ({supporting2?.score}/100)
-            </p>
+            <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-white/80 dark:bg-white/10 text-cyan-800 dark:text-cyan-300 border border-cyan-500/20 shrink-0 print:border-cyan-200 print:text-[#0369A1]">
+              Complementary
+            </span>
           </div>
-          <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-white/80 dark:bg-white/10 text-cyan-800 dark:text-cyan-300 border border-cyan-500/20 shrink-0 print:border-cyan-200 print:text-[#0369A1]">
-            Complementary
-          </span>
         </div>
-      </div>
+      )}
     </div>
   );
 }

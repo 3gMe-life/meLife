@@ -45,6 +45,8 @@ export interface ReportInterestProfile {
   primaryOrientation: string;
   secondaryOrientation: string;
   summary: string;
+  isBroadInterestPattern?: boolean;
+  tiedTopDomains?: string[];
 }
 
 export interface ReportSkillBehaviourProfile {
@@ -56,6 +58,8 @@ export interface ReportSkillBehaviourProfile {
 
 export interface ReportAptitudeInsights {
   overallAccuracyPercentage: number;
+  rawScore?: number;
+  maxScore?: number;
   dimensions: ScoredDimensionItem[];
   summary: string;
   cognitiveStrengthsText: string;

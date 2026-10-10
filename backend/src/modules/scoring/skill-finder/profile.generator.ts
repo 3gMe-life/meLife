@@ -218,6 +218,7 @@ export const EXPLORATION_CATALOG: Record<
  */
 export const RESULT_TRANSLATIONS: Record<string, Record<string, string>> = {
   ml: {
+    "Multidisciplinary Explorer": "മൾട്ടിഡിസിപ്ലിനറി എക്സ്പ്ലോറർ (Multidisciplinary Explorer)",
     "Practical Explorer": "പ്രാക്ടിക്കൽ എക്സ്പ്ലോറർ (Practical Explorer)",
     "Creative Maker & Designer": "ക്രിയേറ്റീവ് മേക്കർ & ഡിസൈനർ (Creative Maker)",
     "Analytical Systems Thinker": "അനലിറ്റിക്കൽ സിസ്റ്റംസ് തിങ്കർ (Analytical Thinker)",
@@ -231,6 +232,7 @@ export const RESULT_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Operations, Information Systems & Financial Management": "ഓപ്പറേഷൻസ്, ഐടി & ഫിനാൻഷ്യൽ മാനേജ്മെന്റ്",
   },
   hi: {
+    "Multidisciplinary Explorer": "मल्टीडिसिप्लिनरी एक्सप्लोरर (Multidisciplinary Explorer)",
     "Practical Explorer": "प्रैक्टिकल एक्सप्लोरर (Practical Explorer)",
     "Creative Maker & Designer": "क्रिएटिव मेकर एवं डिज़ाइनर",
     "Analytical Systems Thinker": "एनालिटिकल सिस्टम्स थिंकर",
@@ -244,6 +246,7 @@ export const RESULT_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Operations, Information Systems & Financial Management": "संचालन, सूचना प्रणाली एवं वित्तीय प्रबंधन",
   },
   ar: {
+    "Multidisciplinary Explorer": "المستكشف متعدد التخصصات (Multidisciplinary Explorer)",
     "Practical Explorer": "المستكشف العملي (Practical Explorer)",
     "Creative Maker & Designer": "المصمم المبدع والصانع",
     "Analytical Systems Thinker": "المفكر التحليلي للأنظمة",
@@ -257,6 +260,7 @@ export const RESULT_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Operations, Information Systems & Financial Management": "العمليات ونظم المعلومات والإدارة المالية",
   },
   ta: {
+    "Multidisciplinary Explorer": "பன்முக ஆய்வு நெறியாளர் (Multidisciplinary Explorer)",
     "Practical Explorer": "நடைமுறை ஆய்வாளர் (Practical Explorer)",
     "Creative Maker & Designer": "படைப்பாற்றல் தயாரிப்பாளர் & வடிவமைப்பாளர்",
     "Analytical Systems Thinker": "பகுப்பாய்வு சிந்தனையாளர்",
@@ -270,6 +274,7 @@ export const RESULT_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Operations, Information Systems & Financial Management": "செயல்பாடுகள் & நிதி மேலாண்மை",
   },
   kn: {
+    "Multidisciplinary Explorer": "ಬಹುಶಿಸ್ತೀಯ ಅನ್ವೇಷಕ (Multidisciplinary Explorer)",
     "Practical Explorer": "ಪ್ರಾಯೋಗಿಕ ಅನ್ವೇಷಕ (Practical Explorer)",
     "Creative Maker & Designer": "ಸೃಜನಶೀಲ ಸೃಷ್ಟಿಕರ್ತ & ವಿನ್ಯಾಸಕ",
     "Analytical Systems Thinker": "ವಿಶ್ಲೇಷಣಾತ್ಮಕ ಚಿಂತಕ",
@@ -297,21 +302,34 @@ export class ProfileGenerator {
     const firstKey = topInterests[0]?.code || "BUILDER_R";
     const secondKey = topInterests[1]?.code || "EXPLORER_I";
 
-    // Lookup pair or reversed pair
-    const pairKey1 = `${firstKey}:${secondKey}`;
-    const pairKey2 = `${secondKey}:${firstKey}`;
-
-    const def: ArchetypeDefinition =
-      ARCHETYPE_MATRIX[pairKey1] ||
-      ARCHETYPE_MATRIX[pairKey2] || {
-        archetypeTitle: "Curious Explorer & Builder",
-        tagline: "Exploring practical challenges through purposeful curiosity.",
+    let def: ArchetypeDefinition;
+    if (interestResult.isBroadInterestPattern) {
+      def = {
+        archetypeTitle: "Multidisciplinary Explorer",
+        tagline: "Exploring broad practical, analytical, and creative horizons with versatile curiosity.",
         strengthSummary:
-          "You show well-rounded curiosity across both hands-on projects and conceptual problem-solving tasks.",
+          "Your current profile shows similarly elevated interest across multiple domains, indicating a versatile exploratory orientation. Rather than narrowing prematurely, you benefit from exploring interdisciplinary problem-solving.",
         explorationFraming:
-          "Your current profile shows stronger alignment with science, technology, creative making, and exploratory learning pathways.",
-        primaryTraits: ["Curious Mindset", "Versatile Problem Solving", "Active Engagement"],
+          "Your current responses show balanced exploratory alignment across technical making, scientific investigation, creative design, and structured operations.",
+        primaryTraits: ["Multidisciplinary Curiosity", "Hands-on Exploration", "Adaptive Problem Solving"],
       };
+    } else {
+      // Lookup pair or reversed pair
+      const pairKey1 = `${firstKey}:${secondKey}`;
+      const pairKey2 = `${secondKey}:${firstKey}`;
+
+      def =
+        ARCHETYPE_MATRIX[pairKey1] ||
+        ARCHETYPE_MATRIX[pairKey2] || {
+          archetypeTitle: "Curious Explorer & Builder",
+          tagline: "Exploring practical challenges through purposeful curiosity.",
+          strengthSummary:
+            "You show well-rounded curiosity across both hands-on projects and conceptual problem-solving tasks.",
+          explorationFraming:
+            "Your current profile shows stronger alignment with science, technology, creative making, and exploratory learning pathways.",
+          primaryTraits: ["Curious Mindset", "Versatile Problem Solving", "Active Engagement"],
+        };
+    }
 
     const langMap = RESULT_TRANSLATIONS[languageCode] || {};
     const translatedTitle = langMap[def.archetypeTitle] || def.archetypeTitle;
@@ -373,13 +391,51 @@ export class ProfileGenerator {
     const topInterestName = interestResult.topClusters[0]?.name || "applied technology";
     const strongSkillName =
       skillResult.strongestIndicators[0]?.name || "core problem solving";
-    const growthOpportunityName =
-      skillResult.developmentOpportunities[0]?.name || "collaborative communication";
+    const growthOpportunity = skillResult.developmentOpportunities[0];
+    const growthOpportunityName = growthOpportunity?.name || "targeted development areas";
+    const growthOpportunityCode = growthOpportunity?.code || "";
+
+    const CONSTRUCT_PRACTICE_ACTIONS: Record<string, string> = {
+      VISUAL_SPATIAL_THINKING:
+        "Practice Visual-Spatial Thinking through mental rotation exercises, spatial puzzles, 3D model construction, and technical diagramming.",
+      LOGICAL_PROBLEM_SOLVING:
+        "Practice Logical Problem-Solving through step-by-step problem decomposition, logic grid puzzles, and introductory algorithmic challenges.",
+      COMMUNICATION:
+        "Practice Communication & Articulation through structured presentations, active listening exercises, and reflective project writing.",
+      CREATIVE_THINKING:
+        "Practice Creative & Divergent Thinking through open-ended brainstorming sessions, design challenges, and creative storytelling.",
+      PRACTICAL_TECHNICAL_SKILL:
+        "Practice Practical & Technical Dexterity through hands-on tinkering, hardware kits, and physical troubleshooting projects.",
+      SOCIAL_TEAMWORK:
+        "Practice Social Interaction & Teamwork through collaborative team tasks, peer feedback sessions, and group study projects.",
+      LEADERSHIP_INITIATIVE:
+        "Practice Leadership & Initiative through small project ownership, student club responsibilities, and goal-setting routines.",
+      SELF_MANAGEMENT:
+        "Practice Self-Management through dedicated study schedules, focused time-blocking, and self-monitoring routines.",
+      PATTERN_LOGIC:
+        "Practice Pattern Logic through inductive puzzles, sequence challenges, and rule-discovery games.",
+      NUMERICAL_REASONING:
+        "Practice Numerical Reasoning through proportional reasoning exercises, data interpretation, and quantitative problem sets.",
+      VERBAL_REASONING:
+        "Practice Verbal Reasoning through analytical reading, vocabulary analogies, and structured argument evaluation.",
+      SPATIAL_REASONING:
+        "Practice Spatial Reasoning through 3D mental rotation exercises, net-folding geometry, and scale model building.",
+      PRACTICAL_PROBLEM_SOLVING:
+        "Practice Practical Troubleshooting through systematic root-cause diagnosis and everyday physical tinkering.",
+    };
+
+    const specificPracticeSuggestion =
+      CONSTRUCT_PRACTICE_ACTIONS[growthOpportunityCode] ||
+      (growthOpportunityName.toLowerCase().includes("spatial")
+        ? CONSTRUCT_PRACTICE_ACTIONS.VISUAL_SPATIAL_THINKING
+        : growthOpportunityName.toLowerCase().includes("communication")
+        ? CONSTRUCT_PRACTICE_ACTIONS.COMMUNICATION
+        : `Dedicate time to practice ${growthOpportunityName} through targeted exercise routines, reflective review, and hands-on projects.`);
 
     return [
       `Engage in hands-on exploration projects aligned with your primary interest in ${topInterestName}.`,
-      `Leverage your natural instinct in ${strongSkillName} to lead small team initiatives or science challenges.`,
-      `Dedicate time to practice ${growthOpportunityName} through group discussions, presentations, and constructive peer feedback.`,
+      `Apply your reported strength in ${strongSkillName} to lead small team initiatives or science challenges.`,
+      specificPracticeSuggestion,
       `Discuss these findings with a qualified academic and career counselor to plan exploratory high school subject pathways.`,
     ];
   }

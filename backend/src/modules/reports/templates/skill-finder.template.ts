@@ -69,13 +69,23 @@ export class SkillFinderReportTemplate implements IReportTemplate<SkillFinderRep
     };
 
     // 2. Executive Summary (Learning Profile Archetype)
+    const signal = result.responseQuality?.consistencySignal || "High Consistency";
+    let formattedReliability = "Adequate for Exploratory Guidance";
+    if (signal === "High Consistency") {
+      formattedReliability = "High Consistency (Exploratory Reliability Validated)";
+    } else if (signal === "Adequate Consistency") {
+      formattedReliability = "Adequate for Exploratory Guidance";
+    } else {
+      formattedReliability = "Review Suggested (Variable Consistency Observed)";
+    }
+
     const executiveSummary: ReportExecutiveSummary = {
       archetypeTitle: result.learningProfile?.archetypeTitle || "Practical Explorer",
       tagline: result.learningProfile?.tagline || "Bridging scientific curiosity with hands-on technical creation",
-      strengthSummary: result.learningProfile?.strengthSummary || "You demonstrate strong cognitive curiosity and practical problem-solving instincts.",
-      explorationFraming: result.learningProfile?.explorationFraming || "Your profile shows stronger alignment with engineering, robotics, and applied technology exploration areas.",
+      strengthSummary: result.learningProfile?.strengthSummary || "Your profile reflects curiosity across practical problem-solving and structured technical inquiry.",
+      explorationFraming: result.learningProfile?.explorationFraming || "Your profile shows stronger alignment with engineering, applied science, and practical technology exploration areas.",
       primaryTraits: result.learningProfile?.primaryTraits || ["Analytical Inquiry", "Hands-on Building", "Spatial Reasoning"],
-      reliabilityNote: `${result.responseQuality?.consistencySignal || "High Consistency"} (${result.responseQuality?.interpretation || "Evaluated through psychometrically validated parallel consistency checks."})`,
+      reliabilityNote: formattedReliability,
     };
 
     // 3. Interest Profile (RIASEC)
@@ -84,15 +94,40 @@ export class SkillFinderReportTemplate implements IReportTemplate<SkillFinderRep
       name: c.name,
       percentage: Math.round(c.scalePositionPercentage || 0),
       clusterTitle: c.clusterTitle,
-      description: `Reflects intrinsic engagement in ${c.name.toLowerCase()} environments and activities.`,
+      description: `Reflects engagement in ${c.name.toLowerCase()} environments and activities.`,
     }));
+
+    const rawDims = result.interestDiscovery?.dimensions || [];
+    const maxScore = Math.max(...rawDims.map((d) => Math.round(d.scalePositionPercentage || 0)), 50);
+    const tiedAtTop = rawDims.filter(
+      (d) => Math.round(d.scalePositionPercentage || 0) === maxScore
+    );
+    const isBroad = Boolean(result.interestDiscovery?.isBroadInterestPattern) || tiedAtTop.length >= 3;
+    const tiedNames = tiedAtTop.map((d) => d.name.split(" ")[0]).join(", ");
+
+    let interestSummary: string;
+    let primaryOrientation: string;
+    let secondaryOrientation: string;
+
+    if (isBroad) {
+      interestSummary = `${tiedNames} currently show similarly elevated interest scores (${maxScore}/100). These results suggest broad exploratory interest across multiple domains rather than a sharply dominant RIASEC orientation.`;
+      primaryOrientation = "Broad Interest Pattern";
+      secondaryOrientation = tiedNames;
+    } else {
+      primaryOrientation = result.interestDiscovery?.primaryOrientation || topClusters[0]?.name || "Builder (Realistic)";
+      secondaryOrientation = result.interestDiscovery?.secondaryOrientation || topClusters[1]?.name || "Explorer (Investigative)";
+      const topNames = topClusters.map((c) => c.name).slice(0, 2).join(" and ");
+      interestSummary = `Your current interest orientations highlight ${topNames}. Your responses indicate stronger engagement in environments where you can investigate problems, test ideas, and create tangible solutions.`;
+    }
 
     const interestProfile: ReportInterestProfile = {
       topClusters,
-      dimensions: result.interestDiscovery?.dimensions || [],
-      primaryOrientation: result.interestDiscovery?.primaryOrientation || topClusters[0]?.name || "Builder (Practical)",
-      secondaryOrientation: result.interestDiscovery?.secondaryOrientation || topClusters[1]?.name || "Explorer (Investigative)",
-      summary: `Your top interest orientations are ${topClusters.map((c) => c.name).slice(0, 2).join(" and ")}. You naturally gravitate toward environments where you can investigate problems and create tangible solutions.`,
+      dimensions: rawDims,
+      primaryOrientation,
+      secondaryOrientation,
+      summary: interestSummary,
+      isBroadInterestPattern: isBroad,
+      tiedTopDomains: isBroad ? tiedAtTop.map((d) => d.name) : undefined,
     };
 
     // 4. Skill Behaviour Profile
@@ -100,15 +135,25 @@ export class SkillFinderReportTemplate implements IReportTemplate<SkillFinderRep
       strongestIndicators: result.skillBehaviour?.strongestIndicators || [],
       developmentOpportunities: result.skillBehaviour?.developmentOpportunities || [],
       dimensions: result.skillBehaviour?.dimensions || [],
-      summary: "Evaluates self-reported problem solving, collaboration, initiative, and structured execution instincts in learning scenarios.",
+      summary: "Evaluates self-reported problem solving, collaboration, initiative, and structured execution indicators in learning scenarios.",
     };
 
     // 5. Demonstrated Aptitude Insights
+    const aptDims = result.demonstratedAptitude?.dimensions || [];
+    const rawAptScore =
+      result.demonstratedAptitude?.rawScore ??
+      aptDims.reduce((acc, d) => acc + (d.rawScore || 0), 0);
+    const maxAptScore =
+      result.demonstratedAptitude?.maxScore ??
+      aptDims.reduce((acc, d) => acc + (d.maxScore || 0), 0);
+
     const aptitudeInsights: ReportAptitudeInsights = {
       overallAccuracyPercentage: Math.round(result.demonstratedAptitude?.overallAccuracyPercentage || 0),
-      dimensions: result.demonstratedAptitude?.dimensions || [],
-      summary: "Measures task accuracy across spatial reasoning, numerical deduction, linguistic logic, pattern recognition, and creative divergent ideation.",
-      cognitiveStrengthsText: "Demonstrates consistent performance in identifying logical patterns, decomposing multi-step spatial challenges, and generating multi-angle solutions.",
+      rawScore: maxAptScore > 0 ? rawAptScore : undefined,
+      maxScore: maxAptScore > 0 ? maxAptScore : undefined,
+      dimensions: aptDims,
+      summary: "Measures performance on objective tasks completed during this assessment session across spatial reasoning, numerical deduction, linguistic logic, pattern recognition, and creative ideation. It is not a fixed measure of intelligence or future potential.",
+      cognitiveStrengthsText: "Reflects demonstrated performance in identifying logical patterns, decomposing multi-step spatial challenges, and generating multi-angle solutions during this assessment session.",
     };
 
     // 6. Developmental Strengths & Learning Habits

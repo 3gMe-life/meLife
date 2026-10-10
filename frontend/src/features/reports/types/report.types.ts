@@ -48,6 +48,8 @@ export interface ReportInterestProfile {
   primaryOrientation: string;
   secondaryOrientation: string;
   summary: string;
+  isBroadInterestPattern?: boolean;
+  tiedTopDomains?: string[];
 }
 
 export interface ReportSkillBehaviourProfile {
@@ -62,6 +64,8 @@ export interface ReportAptitudeInsights {
   dimensions: ScoredDimensionItem[];
   summary: string;
   cognitiveStrengthsText: string;
+  rawScore?: number;
+  maxScore?: number;
 }
 
 export interface ReportDevelopmentalStrengths {

@@ -51,12 +51,12 @@ export const REPORT_TRANSLATIONS: Record<string, ReportI18nDictionary> = {
   en: {
     reportTitle: "Skill Finder Psychometric Assessment Report",
     reportSubtitle: "Discovering Your Unique Strengths, Exploratory Interests and Learning Patterns",
-    confidentialNotice: "CONFIDENTIAL & PROPRIETARY — Calibrated strictly for the student, parent, and authorized educational counsellor.",
+    confidentialNotice: "CONFIDENTIAL — Intended for the student, parent/guardian, and authorized educational counsellor.",
     sections: {
       studentProfile: "1. Student Profile & Evaluation Context",
       profileSummary: "2. Executive Learning Profile Summary",
       interestProfile: "3. Vocational & Exploratory Interest Profile (RIASEC)",
-      skillBehaviour: "4. Skill Instincts & Behavioural Indicators",
+      skillBehaviour: "4. Skill Indicators & Behavioural Tendencies",
       aptitudeInsights: "5. Demonstrated Cognitive Aptitude & Problem Solving",
       developmentalStrengths: "6. Developmental Strengths & Learning Habits",
       explorationAreas: "7. Recommended Exploration Pathways & Activity Areas",
@@ -71,7 +71,7 @@ export const REPORT_TRANSLATIONS: Record<string, ReportI18nDictionary> = {
       completedDate: "Evaluation Date",
       reportId: "Report Identifier",
       archetypeLabel: "Primary Learning Archetype",
-      strongAreas: "Strongest Behavioural Strengths",
+      strongAreas: "Strongest Behavioural Indicators",
       developmentAreas: "High-Potential Growth Opportunities",
       overallAccuracy: "Overall Demonstrated Task Accuracy",
       keyLearningHabits: "Positive Habits to Cultivate",
@@ -84,10 +84,10 @@ export const REPORT_TRANSLATIONS: Record<string, ReportI18nDictionary> = {
       supportiveActionsHeader: "Recommended Home & Classroom Support Actions",
     },
     parentGuidance: {
-      summary: "Your child possesses unique cognitive instincts and natural curiosity patterns. The best approach is to provide rich, pressure-free opportunities to experiment, build, and explore without imposing premature career labels.",
+      summary: "Your child's profile indicates unique curiosity patterns and evolving learning habits. The best approach is to provide rich, pressure-free opportunities to experiment, build, and explore without imposing premature career labels.",
       dos: [
         "Celebrate effort, creative experimentation, and resilience rather than just final grades.",
-        "Provide access to books, hobby kits, coding tools, and community clubs aligned with their natural curiosity.",
+        "Provide access to books, hobby kits, coding tools, and community clubs aligned with their expressed interests and curiosity.",
         "Encourage collaborative projects where they can learn alongside peers with diverse interests.",
         "Listen actively when they explain how they solved a complex problem or designed a project.",
       ],

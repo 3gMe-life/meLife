@@ -22,6 +22,8 @@ export interface InterestProfileResult {
   dimensions: ScoredDimensionItem[];
   primaryOrientation?: string;
   secondaryOrientation?: string;
+  isBroadInterestPattern?: boolean;
+  tiedTopDomains?: string[];
 }
 
 export interface SkillBehaviourResult {
@@ -32,6 +34,8 @@ export interface SkillBehaviourResult {
 
 export interface DemonstratedAptitudeResult {
   overallAccuracyPercentage: number;
+  rawScore?: number;
+  maxScore?: number;
   dimensions: ScoredDimensionItem[];
 }
 

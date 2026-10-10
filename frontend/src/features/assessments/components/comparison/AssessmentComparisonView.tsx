@@ -149,7 +149,7 @@ export function AssessmentComparisonView({
 
         {(activeSection === "all" || activeSection === "skills") && (
           <DimensionGrowthChart
-            title="Section B: Skill Behaviours & Natural Instincts"
+            title="Section B: Skill Behaviours & Self-Reported Working Patterns"
             subtitle="Evaluating growth across practical execution, diagnostic inquiry, and collaboration"
             dimensions={comparison.skillsComparison}
           />

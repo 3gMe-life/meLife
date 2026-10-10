@@ -316,9 +316,13 @@ export function SkillFinderReportView({
               </p>
             </div>
             <div className="space-y-0.5">
-              <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider print:text-[#688582]">Primary Vector</span>
+              <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider print:text-[#688582]">Primary Orientation</span>
               <p className="font-bold text-[#00C896] print:text-[#008F83]">
-                {report.interestProfile?.primaryOrientation} + {report.interestProfile?.secondaryOrientation}
+                {report.interestProfile?.isBroadInterestPattern
+                  ? report.interestProfile.primaryOrientation
+                  : report.interestProfile?.secondaryOrientation
+                  ? `${report.interestProfile.primaryOrientation} + ${report.interestProfile.secondaryOrientation}`
+                  : report.interestProfile?.primaryOrientation || "Exploratory"}
               </p>
             </div>
             <div className="space-y-0.5">

@@ -59,7 +59,7 @@ export function EvidenceSnapshot({ result, className = "" }: EvidenceSnapshotPro
       layer: "INTEREST EVIDENCE",
       code: "RIASEC 25%",
       title: primaryInterests,
-      description: "Primary vocational task environments and activities that attract you naturally.",
+      description: "Primary vocational task environments and activities that currently attract your interest.",
       statusText: topClusters.length > 0 ? `${Math.round(topClusters[0]?.scalePositionPercentage || 50)} / 100 Interest Alignment` : "Evaluated",
       icon: <Compass className="w-4 h-4 text-[#008F83] dark:text-[#00BFA5]" />,
       border: "border-[#00BFA5]/30",
