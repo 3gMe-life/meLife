@@ -1,6 +1,6 @@
 import React from "react";
 import { ReportCoverData } from "../../types/career-report.types";
-import { Sparkles, Calendar, School, GraduationCap, Award, Compass, ShieldCheck, UserCheck } from "lucide-react";
+import { Sparkles, Calendar, School, GraduationCap, Award, Compass, ShieldCheck, UserCheck, Lightbulb } from "lucide-react";
 
 interface CoverSectionProps {
   data: ReportCoverData;
@@ -129,7 +129,7 @@ export const CoverSection: React.FC<CoverSectionProps> = ({ data, reportId }) =>
       <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-5 md:p-6">
         <div className="flex items-start gap-3.5">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold">
-            💡
+            <Lightbulb className="h-5 w-5" />
           </div>
           <div>
             <h4 className="text-sm font-bold text-slate-900 dark:text-white">

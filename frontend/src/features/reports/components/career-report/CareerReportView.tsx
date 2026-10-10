@@ -29,6 +29,10 @@ const ClosingSummarySection = dynamic(
   () => import("./ClosingSummarySection").then((m) => m.ClosingSummarySection),
   { ssr: true }
 );
+const MethodologySection = dynamic(
+  () => import("./MethodologySection").then((m) => m.MethodologySection),
+  { ssr: true }
+);
 const CounsellorInsightsSection = dynamic(
   () => import("./CounsellorInsightsSection").then((m) => m.CounsellorInsightsSection),
   { ssr: true }
@@ -48,6 +52,7 @@ import {
   Target,
   Users,
   BookMarked,
+  BookOpen,
   Share2,
 } from "lucide-react";
 import { useDownloadCareerReportPdfMutation } from "../../hooks/useCareerReportQueries";
@@ -80,7 +85,7 @@ const SECTIONS = [
   { id: "section-alternatives", label: "Alternative Pathways", icon: Compass },
   { id: "section-development", label: "Skill Development", icon: Target },
   { id: "section-parent-guidance", label: "Parent Guidance", icon: Users },
-  { id: "section-closing", label: "Summary & Next Steps", icon: Sparkles },
+  { id: "section-methodology", label: "Methodology & Record", icon: BookOpen },
 ];
 
 export const CareerReportView: React.FC<CareerReportViewProps> = ({
@@ -90,7 +95,10 @@ export const CareerReportView: React.FC<CareerReportViewProps> = ({
   isCounsellorView = false,
 }) => {
   const router = useRouter();
-  const report: CareerReportDTO = (rawReport as any)?.data || rawReport;
+  const report: CareerReportDTO =
+    rawReport && typeof rawReport === "object" && "data" in (rawReport as unknown as Record<string, unknown>)
+      ? ((rawReport as unknown as { data: CareerReportDTO }).data)
+      : rawReport;
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const downloadMutation = useDownloadCareerReportPdfMutation();
@@ -111,8 +119,8 @@ export const CareerReportView: React.FC<CareerReportViewProps> = ({
         language: report?.language || currentLanguage,
         filename: `3G_MeLife_Career_Report_${report?.cover?.studentName?.replace(/\s+/g, "_") || "Student"}.pdf`,
       });
-    } catch (err: any) {
-      setDownloadError(err.message || "Failed to download PDF report.");
+    } catch (err: unknown) {
+      setDownloadError(err instanceof Error ? err.message : "Failed to download PDF report.");
     }
   };
 
@@ -136,7 +144,7 @@ export const CareerReportView: React.FC<CareerReportViewProps> = ({
   };
 
   const navSections = report?.counsellorInsights
-    ? [...SECTIONS, { id: "section-counsellor-insights", label: "Counsellor Insights", icon: ShieldCheck }]
+    ? [...SECTIONS, { id: "section-counsellor-insights", label: "Counsellor Appendix", icon: ShieldCheck }]
     : SECTIONS;
 
   if (!report || !report.cover) {
@@ -334,14 +342,23 @@ export const CareerReportView: React.FC<CareerReportViewProps> = ({
           {/* Section 9: Parent & Guardian Guidance Framework */}
           <ParentGuidanceSection data={report.parentGuidance} />
 
-          {/* Section 10: Closing Summary & Counsellor CTA */}
+          {/* Section 10: Understanding Your Results & Methodology */}
+          <MethodologySection
+            data={report.methodology}
+            reportId={report.reportId}
+            templateVersion={report.templateVersion}
+            studentName={report.cover.studentName}
+            generatedDate={report.cover.generatedDate || report.generatedDate}
+          />
+
+          {/* Action Framework & Summary */}
           <ClosingSummarySection
             studentName={report.cover.studentName}
             reportId={report.reportId}
             templateVersion={report.templateVersion}
           />
 
-          {/* Section 11: Counsellor Insights (Protected View) */}
+          {/* Counsellor Diagnostic Appendix (Protected View) */}
           {report.counsellorInsights && (
             <CounsellorInsightsSection data={report.counsellorInsights} />
           )}

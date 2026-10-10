@@ -12,6 +12,7 @@ import {
   CareerReportDTO,
   GenerateCareerReportRequestDTO,
 } from "./career-report.types";
+import { SkillFinderFullResultDTO } from "../../scoring/scoring.types";
 
 export class CareerReportService {
   /**
@@ -31,7 +32,7 @@ export class CareerReportService {
     }
 
     // 2. Fetch assessment result
-    let latestResultRow: any = null;
+    let latestResultRow: { id?: string; result_data?: SkillFinderFullResultDTO | null; [key: string]: unknown } | null = null;
     if (dto.resultId) {
       latestResultRow = await assessmentContentRepository.findResultById(dto.resultId);
     } else {
@@ -44,13 +45,21 @@ export class CareerReportService {
     if (!dto.forceRegenerate) {
       const existing = await careerReportRepository.findReportByStudentAndResult(userId, resultId, lang);
       if (existing && existing.report_data) {
-        return this.filterReportByRole(existing.report_data, userRole);
+        // Guard against returning a stale unassessed baseline if the student now has a completed assessment result
+        const isStaleUnassessed = !existing.assessment_result_id && Boolean(resultId);
+        if (!isStaleUnassessed) {
+          return this.filterReportByRole(existing.report_data, userRole);
+        }
       }
     }
 
     // 4. Load participant profile and career data
     const profile = await participantRepository.findByUserId(userId);
-    const pathwaysResult = await careerRecommendationService.getRecommendedPathways(userId, lang);
+    const pathwaysResult = await careerRecommendationService.getRecommendedPathways(userId, {
+      languageCode: lang,
+      resultId: resultId || undefined,
+      resolvedResultData: latestResultRow?.result_data,
+    });
     const allCareers = await careerRepository.findAllCareers(lang);
 
     const careersMap = new Map();

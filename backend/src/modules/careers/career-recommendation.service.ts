@@ -26,6 +26,8 @@ export interface GetRecommendedPathwaysOptions {
   page?: number;
   limit?: number;
   viewAll?: boolean;
+  resultId?: string;
+  resolvedResultData?: SkillFinderFullResultDTO | null;
 }
 
 export interface CareerRecommendationsResponseDTO {
@@ -59,14 +61,27 @@ export class CareerRecommendationService {
     const resultRows = await assessmentContentRepository.findAllResultsByUserId(userId);
     const careers = await careerRepository.findAllCareers(lang);
 
-    let skillFinderResult: SkillFinderFullResultDTO | null = null;
+    let skillFinderResult: SkillFinderFullResultDTO | null = opts.resolvedResultData || null;
     let streamFinderResult: StreamFinderResultDTO | null = null;
     let rightCareerFinderResult: RightCareerFinderResultDTO | null = null;
     let commerceCareerFinderResult: CommerceCareerFinderResultDTO | null = null;
     let humanitiesCareerFinderResult: HumanitiesCareerFinderResultDTO | null = null;
     let engineeringBranchFinderResult: EngineeringBranchFinderResultDTO | null = null;
-    let latestResultId: string | null = null;
-    const completedAssessments: string[] = [];
+    let latestResultId: string | null = opts.resultId || null;
+    const completedAssessments: string[] = opts.resolvedResultData ? ["SKILL_FINDER"] : [];
+
+    // If specific resultId was requested and not in resultRows, fetch it directly
+    if (opts.resultId && !opts.resolvedResultData) {
+      try {
+        const specificRow = await assessmentContentRepository.findResultById(opts.resultId);
+        if (specificRow?.result_data) {
+          resultRows.unshift(specificRow);
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger.debug({ err: msg, resultId: opts.resultId }, "Could not fetch specific result by ID");
+      }
+    }
 
     for (const row of resultRows) {
       if (!latestResultId) latestResultId = row.id;
@@ -146,9 +161,23 @@ export class CareerRecommendationService {
           tier,
           keySkills: career.required_skills ? career.required_skills.slice(0, 4) : [],
           reasoning: {
-            summary: "Curated exploratory pathway recommendation. Complete a 3G MeLife assessment to calibrate your personalized psychometric alignment.",
+            summary: "Exploratory Pathway (Baseline Guidance). Complete a 3G MeLife assessment to calibrate personalized psychometric alignment.",
             topMatchingFactors: ["General Academic Exploration", "Foundational Career Literacy"],
             alignmentNote: "Take the 3G MeLife assessments to unlock dimensional cognitive matching, stream compatibility, and driver construct insights.",
+            whyThisAppears: [
+              "Selected as an exploratory starting point based on global industry trends.",
+              "Broad educational baseline for open inquiry.",
+            ],
+            supportingEvidence: [
+              {
+                source: "CAREER_ALIGNMENT_SYNTHESIS",
+                label: "Exploratory Baseline",
+                score: 75,
+              },
+            ],
+            developmentConsiderations: [
+              "Complete an assessment to identify individualized psychometric alignments.",
+            ],
           },
           driverConstructs: [
             {
@@ -216,8 +245,9 @@ export class CareerRecommendationService {
           assessmentResultId: latestResultId,
         }))
       );
-    } catch (err: any) {
-      logger.warn({ err: err?.message, userId }, "Non-fatal warning persisting career matches");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.warn({ err: msg, userId }, "Non-fatal warning persisting career matches");
     }
 
     // 5. Compute Domain Summaries across all scored matches

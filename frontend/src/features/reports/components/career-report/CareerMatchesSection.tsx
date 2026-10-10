@@ -2,7 +2,7 @@
 
 import React from "react";
 import { ReportCareerMatchItem } from "../../types/career-report.types";
-import { Compass, TrendingUp, CheckCircle, ArrowRight, Sparkles } from "lucide-react";
+import { Compass, ArrowRight, Info } from "lucide-react";
 import Link from "next/link";
 import { ExplainableCareerCard } from "../visual/ExplainableCareerCard";
 
@@ -27,7 +27,7 @@ export const CareerMatchesSection: React.FC<CareerMatchesSectionProps> = ({ matc
               Recommended Career Exploration Pathways
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Ranked pathways mapped to student psychometric profile & demonstrated strengths
+              Ranked pathways mapped to student interest profile &amp; demonstrated strengths
             </p>
           </div>
         </div>
@@ -38,6 +38,15 @@ export const CareerMatchesSection: React.FC<CareerMatchesSectionProps> = ({ matc
         >
           Explore All Pathways <ArrowRight className="h-3.5 w-3.5" />
         </Link>
+      </div>
+
+      {/* Alignment Score Disclaimer Banner */}
+      <div className="rounded-2xl border border-teal-200/70 dark:border-teal-900/40 bg-teal-50/40 dark:bg-teal-950/20 p-4 text-xs text-slate-700 dark:text-slate-300 flex items-start gap-3">
+        <Info className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
+        <p className="leading-relaxed">
+          <strong className="font-semibold text-slate-900 dark:text-white">Career Alignment Scores: </strong>
+          Career Alignment Scores indicate relative alignment between the student&apos;s current assessment profile and ME LIFE career reference profiles. They are exploratory indicators, not probabilities of future success.
+        </p>
       </div>
 
       <div className="space-y-3.5">

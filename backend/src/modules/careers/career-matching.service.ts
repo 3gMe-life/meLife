@@ -931,7 +931,7 @@ export class CareerMatchingService {
   }
 
   /**
-   * Generates non-deterministic exploratory reasoning.
+   * Generates explainable, deterministic exploratory reasoning grounded in actual assessment vectors.
    */
   private buildExplorationReasoning(
     career: CareerEntity,
@@ -940,17 +940,61 @@ export class CareerMatchingService {
     driverConstructs: CareerMatchDriver[],
     primaryStream?: string
   ): CareerMatchReasoning {
-    const primaryStrength = strengths[0] || "structured analytical reasoning";
+    const primaryStrength = strengths[0] || "Structured analytical reasoning";
     const streamNote = primaryStream ? ` alongside your strong compatibility with the ${primaryStream} stream` : "";
 
     const summary = `Your ${primaryStrength.toLowerCase()}${streamNote} indicates strong potential synergy with this pathway. You may explore this pathway to broaden your applied capabilities.`;
 
     const alignmentNote = `Exploration Guidance: Your profile archetype ("${archetype}") aligns naturally with ${career.category.toLowerCase()} environments. Consider engaging with foundational projects and mentorship in this sector.`;
 
+    const topMatchingFactors = driverConstructs.map((d) => `${d.constructName} (${d.normalizedScore}%)`);
+
+    const whyThisAppears = [
+      `High affinity with your primary profile archetype ("${archetype}").`,
+      ...strengths.slice(0, 2).map((s) => `Strong indicator in ${s}.`),
+      `Career demands align directly with your demonstrated cognitive and interest profile.`,
+    ];
+
+    const supportingEvidence = driverConstructs.slice(0, 4).map((d) => {
+      let source = "CAREER_ALIGNMENT_SYNTHESIS";
+      const code = (d.constructCode || d.constructName || "").toUpperCase();
+      if (code.startsWith("INT_") || code.includes("HOLLAND") || code.includes("RIASEC") || ["R", "I", "A", "S", "E", "C"].includes(code)) {
+        source = "INTEREST_EVIDENCE";
+      } else if (code.startsWith("SKILL_") || code.includes("BEHAVIOUR")) {
+        source = "SELF_REPORTED_BEHAVIOUR";
+      } else if (code.startsWith("APT_") || code.startsWith("COG_") || code.includes("LOGIC") || code.includes("REASONING")) {
+        source = "DEMONSTRATED_TASK_PERFORMANCE";
+      } else if (code.startsWith("HABIT_") || code.includes("CURIOSITY") || code.includes("PERSISTENCE")) {
+        source = "DEVELOPMENTAL_HABIT";
+      }
+
+      return {
+        source,
+        dimensionCode: d.constructCode,
+        label: d.constructName || d.constructCode || "Cognitive Indicator",
+        score: d.normalizedScore,
+      };
+    });
+
+    const developmentConsiderations = [
+      `Engage with introductory hands-on projects or exploratory coursework to test sustained interest.`,
+      `Seek informal mentorship or informational interviews with professionals currently active in ${career.title}.`,
+      `Balance specialized preparation with broad academic fundamentals across mathematics and communication.`,
+    ];
+
+    const areasToValidate = [
+      `Real-world enjoyment of day-to-day work activities in ${career.category}.`,
+      `Academic alignment with prerequisites for target university programs.`,
+    ];
+
     return {
       summary,
-      topMatchingFactors: driverConstructs.map((d) => `${d.constructName} (${d.normalizedScore}%)`),
+      topMatchingFactors,
       alignmentNote,
+      whyThisAppears,
+      supportingEvidence,
+      developmentConsiderations,
+      areasToValidate,
     };
   }
 }

@@ -16,12 +16,21 @@ import {
   ReportParentGuidanceData,
   ReportCounsellorInsightsData,
   ReportInterestClusterData,
+  ReportDevelopmentSkillItem,
+  ReportMethodologyData,
+  ReportCrossEvidenceSynthesisData,
+  EvidenceSource,
 } from "./career-report.types";
+import {
+  resolveDimensionCode,
+  DEVELOPMENT_GUIDANCE,
+  diversifyCareerMatches,
+} from "./career-report.utils";
 
 interface ReportGeneratorInput {
   user: User;
   participantProfile: ParticipantProfile | null;
-  latestResultRow: any | null;
+  latestResultRow: { id?: string; result_data?: SkillFinderFullResultDTO | null; [key: string]: unknown } | null;
   recommendedPathways: CareerMatchDTO[];
   careersMap: Map<string, CareerEntity>;
   languageCode?: string;
@@ -29,7 +38,7 @@ interface ReportGeneratorInput {
 
 export class CareerReportGeneratorService {
   /**
-   * Generates a comprehensive 10-section career guidance report.
+   * Generates a comprehensive 10-section career guidance report (+ protected counsellor appendix).
    */
   generateReport(input: ReportGeneratorInput): CareerReportDTO {
     const lang = (input.languageCode || "en").toLowerCase().trim();
@@ -43,28 +52,39 @@ export class CareerReportGeneratorService {
     // 2. Executive Summary
     const executiveSummary = this.buildExecutiveSummaryData(resultData);
 
-    // 3. Psychometric Profile
+    // 3. Psychometric Profile (RIASEC)
     const psychometricProfile = this.buildPsychometricProfileData(resultData);
 
-    // 4. Strength Analysis (3-way impact)
+    // 4. Strength Analysis (Cognitive & Analytical Indicators)
     const strengthAnalysis = this.buildStrengthAnalysis(resultData);
 
-    // 5. Career Match Results
+    // 5. Career Match Results (Diversified UX exploration set + raw score preservation)
     const careerMatches = this.buildCareerMatches(input.recommendedPathways);
 
     // 6. Career Exploration Details (Top 3 Careers Deep Dive)
-    const careerDeepDives = this.buildCareerDeepDives(input.recommendedPathways.slice(0, 3), input.careersMap);
+    const topPathwaysForDeepDive = careerMatches.slice(0, 3).map((m) => {
+      const match = input.recommendedPathways.find((r) => r.id === m.id || r.slug === m.slug);
+      return match || input.recommendedPathways[0];
+    }).filter(Boolean);
 
-    // 7. Alternative Pathways (Rank 4 to 6)
-    const alternativePathways = this.buildAlternativePathways(input.recommendedPathways.slice(3, 6));
+    const careerDeepDives = this.buildCareerDeepDives(topPathwaysForDeepDive, input.careersMap);
 
-    // 8. Development Plan
-    const developmentPlan = this.buildDevelopmentPlan();
+    // 7. Alternative Pathways (Adjacent exploration options)
+    const alternativePathways = this.buildAlternativePathways(input.recommendedPathways.slice(3, 7));
 
-    // 9. Parent Guidance
+    // 8. Development Plan (Personalized based on actual assessment evidence)
+    const developmentPlan = this.buildDevelopmentPlan(resultData);
+
+    // 9. Parent Guidance (Developmental growth mindset)
     const parentGuidance = this.buildParentGuidance();
 
-    // 10. Counsellor Insights (Protected)
+    // Cross-Evidence Synthesis (Putting your results together)
+    const crossEvidenceSynthesis = this.buildCrossEvidenceSynthesisData(resultData, psychometricProfile);
+
+    // 10. Understanding Your Results & Methodology (Dedicated Section 10 for all students/parents)
+    const methodology = this.buildMethodologyData(input.latestResultRow?.id || null);
+
+    // 11. Counsellor Diagnostic Appendix (Protected for licensed guidance professionals)
     const counsellorInsights = this.buildCounsellorInsights(resultData);
 
     return {
@@ -72,7 +92,7 @@ export class CareerReportGeneratorService {
       studentId: input.user.id,
       assessmentResultId: input.latestResultRow?.id || null,
       language: lang,
-      templateVersion: "v1.0-comprehensive",
+      templateVersion: "v1.1-comprehensive",
       generatedAt: new Date().toISOString(),
       isAssessed,
       cover,
@@ -84,6 +104,8 @@ export class CareerReportGeneratorService {
       alternativePathways,
       developmentPlan,
       parentGuidance,
+      crossEvidenceSynthesis,
+      methodology,
       counsellorInsights,
     };
   }
@@ -105,27 +127,27 @@ export class CareerReportGeneratorService {
   ): ReportCoverData {
     const titlesByLang: Record<string, { title: string; subtitle: string }> = {
       en: {
-        title: "Comprehensive Psychometric & Career Exploration Report",
+        title: "Comprehensive Career Exploration & Guidance Report",
         subtitle: "Multidimensional Guidance for Educational & Career Pathway Discovery",
       },
       ml: {
-        title: "സമഗ്ര സൈക്കോമെട്രിക് & തൊഴിൽ മാർഗ്ഗനിർദ്ദേശ റിപ്പോർട്ട്",
+        title: "സമഗ്ര കരിയർ മാർഗ്ഗനിർദ്ദേശ റിപ്പോർട്ട്",
         subtitle: "വിദ്യാഭ്യാസ, തൊഴിൽ സാധ്യതകൾ കണ്ടെത്തുന്നതിനുള്ള ബഹുമുഖ മാർഗ്ഗരേഖ",
       },
       hi: {
-        title: "व्यापक साइकोमेट्रिक एवं करियर मार्गदर्शन रिपोर्ट",
+        title: "व्यापक करियर अन्वेषण एवं मार्गदर्शन रिपोर्ट",
         subtitle: "शैक्षणिक और करियर अन्वेषण के लिए बहुआयामी मार्गदर्शन",
       },
       ar: {
-        title: "التقرير الشامل للتوجيه المهني والقياس النفسي",
+        title: "التقرير الشامل للتوجيه المهني واستكشاف المسارات",
         subtitle: "دليل متعدد الأبعاد لاكتشاف المسارات الأكاديمية والمهنية",
       },
       ta: {
-        title: "முழுமையான உளவியல் & தொழில் வழிகாட்டல் அறிக்கை",
+        title: "முழுமையான தொழில் தேடல் & வழிகாட்டல் அறிக்கை",
         subtitle: "கல்வி மற்றும் தொழில் பாதைகளை கண்டறியும் வழிகாட்டி",
       },
       kn: {
-        title: "ಸಮಗ್ರ ಸೈಕೋಮೆಟ್ರಿಕ್ ಮತ್ತು ವೃತ್ತಿ ಮಾರ್ಗದರ್ಶನ ವರದಿ",
+        title: "ಸಮಗ್ರ ವೃತ್ತಿ ಪರಿಶೋಧನೆ ಮತ್ತು ಮಾರ್ಗದರ್ಶನ ವರದಿ",
         subtitle: "ಶೈಕ್ಷಣಿಕ ಮತ್ತು ವೃತ್ತಿ ಪರಿಶೋಧನೆಗಾಗಿ ಬಹುಆಯಾಮದ ಮಾರ್ಗದರ್ಶಿ",
       },
     };
@@ -142,7 +164,7 @@ export class CareerReportGeneratorService {
       studentName: name,
       age: this.calculateAge(profile?.dateOfBirth),
       educationStage: profile?.educationStage || "Secondary / High School",
-      gradeLevel: profile?.gradeLevel || "High School (Grade 9-12)",
+      gradeLevel: profile?.gradeLevel || "Grade 10",
       schoolName: profile?.schoolName || "Academic Institution",
       assessmentDate: resultData?.completedAt
         ? new Date(resultData.completedAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
@@ -172,7 +194,7 @@ export class CareerReportGeneratorService {
     }
 
     return {
-      summary: "This report provides foundational psychometric and career orientation insights based on validated developmental benchmarks.",
+      summary: "This report provides foundational psychometric and career orientation insights based on the 3G MeLife multidimensional developmental framework.",
       topStrengths: [
         "Analytical Thinking",
         "Creative Problem Solving",
@@ -242,9 +264,10 @@ export class CareerReportGeneratorService {
 
     const scoredDimensions = resultData?.interestDiscovery?.dimensions || [];
     const interestClusters: ReportInterestClusterData[] = defaultClusters.map((cluster) => {
-      const match = scoredDimensions.find(
-        (d) => d.code.toUpperCase() === cluster.code || d.name.toLowerCase().includes(cluster.key)
-      );
+      const match = scoredDimensions.find((d) => {
+        const code = resolveDimensionCode(d);
+        return code === cluster.code;
+      });
       const percentage = match ? match.scalePositionPercentage : cluster.defaultScore;
 
       return {
@@ -254,6 +277,7 @@ export class CareerReportGeneratorService {
         percentage,
         clusterTitle: cluster.clusterTitle,
         description: cluster.desc,
+        evidenceSource: "INTEREST_EVIDENCE",
       };
     });
 
@@ -266,77 +290,178 @@ export class CareerReportGeneratorService {
       interestClusters,
       primaryOrientation,
       secondaryOrientation,
-      summary: `The student's interest architecture highlights a prominent orientation toward ${sorted[0]?.clusterTitle.toLowerCase()}, complemented by ${sorted[1]?.clusterTitle.toLowerCase()}. This blend fosters strong problem-solving capabilities in structured yet innovative environments.`,
+      summary: `The student's interest architecture highlights comparatively stronger reported interest in ${sorted[0]?.clusterTitle.toLowerCase()}, complemented by ${sorted[1]?.clusterTitle.toLowerCase()}. This pattern fosters curiosity and engagement in structured yet innovative environments.`,
+      evidenceSource: "INTEREST_EVIDENCE",
     };
   }
 
   private buildStrengthAnalysis(
     resultData: SkillFinderFullResultDTO | null
   ): ReportStrengthItem[] {
-    const rawStrengths = [
+    const canonicalDimensions = [
       {
-        name: "Analytical Problem Solving",
-        score: 88,
+        code: "PATTERN_LOGIC",
+        name: "Pattern Deduction & Analytical Logic",
+        defaultScore: 88,
         whatItMeans: "The cognitive capability to break down multifaceted problems into structured, solvable components through systematic deduction.",
         howItHelpsLearning: "Enables fast comprehension of abstract concepts, mathematics, scientific formulas, and algorithmic structures.",
         howItConnectsWithCareers: "Directly powers high-impact performance in software engineering, biomedical research, data science, and system design.",
       },
       {
-        name: "Logical Reasoning & Critical Thinking",
-        score: 85,
-        whatItMeans: "The ability to evaluate evidence objectively, identify underlying patterns, and avoid emotional biases in decision-making.",
+        code: "NUMERICAL_REASONING",
+        name: "Quantitative & Proportional Reasoning",
+        defaultScore: 85,
+        whatItMeans: "The ability to evaluate quantitative relationships, identify trends in data, and apply proportional logic accurately.",
+        howItHelpsLearning: "Strengthens numerical problem solving, laboratory calculations, financial literacy, and data-driven analysis.",
+        howItConnectsWithCareers: "Essential for financial analytics, engineering modeling, cyber systems, and scientific experimentation.",
+      },
+      {
+        code: "VERBAL_REASONING",
+        name: "Logical Reasoning & Evidence Evaluation",
+        defaultScore: 85,
+        whatItMeans: "The ability to evaluate evidence objectively, identify underlying assertions, and structure reasoned arguments.",
         howItHelpsLearning: "Strengthens essay argumentation, laboratory research evaluation, debate, and structured exam performance.",
-        howItConnectsWithCareers: "Essential for legal analysis, strategic consulting, financial analysis, cyber forensics, and scientific investigation.",
+        howItConnectsWithCareers: "Essential for legal analysis, strategic consulting, policy evaluation, cyber forensics, and scientific communication.",
       },
       {
-        name: "Creative Synthesis & Design Thinking",
-        score: 82,
-        whatItMeans: "The capacity to connect seemingly unrelated ideas, envision novel solutions, and design intuitive user or product experiences.",
-        howItHelpsLearning: "Fosters creative writing, innovative science fair projects, UI/UX prototyping, and interdisciplinary project work.",
-        howItConnectsWithCareers: "Vital for product management, UX architecture, multimedia innovation, architectural engineering, and biotechnology.",
-      },
-      {
-        name: "Systematic Research & Discovery",
-        score: 86,
-        whatItMeans: "A methodical drive to explore in-depth, verify facts, conduct rigorous investigations, and synthesize complex literature.",
-        howItHelpsLearning: "Accelerates independent study, academic paper writing, honors projects, and complex project documentation.",
-        howItConnectsWithCareers: "Core skill for academic research, medical diagnostics, AI machine learning research, and environmental analytics.",
+        code: "SPATIAL_REASONING",
+        name: "Spatial Visualization & Mental Synthesis",
+        defaultScore: 82,
+        whatItMeans: "The capacity to visualize spatial transformations, connect distinct geometric concepts, and design intuitive mental models.",
+        howItHelpsLearning: "Fosters 3D comprehension in geometry, physics diagrams, architectural drawings, and mechanical assemblies.",
+        howItConnectsWithCareers: "Vital for mechanical robotics, product design, multimedia innovation, architectural engineering, and spatial computing.",
       },
     ];
 
-    if (resultData?.demonstratedAptitude?.dimensions) {
-      // Map live dimensions if available
-      return rawStrengths.map((st, idx) => {
-        const liveDim = resultData.demonstratedAptitude.dimensions[idx] || resultData.developmentalStrengths?.topStrengths?.[idx];
-        if (liveDim) {
-          return {
-            ...st,
-            score: liveDim.scalePositionPercentage || st.score,
-          };
-        }
-        return st;
-      });
-    }
+    const liveDimensions = resultData?.demonstratedAptitude?.dimensions || [];
 
-    return rawStrengths;
+    return canonicalDimensions.map((canonical) => {
+      // Find matching live dimension by safe construct code
+      const liveDim = liveDimensions.find((d) => {
+        const code = resolveDimensionCode(d);
+        return code === canonical.code;
+      });
+
+      const dimRecord = liveDim as Record<string, unknown> | undefined;
+      const rawScore = liveDim
+        ? (liveDim.scalePositionPercentage ??
+          (typeof dimRecord?.score === "number" ? dimRecord.score : undefined) ??
+          liveDim.rawScore ??
+          (typeof dimRecord?.normalizedScore === "number" ? dimRecord.normalizedScore : undefined))
+        : undefined;
+      const score = typeof rawScore === "number" && !isNaN(rawScore) ? rawScore : canonical.defaultScore;
+
+      return {
+        code: canonical.code,
+        name: canonical.name,
+        score,
+        whatItMeans: canonical.whatItMeans,
+        howItHelpsLearning: canonical.howItHelpsLearning,
+        howItConnectsWithCareers: canonical.howItConnectsWithCareers,
+        evidenceSource: "DEMONSTRATED_TASK_PERFORMANCE",
+      };
+    });
   }
 
   private buildCareerMatches(recommendedPathways: CareerMatchDTO[]): ReportCareerMatchItem[] {
-    return recommendedPathways.map((rec) => ({
-      id: rec.id,
-      slug: rec.slug,
-      title: rec.title,
-      category: rec.category,
-      industry: rec.industry,
-      matchPercentage: rec.matchPercentage,
-      futureGrowth: rec.futureGrowth,
-      whyThisMatches: {
-        summary: rec.reasoning.summary,
-        topMatchingFactors: rec.reasoning.topMatchingFactors,
-        alignmentNote: rec.reasoning.alignmentNote,
-      },
-      requiredSkills: rec.keySkills || [],
-    }));
+    // Apply display diversification layer across families for Top 4 display
+    const { primaryMatches } = diversifyCareerMatches(recommendedPathways, 4);
+
+    return primaryMatches.map((rec): ReportCareerMatchItem => {
+      const recRecord = rec as unknown as Record<string, unknown>;
+      const rawReasoning = rec.reasoning || recRecord.whyThisMatches;
+      const reasoning =
+        typeof rawReasoning === "object" && rawReasoning !== null
+          ? (rawReasoning as unknown as Record<string, unknown>)
+          : {};
+      const summary =
+        (typeof reasoning.summary === "string" ? reasoning.summary : undefined) ||
+        (typeof recRecord.description === "string" ? recRecord.description : undefined) ||
+        (typeof recRecord.overview === "string" ? recRecord.overview : undefined) ||
+        `Strong multi-dimensional alignment between your profile and ${rec.category || "this pathway"}.`;
+
+      const id = String(rec.id || (typeof recRecord.careerId === "string" ? recRecord.careerId : ""));
+      const slug = String(rec.slug || "");
+      const title = String(rec.title || "");
+      const category = String(rec.category || "");
+      const industry = String(rec.industry || "");
+      const familyCode = rec.familyCode || (typeof recRecord.family_code === "string" ? recRecord.family_code : undefined);
+      const familyName = rec.familyName || (typeof recRecord.family_name === "string" ? recRecord.family_name : undefined);
+      const rawMatch = typeof rec.matchPercentage === "number" ? rec.matchPercentage : typeof recRecord.overallScore === "number" ? recRecord.overallScore : 85;
+      const futureGrowth = rec.futureGrowth || "MODERATE";
+
+      const whyThisAppears = Array.isArray(reasoning.whyThisAppears)
+        ? (reasoning.whyThisAppears as string[])
+        : Array.isArray(reasoning.topMatchingFactors)
+        ? (reasoning.topMatchingFactors as string[])
+        : [
+            `Strong affinity with your primary profile archetype and cognitive strengths.`,
+            `Aligned with reported interests in ${rec.category || "this"} activities.`,
+          ];
+
+      const supportingEvidence = Array.isArray(reasoning.supportingEvidence)
+        ? (reasoning.supportingEvidence as Array<{ source: EvidenceSource; label: string; score?: number }>)
+        : [
+            {
+              source: "INTEREST_EVIDENCE" as const,
+              label: "Dominant Career Interest Orientation",
+              score: 85,
+            },
+            {
+              source: "DEMONSTRATED_TASK_PERFORMANCE" as const,
+              label: "Analytical & Logic Task Performance",
+              score: 88,
+            },
+          ];
+
+      const developmentConsiderations = Array.isArray(reasoning.developmentConsiderations)
+        ? (reasoning.developmentConsiderations as string[])
+        : [
+            "Explore foundational coursework and hands-on projects to evaluate day-to-day engagement.",
+            "Discuss potential subject streams with teachers and guidance mentors.",
+          ];
+
+      const areasToValidate = Array.isArray(reasoning.areasToValidate)
+        ? (reasoning.areasToValidate as string[])
+        : undefined;
+
+      const topMatchingFactors = Array.isArray(reasoning.topMatchingFactors)
+        ? (reasoning.topMatchingFactors as string[])
+        : undefined;
+
+      const alignmentNote = typeof reasoning.alignmentNote === "string"
+        ? reasoning.alignmentNote
+        : undefined;
+
+      const requiredSkills = Array.isArray(rec.keySkills)
+        ? rec.keySkills
+        : Array.isArray(recRecord.requiredSkills)
+        ? (recRecord.requiredSkills as string[])
+        : [];
+
+      return {
+        id,
+        slug,
+        title,
+        category,
+        industry,
+        familyCode,
+        familyName,
+        matchPercentage: rawMatch,
+        futureGrowth,
+        whyThisMatches: {
+          summary,
+          whyThisAppears,
+          supportingEvidence,
+          developmentConsiderations,
+          areasToValidate,
+          topMatchingFactors,
+          alignmentNote,
+        },
+        requiredSkills,
+        evidenceSource: "CAREER_ALIGNMENT_SYNTHESIS" as const,
+      };
+    });
   }
 
   private buildCareerDeepDives(
@@ -348,28 +473,28 @@ export class CareerReportGeneratorService {
 
       const defaultRoadmap = [
         {
-          stage: "High School (Grades 9-10)",
-          title: "Foundational STEM & Critical Exploration",
-          description: "Build strong fundamentals in mathematics, natural sciences, digital literacy, and logic-building puzzles.",
-          focusAreas: ["Mathematics & Algebra", "Introductory Coding / Logic", "Science Club Projects", "English Communication"],
+          stage: "Stage 1: Explore",
+          title: "Foundations & Exploration (Grades 9-10)",
+          description: "Build strong fundamentals in mathematics, natural sciences, digital literacy, and logic-building puzzles through open experimentation.",
+          focusAreas: ["Mathematics & Logic", "Introductory Coding / Scratch", "Science Club Projects", "Hands-on Discovery"],
         },
         {
-          stage: "Higher Secondary (Grades 11-12)",
-          title: "Stream Specialization & Applied Projects",
-          description: "Select suitable academic stream (e.g. Science/CS, Mathematics, Data Analytics) and undertake practical capstone projects.",
-          focusAreas: ["Advanced Physics / Mathematics", "Computer Science / Biology", "Standardized Entrance Prep", "Portfolio Building"],
+          stage: "Stage 2: Test & Validate",
+          title: "Stream Alignment & Validation (Grades 11-12)",
+          description: "Select suitable academic streams (e.g. Science/CS, Mathematics) and test commitment through clubs, hackathons, and small practical projects.",
+          focusAreas: ["Advanced Physics / Mathematics", "Computer Science Coursework", "Capstone Projects", "Peer Collaboration"],
         },
         {
-          stage: "Undergraduate (Years 1-4)",
-          title: "Degree Program & Professional Internships",
-          description: "Pursue Bachelor degree in relevant discipline (e.g., B.Tech, B.S., B.Des, MBBS) combined with industry internships.",
-          focusAreas: ["Core Academic Curriculum", "Hands-on Lab Research", "Industry Summer Internships", "Open Source / Case Competitions"],
+          stage: "Stage 3: Choose Direction",
+          title: "Higher Education & Applied Exploration (Years 1-4)",
+          description: "Pursue a broad Bachelor's degree (B.Tech, B.S., B.Des, or related) while engaging in summer internships and multi-disciplinary labs.",
+          focusAreas: ["Core University Curriculum", "Laboratory Research", "Industry Internships", "Open-Source Contributions"],
         },
         {
-          stage: "Professional Specialization",
-          title: "Career Entry & Continuous Mastery",
-          description: "Transition into entry-level specialist roles, pursue certifications or Master/Ph.D. specialization as career expands.",
-          focusAreas: ["Domain Certifications", "Cross-functional Collaboration", "Advanced Specialization", "Mentorship"],
+          stage: "Stage 4: Specialize",
+          title: "Professional Entry & Mastery",
+          description: "Transition into entry-level specialist roles or pursue focused certifications/graduate studies after accumulated evidence.",
+          focusAreas: ["Domain Certifications", "Cross-Functional Collaboration", "Advanced Specialization", "Mentorship"],
         },
       ];
 
@@ -396,7 +521,7 @@ export class CareerReportGeneratorService {
         learningRoadmap: entity?.learning_roadmap && entity.learning_roadmap.length > 0
           ? entity.learning_roadmap
           : defaultRoadmap,
-        futureOpportunities: `High long-term demand projected over the next decade. Global digitalization and technical innovation continue to expand career horizons with strong compensation growth.`,
+        futureOpportunities: `Positive long-term demand projected over the next decade. Continuous technological innovation expands career possibilities across diverse global sectors.`,
         sampleRoles: entity?.sample_roles || ["Associate Specialist", "System Architect", "Lead Researcher", "Principal Consultant"],
       };
     });
@@ -416,78 +541,198 @@ export class CareerReportGeneratorService {
     }));
   }
 
-  private buildDevelopmentPlan(): ReportDevelopmentPlanData {
+  private buildDevelopmentPlan(resultData: SkillFinderFullResultDTO | null): ReportDevelopmentPlanData {
+    // Dynamically derive focus areas from actual assessment scores
+    const candidateSkills: ReportDevelopmentSkillItem[] = [];
+
+    if (resultData) {
+      // Collect scored dimensions from aptitude, skill behaviour, and developmental habits
+      const allScoredDims = [
+        ...(resultData.demonstratedAptitude?.dimensions || []),
+        ...(resultData.skillBehaviour?.dimensions || []),
+        ...(resultData.developmentalStrengths?.dimensions || []),
+      ];
+
+      // Sort by score ascending (lowest scores indicate areas with greatest developmental growth opportunity)
+      const sortedByNeed = [...allScoredDims].sort(
+        (a, b) => (a.scalePositionPercentage || 50) - (b.scalePositionPercentage || 50)
+      );
+
+      const seenCodes = new Set<string>();
+
+      for (const dim of sortedByNeed) {
+        const code = resolveDimensionCode(dim);
+        if (code && DEVELOPMENT_GUIDANCE[code] && !seenCodes.has(code)) {
+          seenCodes.add(code);
+          const tpl = DEVELOPMENT_GUIDANCE[code];
+          const score = dim.scalePositionPercentage || 50;
+          const currentLevel =
+            score < 60
+              ? `Emerging (${score} / 100)`
+              : score < 80
+              ? `Developing (${score} / 100)`
+              : `Proficient (${score} / 100)`;
+
+          candidateSkills.push({
+            skillName: tpl.displayName || "Targeted Capability",
+            dimensionCode: tpl.dimensionCode,
+            evidenceSource: tpl.evidenceSource,
+            currentLevel,
+            currentScore: score,
+            whySelected: tpl.focusRationale || "Targeted focus area identified from assessment indicators.",
+            developmentDirection: tpl.focusRationale,
+            suggestedPractice: tpl.suggestedPractice,
+            realWorldActivity: tpl.realWorldActivity,
+            howToImprove: tpl.howToImprove,
+            suggestedActivities: tpl.suggestedActivities,
+          });
+
+          if (candidateSkills.length >= 3) break;
+        }
+      }
+    }
+
+    // Fallback to foundational templates if insufficient live dimensions matched
+    if (candidateSkills.length < 3) {
+      const fallbackKeys = ["PATTERN_LOGIC", "VERBAL_REASONING", "SELF_MANAGEMENT"];
+      for (const k of fallbackKeys) {
+        if (!candidateSkills.some((c) => c.dimensionCode === k) && DEVELOPMENT_GUIDANCE[k]) {
+          const tpl = DEVELOPMENT_GUIDANCE[k];
+          candidateSkills.push({
+            skillName: tpl.displayName || "Targeted Capability",
+            dimensionCode: tpl.dimensionCode,
+            evidenceSource: tpl.evidenceSource,
+            currentLevel: "Developing (75 / 100)",
+            currentScore: 75,
+            whySelected: tpl.focusRationale || "Targeted focus area to build foundational competency.",
+            developmentDirection: tpl.focusRationale,
+            suggestedPractice: tpl.suggestedPractice,
+            realWorldActivity: tpl.realWorldActivity,
+            howToImprove: tpl.howToImprove,
+            suggestedActivities: tpl.suggestedActivities,
+          });
+          if (candidateSkills.length >= 3) break;
+        }
+      }
+    }
+
     return {
-      summary: "This developmental plan outlines strategic focus areas to elevate your foundational cognitive abilities, practical skills, and future readiness over the next 12 to 24 months.",
-      skillsToStrengthen: [
-        {
-          skillName: "Algorithmic & Computational Logic",
-          currentLevel: "Emerging / Intermediate",
-          howToImprove: [
-            "Practice structured problem-solving puzzles like logic grids, Sudoku, and elementary code exercises.",
-            "Participate in science & informatics competitions or coding hackathons.",
-            "Break down daily routines and math problems into algorithmic step-by-step pseudo-code.",
-          ],
-          suggestedActivities: [
-            "Enroll in beginner Python / Scratch logic modules.",
-            "Solve 2 analytical logic puzzles weekly.",
-            "Build an interactive calculator or simulation project.",
-          ],
-        },
-        {
-          skillName: "Verbal & Technical Communication",
-          currentLevel: "Proficient",
-          howToImprove: [
-            "Practice summarizing complex technical or scientific articles in 3 concise bullet points.",
-            "Participate actively in school group debates and model presentations.",
-            "Engage in peer-to-peer teaching of difficult subject topics.",
-          ],
-          suggestedActivities: [
-            "Join Model United Nations (MUN) or debate club.",
-            "Maintain a monthly learning blog or journal.",
-            "Present a 5-minute science topic to family or classmates.",
-          ],
-        },
-        {
-          skillName: "Project Stewardship & Time Management",
-          currentLevel: "Moderate",
-          howToImprove: [
-            "Adopt the Pomodoro technique for focused 25-minute study intervals.",
-            "Use Kanban-style task tracking (e.g., Trello or physical sticky notes) for homework and projects.",
-            "Set explicit micro-milestones for long-term school assignments.",
-          ],
-          suggestedActivities: [
-            "Plan school project milestones 2 weeks before deadlines.",
-            "Conduct weekly 15-minute self-reviews on study habits.",
-            "Coordinate a small-scale community or school club event.",
-          ],
-        },
-      ],
+      summary: "This developmental plan outlines personalized growth recommendations to elevate foundational cognitive capabilities, practical problem-solving habits, and future career readiness over the next 12 to 24 months.",
+      skillsToStrengthen: candidateSkills.slice(0, 3),
     };
   }
 
   private buildParentGuidance(): ReportParentGuidanceData {
     return {
       nurturingMindset:
-        "Every child's career trajectory is an evolving journey of exploration rather than a predetermined destination. Fostering a growth mindset, intellectual curiosity, and psychological safety allows students to discover their authentic passions without anxiety.",
+        "Every child's career trajectory is an evolving journey of exploration rather than a predetermined destination. Fostering a growth mindset, intellectual curiosity, and psychological safety allows students to discover their authentic interests without premature pressure.",
       howParentsCanSupport: [
         "Encourage exploratory curiosity: Provide opportunities for your child to experiment with diverse hobbies, robotics kits, writing, and sciences without demanding immediate mastery.",
         "Celebrate effort over innate talent: Praise disciplined practice, resilience after mistakes, and systematic inquiry rather than raw scores.",
         "Facilitate real-world exposure: Arrange informal conversations with professionals in fields of your child's interest (e.g. engineers, healthcare workers, designers).",
-        "Maintain open dialogue: Regularly ask open-ended questions about what topics energize them in school, rather than focusing solely on grades.",
+        "Maintain open dialogue: Regularly ask open-ended questions about what topics energize them in school, rather than focusing solely on exam marks.",
       ],
       recommendedDiscussions: [
         "“What project or subject this term made you lose track of time because you enjoyed it so much?”",
-        "“If you could solve one big real-world problem in our city or the world, what would it be?”",
+        "“If you could solve one big real-world problem in our community or the world, what would it be?”",
         "“Which of the career pathways in this report surprised or excited you the most, and why?”",
         "“What kind of support or tools would help you explore your favorite interests more deeply this year?”",
       ],
       thingsToAvoid: [
         "Avoid early rigidity: Do not force a single narrow career choice too early; academic and career landscapes evolve rapidly.",
-        "Avoid peer comparisons: Every student's cognitive timeline and talent cluster develop uniquely.",
-        "Avoid imposing unfulfilled personal dreams: Allow your child to build an authentic life purpose aligned with their psychometric nature.",
+        "Avoid peer comparisons: Every student's learning timeline and capability profile develop uniquely.",
+        "Avoid imposing unfulfilled personal ambitions: Allow your child to build an authentic pathway aligned with their current interests, emerging strengths, and personal values.",
         "Avoid treating assessment scores as permanent limits: Psychometric assessments capture current readiness and serve as exploration springboards, not permanent ceilings.",
       ],
+    };
+  }
+
+  private buildCrossEvidenceSynthesisData(
+    resultData: SkillFinderFullResultDTO | null,
+    profile: ReportPsychometricProfileData
+  ): ReportCrossEvidenceSynthesisData {
+    const topInterest = profile.interestClusters[0]?.name || "Investigative";
+    const secondInterest = profile.interestClusters[1]?.name || "Realistic";
+
+    return {
+      whatYouAreDrawnToward: `Strongest interest pull toward ${topInterest} and ${secondInterest} activities, indicating natural motivation for inquiry and practical creation.`,
+      whatYouReportStrongly: resultData?.learningProfile?.strengthSummary ||
+        "Self-reported preferences highlight systematic problem-solving, intellectual curiosity, and collaborative learning.",
+      whatYouDemonstrated: "Task-based performance confirms strong analytical deduction and quantitative problem-solving readiness.",
+      whereEvidenceAgrees: "Your reported investigative interests and demonstrated analytical performance mutually reinforce strong readiness for STEM and technical exploration.",
+      areasToValidateAndDevelop: "While analytical orientation is strong, computational implementation and time-management habits remain prime opportunities for deliberate practice.",
+      nextExplorationSteps: [
+        "Engage with introductory hands-on projects or exploratory coursework to test sustained interest.",
+        "Discuss academic stream options (e.g. Science/CS, Mathematics) with teachers and certified counsellors.",
+        "Select 1-2 focused micro-habits from the development plan to cultivate weekly.",
+      ],
+    };
+  }
+
+  private buildMethodologyData(_resultId: string | null): ReportMethodologyData {
+    return {
+      assessmentCode: "SKILL_FINDER",
+      assessmentName: "3G MeLife Career Exploration & Guidance Assessment",
+      scoringVersion: "v2.4-multi-pillar",
+      careerTaxonomyVersion: "v2.1-global-taxonomy",
+      reportTemplateVersion: "v1.1-comprehensive",
+      frameworkSummary:
+        "The 3G MeLife assessment framework evaluates students across multiple complementary dimensions: occupational interest orientation (Holland RIASEC model), cognitive and behavioural competencies, demonstrated task performance, and developmental learning habits.",
+      whatThisMeasures:
+        "The 3G MeLife assessment framework evaluates students across multiple complementary dimensions: occupational interest orientation (Holland RIASEC model), cognitive and behavioural competencies, demonstrated task performance, and developmental learning habits.",
+      scoreInterpretationGuide:
+        "Scores are presented on a standardized 0–100 scale representing current relative indicator levels within the assessment framework. They reflect developmental snapshots at the time of evaluation.",
+      howScoresArePresented:
+        "Scores are presented on a standardized 0–100 scale representing current relative indicator levels within the assessment framework. They reflect developmental snapshots at the time of evaluation.",
+      alignmentScoreDefinition:
+        "Career Alignment Scores compare the student's current profile against reference profiles in the ME LIFE career taxonomy. They are designed for exploration and ranking, not as statistical probabilities of future career success.",
+      whatCareerAlignmentMeans:
+        "Career Alignment Scores compare the student's current profile against reference profiles in the ME LIFE career taxonomy. They are designed for exploration and ranking, not as statistical probabilities of future career success.",
+      whatScoresDoNotMean: [
+        "Scores are NOT a permanent measure of intelligence or fixed ability.",
+        "Scores are NOT a guarantee or prediction of future career success.",
+        "Scores are NOT a clinical or diagnostic assessment.",
+        "Scores do NOT replace academic transcripts, teacher evaluations, or personal motivation.",
+      ],
+      evidenceTaxonomy: [
+        {
+          source: "INTEREST_EVIDENCE",
+          label: "Interest Evidence (RIASEC)",
+          description: "Captures environments, tasks, and occupational fields that currently attract and energize the student.",
+        },
+        {
+          source: "SELF_REPORTED_BEHAVIOUR",
+          label: "Self-Reported Behaviour",
+          description: "Reflects how the student perceives and describes their usual study habits, collaboration, and approach to challenges.",
+        },
+        {
+          source: "DEMONSTRATED_TASK_PERFORMANCE",
+          label: "Demonstrated Task Performance",
+          description: "Measures performance on objective, timed or scored problem-solving tasks completed during the assessment.",
+        },
+        {
+          source: "DEVELOPMENTAL_HABIT",
+          label: "Developmental Habit",
+          description: "Identifies dynamic learning habits such as persistence, curiosity, and adaptability that compound over time.",
+        },
+        {
+          source: "PROFILE_SYNTHESIS",
+          label: "Profile Synthesis",
+          description: "Algorithmic synthesis across multiple evidence streams to identify representative archetypes and learning styles.",
+        },
+        {
+          source: "CAREER_ALIGNMENT_SYNTHESIS",
+          label: "Career Alignment Synthesis",
+          description: "Multi-pillar distance comparison between student vectors and career profile benchmarks.",
+        },
+      ],
+      interpretationBoundaries: [
+        "Assessment results should always be interpreted holistically alongside school grades, extracurricular passions, and family values.",
+        "High alignment indicates promising fields to explore, not rigid career prescriptions.",
+        "Reassessment is recommended every 12 to 18 months as academic exposure and maturity evolve.",
+      ],
+      reassessmentGuidance:
+        "Because cognitive agility and career interests evolve rapidly during secondary education, periodic reassessment (annually or at major transition points like Grade 10 to 11) is encouraged.",
     };
   }
 
@@ -508,16 +753,26 @@ export class CareerReportGeneratorService {
     ];
 
     if (resultData?.interestDiscovery?.dimensions) {
-      // Overlay actual scores if available
+      // Overlay actual scores safely using resolveDimensionCode
       const liveDimensions = [
         ...resultData.interestDiscovery.dimensions,
         ...(resultData.demonstratedAptitude?.dimensions || []),
       ];
+
       liveDimensions.forEach((dim) => {
-        const existing = rawScores.find((r) => r.code.toUpperCase() === dim.code.toUpperCase());
+        const dimCode = resolveDimensionCode(dim);
+        if (!dimCode) return;
+
+        const existing = rawScores.find((r) => {
+          const rCode = resolveDimensionCode(r);
+          return rCode === dimCode || r.code.toUpperCase() === dimCode;
+        });
+
         if (existing) {
-          existing.score = dim.scalePositionPercentage;
-          existing.band = dim.level || (dim.scalePositionPercentage >= 80 ? "High" : dim.scalePositionPercentage >= 60 ? "Proficient" : "Moderate");
+          existing.score = dim.scalePositionPercentage || existing.score;
+          existing.band =
+            dim.level ||
+            (existing.score >= 80 ? "High" : existing.score >= 60 ? "Proficient" : "Moderate");
         }
       });
     }

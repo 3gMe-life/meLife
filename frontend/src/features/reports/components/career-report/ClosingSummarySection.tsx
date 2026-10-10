@@ -6,12 +6,16 @@ interface ClosingSummarySectionProps {
   studentName: string;
   reportId: string;
   templateVersion?: string;
+  evaluationDate?: string;
+  assessmentVersion?: string;
 }
 
 export const ClosingSummarySection: React.FC<ClosingSummarySectionProps> = ({
   studentName,
   reportId,
-  templateVersion = "v1.0-comprehensive",
+  templateVersion = "v1.1-comprehensive",
+  evaluationDate,
+  assessmentVersion = "3G-ME-v2.4",
 }) => {
   return (
     <div id="section-closing" className="space-y-6">
@@ -28,7 +32,7 @@ export const ClosingSummarySection: React.FC<ClosingSummarySectionProps> = ({
             &ldquo;Your journey is about exploration, not limitation.&rdquo;
           </h2>
           <p className="text-xs md:text-sm text-slate-300 leading-relaxed font-normal">
-            Use this report as a dynamic guidance compass for discovering your authentic passions, selecting subject pathways, and building real-world competencies without anxiety.
+            Use this report as a dynamic guidance compass for discovering your authentic interests, selecting subject pathways, and building real-world competencies without anxiety.
           </p>
         </div>
       </div>
@@ -36,7 +40,7 @@ export const ClosingSummarySection: React.FC<ClosingSummarySectionProps> = ({
       {/* 4-Pillar Action Framework */}
       <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 md:p-8 shadow-sm">
         <div className="text-xs font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400 mb-2">
-          Section 09
+          Action Plan
         </div>
         <h3 className="text-lg md:text-xl font-black text-slate-900 dark:text-white">
           Your Immediate 4-Step Action Framework
@@ -57,7 +61,7 @@ export const ClosingSummarySection: React.FC<ClosingSummarySectionProps> = ({
               </div>
               <h4 className="mt-3 font-bold text-sm text-slate-900 dark:text-white">Explore</h4>
               <p className="mt-1.5 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                Research your recommended career matches online, read industry publications, and watch day-in-the-life documentaries.
+                Research your recommended career pathways online, read industry publications, and observe day-in-the-life case studies.
               </p>
             </div>
           </div>
@@ -105,7 +109,7 @@ export const ClosingSummarySection: React.FC<ClosingSummarySectionProps> = ({
               </div>
               <h4 className="mt-3 font-bold text-sm text-slate-900 dark:text-white">Discuss</h4>
               <p className="mt-1.5 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                Review these discoveries with family mentors and schedule a 1-on-1 advisory session with a certified counsellor.
+                Review these discoveries with family mentors and schedule a 1-on-1 advisory session with a guidance counsellor.
               </p>
             </div>
           </div>
@@ -120,10 +124,10 @@ export const ClosingSummarySection: React.FC<ClosingSummarySectionProps> = ({
               <Calendar className="h-4 w-4 text-teal-400" /> Next Step Guidance
             </div>
             <h3 className="text-xl md:text-2xl font-black text-white">
-              Connect with a Certified 3G MeLife Counsellor
+              Connect with a 3G MeLife Guidance Counsellor
             </h3>
             <p className="text-xs md:text-sm text-slate-200 leading-relaxed">
-              Transform these psychometric discoveries into an individualized educational roadmap. Our certified career counsellors offer tailored guidance on subject stream selection, university admission requirements, and career milestone planning.
+              Transform these assessment discoveries into an individualized educational roadmap. Our career counsellors offer tailored guidance on subject stream selection, university admission requirements, and career milestone planning.
             </p>
           </div>
 
@@ -139,16 +143,21 @@ export const ClosingSummarySection: React.FC<ClosingSummarySectionProps> = ({
         </div>
       </div>
 
-      {/* Official Platform Certification Benchmark Stamp */}
+      {/* Official 3G MeLife Assessment Record & Verification Details */}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 p-5 text-center text-xs text-slate-500 dark:text-slate-400 space-y-2">
         <div className="flex items-center justify-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
           <ShieldCheck className="h-4 w-4 text-teal-600 dark:text-teal-400" />
-          3G MeLife Psychometric Career Guidance Platform • Official Exploration Benchmark
+          Official 3G MeLife Assessment Record &amp; Verification Details
         </div>
         <p className="max-w-2xl mx-auto text-[11px] leading-relaxed">
-          Student: {studentName} • Evaluation Code: {reportId ? `${reportId.slice(0, 16)}...` : "MELIFE-2026"} • Version: {templateVersion}
+          Candidate: {studentName} • Evaluation ID: {reportId ? `${reportId.slice(0, 16)}...` : "MELIFE-2026"} • Version: {templateVersion}
+          {evaluationDate ? ` • Evaluation Date: ${evaluationDate}` : ""}
+          {assessmentVersion ? ` • Assessment Model: ${assessmentVersion}` : ""}
           <br />
-          Formulated using multi-dimensional psychometric models and validated developmental career progression algorithms.
+          Formulated using the 3G MeLife multidimensional developmental framework. Intended for educational guidance and exploratory planning.
+        </p>
+        <p className="text-[10px] text-slate-400 italic">
+          Confidential educational guidance report. Intended for the student, parent/guardian and authorized guidance professionals.
         </p>
       </div>
     </div>

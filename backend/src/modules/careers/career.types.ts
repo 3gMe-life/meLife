@@ -138,6 +138,15 @@ export interface CareerMatchReasoning {
   alignmentNote: string;
   driverConstructs?: CareerMatchDriver[];
   evidenceSource?: string;
+  whyThisAppears?: string[];
+  supportingEvidence?: Array<{
+    source: string;
+    dimensionCode?: string;
+    label: string;
+    score?: number;
+  }>;
+  developmentConsiderations?: string[];
+  areasToValidate?: string[];
 }
 
 export interface MatchPillarBreakdown {

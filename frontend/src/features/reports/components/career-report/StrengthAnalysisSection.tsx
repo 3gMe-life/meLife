@@ -11,7 +11,7 @@ interface StrengthAnalysisSectionProps {
 
 export const StrengthAnalysisSection: React.FC<StrengthAnalysisSectionProps> = ({ strengths }) => {
   const mappedStrengths: ScoredDimensionItem[] = (strengths || []).map((s) => ({
-    code: s.name.toUpperCase().replace(/[^A-Z0-9]/g, "_"),
+    code: s.dimensionCode || s.name.toUpperCase().replace(/[^A-Z0-9]/g, "_"),
     name: s.name,
     rawScore: s.score,
     maxScore: 100,
@@ -24,8 +24,8 @@ export const StrengthAnalysisSection: React.FC<StrengthAnalysisSectionProps> = (
     <div id="section-strengths" className="space-y-6">
       <StrengthsInActionGrid
         strengths={mappedStrengths}
-        title="Cognitive & Developmental Strengths in Action"
-        subtitle="Mapping student cognitive capabilities directly to learning mastery, peer collaboration, and career readiness."
+        title="Cognitive & Analytical Strengths in Action"
+        subtitle="Mapping demonstrated cognitive indicators directly to learning mastery, problem-solving, and career exploration readiness."
       />
     </div>
   );

@@ -7,6 +7,14 @@ import { FutureGrowthOutlook } from "../career.types";
 
 export type CareerReportStatus = "PENDING" | "COMPLETED" | "FAILED";
 
+export type EvidenceSource =
+  | "INTEREST_EVIDENCE"
+  | "SELF_REPORTED_BEHAVIOUR"
+  | "DEMONSTRATED_TASK_PERFORMANCE"
+  | "DEVELOPMENTAL_HABIT"
+  | "PROFILE_SYNTHESIS"
+  | "CAREER_ALIGNMENT_SYNTHESIS";
+
 export interface ReportCoverData {
   reportTitle: string;
   reportSubtitle: string;
@@ -35,6 +43,7 @@ export interface ReportInterestClusterData {
   percentage: number;
   clusterTitle: string;
   description: string;
+  evidenceSource?: EvidenceSource;
 }
 
 export interface ReportPsychometricProfileData {
@@ -42,14 +51,35 @@ export interface ReportPsychometricProfileData {
   primaryOrientation: string;
   secondaryOrientation: string;
   summary: string;
+  evidenceSource?: EvidenceSource;
 }
 
 export interface ReportStrengthItem {
   name: string;
+  code?: string;
   score: number;
   whatItMeans: string;
   howItHelpsLearning: string;
   howItConnectsWithCareers: string;
+  evidenceSource?: EvidenceSource;
+}
+
+export interface CareerMatchSupportingEvidence {
+  source: EvidenceSource;
+  dimensionCode?: string;
+  label: string;
+  score?: number;
+}
+
+export interface CareerMatchExplanation {
+  summary: string;
+  whyThisAppears?: string[];
+  supportingEvidence?: CareerMatchSupportingEvidence[];
+  developmentConsiderations?: string[];
+  areasToValidate?: string[];
+  // Legacy backward-compatibility fields:
+  topMatchingFactors?: string[];
+  alignmentNote?: string;
 }
 
 export interface ReportCareerMatchItem {
@@ -60,12 +90,11 @@ export interface ReportCareerMatchItem {
   industry: string;
   matchPercentage: number;
   futureGrowth: FutureGrowthOutlook;
-  whyThisMatches: {
-    summary: string;
-    topMatchingFactors: string[];
-    alignmentNote: string;
-  };
+  whyThisMatches: CareerMatchExplanation;
   requiredSkills: string[];
+  familyCode?: string;
+  familyName?: string;
+  evidenceSource?: EvidenceSource;
 }
 
 export interface ReportCareerDeepDiveItem {
@@ -97,13 +126,22 @@ export interface ReportAlternativePathwayItem {
   skills: string[];
 }
 
+export interface ReportDevelopmentSkillItem {
+  skillName: string;
+  dimensionCode?: string;
+  evidenceSource?: EvidenceSource;
+  currentLevel: string;
+  currentScore?: number;
+  whySelected?: string;
+  developmentDirection?: string;
+  suggestedPractice?: string;
+  realWorldActivity?: string;
+  howToImprove: string[];
+  suggestedActivities: string[];
+}
+
 export interface ReportDevelopmentPlanData {
-  skillsToStrengthen: Array<{
-    skillName: string;
-    currentLevel: string;
-    howToImprove: string[];
-    suggestedActivities: string[];
-  }>;
+  skillsToStrengthen: ReportDevelopmentSkillItem[];
   summary: string;
 }
 
@@ -112,6 +150,37 @@ export interface ReportParentGuidanceData {
   howParentsCanSupport: string[];
   recommendedDiscussions: string[];
   thingsToAvoid: string[];
+}
+
+export interface ReportCrossEvidenceSynthesisData {
+  whatYouAreDrawnToward: string;
+  whatYouReportStrongly: string;
+  whatYouDemonstrated: string;
+  whereEvidenceAgrees: string;
+  areasToValidateAndDevelop: string;
+  nextExplorationSteps: string[];
+}
+
+export interface ReportMethodologyData {
+  assessmentCode: string;
+  assessmentName: string;
+  scoringVersion: string;
+  careerTaxonomyVersion: string;
+  reportTemplateVersion: string;
+  frameworkSummary: string;
+  scoreInterpretationGuide: string;
+  alignmentScoreDefinition: string;
+  whatThisMeasures?: string;
+  howScoresArePresented?: string;
+  whatCareerAlignmentMeans?: string;
+  whatScoresDoNotMean: string[];
+  evidenceTaxonomy: Array<{
+    source: EvidenceSource;
+    label: string;
+    description: string;
+  }>;
+  interpretationBoundaries: string[];
+  reassessmentGuidance: string;
 }
 
 export interface ReportCounsellorInsightsData {
@@ -143,6 +212,8 @@ export interface CareerReportDTO {
   alternativePathways: ReportAlternativePathwayItem[];
   developmentPlan: ReportDevelopmentPlanData;
   parentGuidance: ReportParentGuidanceData;
+  crossEvidenceSynthesis?: ReportCrossEvidenceSynthesisData;
+  methodology?: ReportMethodologyData;
   counsellorInsights?: ReportCounsellorInsightsData;
 }
 

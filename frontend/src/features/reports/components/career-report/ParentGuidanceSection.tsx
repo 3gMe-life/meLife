@@ -1,6 +1,6 @@
 import React from "react";
 import { ReportParentGuidanceData } from "../../types/career-report.types";
-import { Users, Heart, MessageCircle, AlertTriangle, Lightbulb } from "lucide-react";
+import { Users, Heart, MessageCircle, AlertTriangle, Lightbulb, Check, X } from "lucide-react";
 
 interface ParentGuidanceSectionProps {
   data: ReportParentGuidanceData;
@@ -16,10 +16,10 @@ export const ParentGuidanceSection: React.FC<ParentGuidanceSectionProps> = ({ da
         </div>
         <div>
           <div className="text-[10px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400">
-            Section 08
+            Section 09
           </div>
           <h2 className="text-lg md:text-xl font-black text-slate-900 dark:text-white">
-            Parent & Guardian Guidance Framework
+            Parent &amp; Guardian Guidance Framework
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Supportive recommendations to nurture your child&apos;s curiosity, resilience, and career exploration
@@ -55,7 +55,7 @@ export const ParentGuidanceSection: React.FC<ParentGuidanceSectionProps> = ({ da
               {(data.howParentsCanSupport || []).map((item, idx) => (
                 <li key={idx} className="flex items-start gap-2.5">
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-100 dark:bg-teal-950 text-[10px] font-bold text-teal-700 dark:text-teal-300 mt-0.5">
-                    ✓
+                    <Check className="h-3 w-3" />
                   </span>
                   <span className="leading-relaxed">{item}</span>
                 </li>
@@ -67,13 +67,13 @@ export const ParentGuidanceSection: React.FC<ParentGuidanceSectionProps> = ({ da
           <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 p-5 md:p-6">
             <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
               <AlertTriangle className="h-4 w-4" />
-              Common Pitfalls & Things to Avoid
+              Common Pitfalls &amp; Things to Avoid
             </h4>
             <ul className="mt-4 space-y-3 text-xs text-slate-600 dark:text-slate-300">
               {(data.thingsToAvoid || []).map((item, idx) => (
                 <li key={idx} className="flex items-start gap-2.5">
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-950 text-[10px] font-bold text-rose-700 dark:text-rose-300 mt-0.5">
-                    ✕
+                    <X className="h-3 w-3" />
                   </span>
                   <span className="leading-relaxed">{item}</span>
                 </li>

@@ -1,6 +1,6 @@
 import React from "react";
-import { ReportDevelopmentPlanData } from "../../types/career-report.types";
-import { Target, CheckSquare, Activity, Sparkles, TrendingUp } from "lucide-react";
+import { ReportDevelopmentPlanData, ReportDevelopmentSkillItem } from "../../types/career-report.types";
+import { Target, CheckSquare, Activity, Sparkles } from "lucide-react";
 
 interface DevelopmentPlanSectionProps {
   data: ReportDevelopmentPlanData;
@@ -19,10 +19,10 @@ export const DevelopmentPlanSection: React.FC<DevelopmentPlanSectionProps> = ({ 
             Section 07
           </div>
           <h2 className="text-lg md:text-xl font-black text-slate-900 dark:text-white">
-            Actionable Skill Development Plan
+            Actionable Skill &amp; Competency Development Plan
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Targeted growth recommendations to elevate student capabilities over the next 12-24 months
+            Personalized growth guidance derived from your point-in-time assessment profile
           </p>
         </div>
       </div>
@@ -39,64 +39,91 @@ export const DevelopmentPlanSection: React.FC<DevelopmentPlanSectionProps> = ({ 
           </p>
         </div>
 
-        {/* Before / After & Current vs Target Growth Cards */}
+        {/* Development Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {(data.skillsToStrengthen || []).map((skill, idx) => (
-            <div
-              key={idx}
-              className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 p-5 flex flex-col justify-between hover:shadow-md transition-shadow"
-            >
-              <div>
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="font-bold text-sm md:text-base text-slate-900 dark:text-white">
-                    {skill.skillName}
-                  </h3>
-                </div>
+          {(data.skillsToStrengthen || []).map((skill: ReportDevelopmentSkillItem, idx: number) => {
+            const hasStructuredGuidance = Boolean(skill.suggestedPractice || skill.realWorldActivity);
 
-                {/* Current vs Target Growth Tag */}
-                <div className="mt-2 flex items-center gap-2">
-                  <span className="rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-2 py-0.5 text-[10px] font-bold">
-                    Current: {skill.currentLevel}
-                  </span>
-                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
-                    <TrendingUp className="h-3 w-3" /> Growth Target
-                  </span>
-                </div>
-
-                {/* Action steps */}
-                <div className="mt-4">
-                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-teal-700 dark:text-teal-300 uppercase tracking-wider">
-                    <CheckSquare className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
-                    Action Steps:
+            return (
+              <div
+                key={idx}
+                className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 p-5 flex flex-col justify-between hover:shadow-md transition-shadow"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-bold text-sm md:text-base text-slate-900 dark:text-white">
+                      {skill.skillName}
+                    </h3>
                   </div>
-                  <ul className="mt-2 space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
-                    {(skill.howToImprove || []).map((step, sIdx) => (
-                      <li key={sIdx} className="flex items-start gap-1.5">
-                        <span className="text-teal-500 font-bold">•</span>
-                        <span className="leading-relaxed">{step}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
 
-                {/* Suggested Activities */}
-                <div className="mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-700/60">
-                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wider">
-                    <Activity className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
-                    Suggested Activities:
+                  {/* Level & Evidence Tag */}
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className="rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-2 py-0.5 text-[10px] font-bold">
+                      {skill.currentLevel}
+                      {skill.currentScore !== undefined && ` (${skill.currentScore}/100)`}
+                    </span>
+                    {skill.evidenceSource && (
+                      <span className="rounded-md bg-teal-100/60 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 px-2 py-0.5 text-[9px] font-semibold uppercase">
+                        {skill.evidenceSource.replace(/_/g, " ")}
+                      </span>
+                    )}
                   </div>
-                  <ul className="mt-2 space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
-                    {(skill.suggestedActivities || []).map((act, aIdx) => (
-                      <li key={aIdx} className="flex items-start gap-1.5">
-                        <span className="text-sky-500 font-bold">•</span>
-                        <span className="leading-relaxed">{act}</span>
-                      </li>
-                    ))}
-                  </ul>
+
+                  {/* Why Selected */}
+                  {skill.whySelected && (
+                    <div className="mt-3 text-xs text-slate-600 dark:text-slate-400 leading-relaxed italic bg-white/60 dark:bg-slate-900/60 p-2.5 rounded-xl border border-slate-200/50 dark:border-slate-800">
+                      <span className="font-semibold text-slate-700 dark:text-slate-300 not-italic block mb-0.5 text-[10px] uppercase tracking-wider">Focus Rationale:</span>
+                      {skill.whySelected}
+                    </div>
+                  )}
+
+                  {/* Action Steps / Structured Practice */}
+                  <div className="mt-4">
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-teal-700 dark:text-teal-300 uppercase tracking-wider">
+                      <CheckSquare className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+                      {hasStructuredGuidance ? "Suggested Practice Routine:" : "Action Steps:"}
+                    </div>
+                    {skill.suggestedPractice ? (
+                      <p className="mt-1.5 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        {skill.suggestedPractice}
+                      </p>
+                    ) : (
+                      <ul className="mt-2 space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
+                        {(skill.howToImprove || []).map((step, sIdx) => (
+                          <li key={sIdx} className="flex items-start gap-1.5">
+                            <span className="text-teal-500 font-bold">•</span>
+                            <span className="leading-relaxed">{step}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
+                  {/* Real World Activity / Suggested Activities */}
+                  <div className="mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-700/60">
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wider">
+                      <Activity className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
+                      {hasStructuredGuidance ? "Real-World Application:" : "Suggested Activities:"}
+                    </div>
+                    {skill.realWorldActivity ? (
+                      <p className="mt-1.5 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        {skill.realWorldActivity}
+                      </p>
+                    ) : (
+                      <ul className="mt-2 space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
+                        {(skill.suggestedActivities || []).map((act, aIdx) => (
+                          <li key={aIdx} className="flex items-start gap-1.5">
+                            <span className="text-sky-500 font-bold">•</span>
+                            <span className="leading-relaxed">{act}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

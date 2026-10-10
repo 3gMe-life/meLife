@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { ReportCareerDeepDiveItem } from "../../types/career-report.types";
-import { BookMarked, Sparkles, CheckCircle, GraduationCap, MapPin, Users, ArrowUpRight } from "lucide-react";
+import { BookMarked, Sparkles, CheckCircle, GraduationCap, MapPin, Users, ArrowUpRight, TrendingUp } from "lucide-react";
 import Link from "next/link";
 
 interface CareerDeepDiveSectionProps {
@@ -196,8 +196,8 @@ export const CareerDeepDiveSection: React.FC<CareerDeepDiveSectionProps> = ({ de
               {(currentCareer.sampleRoles || []).join("  •  ")}
             </span>
           </div>
-          <div className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">
-            ✦ High long-term industry growth
+          <div className="text-xs text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+            <TrendingUp className="h-3 w-3" /> High long-term industry growth
           </div>
         </div>
       </div>

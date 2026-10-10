@@ -1,6 +1,6 @@
 import React from "react";
 import { ReportExecutiveSummaryData } from "../../types/career-report.types";
-import { FileText, Sparkles, Brain, Palette, MessageSquare, Sprout, ArrowRight } from "lucide-react";
+import { FileText, Sparkles, Brain, Palette, MessageSquare, Sprout } from "lucide-react";
 
 interface ExecutiveSummarySectionProps {
   data: ReportExecutiveSummaryData;
@@ -19,7 +19,7 @@ export const ExecutiveSummarySection: React.FC<ExecutiveSummarySectionProps> = (
             Section 02
           </div>
           <h2 className="text-lg md:text-xl font-black text-slate-900 dark:text-white">
-            Executive Summary & Learning Orientation
+            Executive Summary &amp; Learning Orientation
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Holistic synthesis of student cognitive tendencies and exploratory approach
@@ -32,24 +32,24 @@ export const ExecutiveSummarySection: React.FC<ExecutiveSummarySectionProps> = (
         <div className="rounded-2xl border border-teal-100 dark:border-teal-900/40 bg-gradient-to-br from-teal-50/70 via-emerald-50/30 to-transparent dark:from-teal-950/30 dark:via-emerald-950/20 dark:to-transparent p-5 md:p-6">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-teal-700 dark:text-teal-300 mb-2">
             <Sparkles className="h-4 w-4 text-teal-600" />
-            Holistic Cognitive Synthesis
+            Holistic Cognitive &amp; Analytical Synthesis
           </div>
           <p className="text-sm md:text-base leading-relaxed text-slate-700 dark:text-slate-200 font-normal">
             {data.summary}
           </p>
         </div>
 
-        {/* 4 Highlight Cards Grid (🧠 Analytical, 🎨 Creative, 💬 Communication, 🌱 Adaptability) */}
+        {/* 4 Highlight Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Card 1: Key Strengths */}
           <div className="rounded-2xl border border-teal-200/80 dark:border-teal-800/60 bg-teal-50/30 dark:bg-teal-950/20 p-5 flex flex-col justify-between hover:shadow-md transition-shadow">
             <div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400">
-                  <span className="text-base">🧠</span> Analytical Thinking & Key Strengths
+                  <Brain className="h-4 w-4 text-teal-600 dark:text-teal-400" /> Analytical Thinking &amp; Key Strengths
                 </div>
                 <span className="text-[10px] font-bold text-teal-600 dark:text-teal-400 bg-teal-100 dark:bg-teal-900/60 px-2 py-0.5 rounded-full">
-                  Verified
+                  Demonstrated
                 </span>
               </div>
               <div className="mt-3.5 flex flex-wrap gap-1.5">
@@ -64,7 +64,7 @@ export const ExecutiveSummarySection: React.FC<ExecutiveSummarySectionProps> = (
               </div>
             </div>
             <p className="mt-3 text-[11px] text-slate-500 dark:text-slate-400">
-              Validated foundational cognitive competencies powering structured investigation.
+              Demonstrated foundational cognitive competencies powering structured investigation.
             </p>
           </div>
 
@@ -73,7 +73,7 @@ export const ExecutiveSummarySection: React.FC<ExecutiveSummarySectionProps> = (
             <div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-sky-700 dark:text-sky-400">
-                  <span className="text-base">🎨</span> Creative Problem Solving & Learning Style
+                  <Palette className="h-4 w-4 text-sky-600 dark:text-sky-400" /> Creative Problem Solving &amp; Learning Style
                 </div>
                 <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/60 px-2 py-0.5 rounded-full">
                   Applied
@@ -93,7 +93,7 @@ export const ExecutiveSummarySection: React.FC<ExecutiveSummarySectionProps> = (
             <div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
-                  <span className="text-base">💬</span> Structured Communication & Interest Pattern
+                  <MessageSquare className="h-4 w-4 text-amber-600 dark:text-amber-400" /> Structured Communication &amp; Interest Pattern
                 </div>
                 <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/60 px-2 py-0.5 rounded-full">
                   Multi-Domain
@@ -113,7 +113,7 @@ export const ExecutiveSummarySection: React.FC<ExecutiveSummarySectionProps> = (
             <div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                  <span className="text-base">🌱</span> Adaptable Learning & Exploration Mindset
+                  <Sprout className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /> Adaptable Learning &amp; Exploration Mindset
                 </div>
                 <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-full">
                   Growth-First
