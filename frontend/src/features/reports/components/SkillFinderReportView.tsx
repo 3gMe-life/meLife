@@ -193,6 +193,20 @@ export function SkillFinderReportView({
         }
       `}</style>
 
+      {/* Top Back Navigation (Desktop & Mobile) */}
+      <div className="flex items-center justify-between px-1 print:hidden">
+        <Link
+          href="/participant/results"
+          className="inline-flex items-center gap-2 text-xs font-bold text-[#526866] dark:text-[#9FB3B0] hover:text-[#008F83] dark:hover:text-[#00BFA5] transition-colors group"
+        >
+          <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
+          <span>Back to Assessment Results</span>
+        </Link>
+        <span className="text-[11px] font-mono text-[#728B88] dark:text-white/50">
+          Template v{report.templateVersion || "2.4.0"} • Attempt #{report.studentProfile.attemptNumber || 1}
+        </span>
+      </div>
+
       {/* ========================================================================= */}
       {/* STICKY REPORT AUDIENCE & INTERACTION DOCK */}
       {/* ========================================================================= */}
@@ -207,20 +221,6 @@ export function SkillFinderReportView({
         archetypeTitle={report.executiveSummary.archetypeTitle}
         navAnchors={navAnchors}
       />
-
-      {/* Top Back Navigation (Desktop & Mobile) */}
-      <div className="flex items-center justify-between px-2 print:hidden">
-        <Link
-          href="/participant/results"
-          className="inline-flex items-center gap-2 text-xs font-bold text-[#526866] dark:text-[#9FB3B0] hover:text-[#008F83] dark:hover:text-[#00BFA5] transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Assessment Results</span>
-        </Link>
-        <span className="text-[11px] font-mono text-[#728B88] dark:text-white/50">
-          Template v{report.templateVersion || "2.4.0"} • Attempt #{report.studentProfile.attemptNumber || 1}
-        </span>
-      </div>
 
       {downloadError && (
         <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 text-xs text-rose-800 dark:text-rose-300">

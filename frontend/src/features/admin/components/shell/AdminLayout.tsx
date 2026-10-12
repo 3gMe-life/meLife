@@ -53,7 +53,7 @@ export function AdminLayout({
         <div className="flex-1 flex w-full print:block print:p-0 print:m-0">
           {/* Desktop Floating Pill Sidebar Rail */}
           {user && (
-            <aside className="hidden lg:block shrink-0 pl-4 sm:pl-6 lg:pl-8 py-3.5 sticky top-24 self-start z-40 print:hidden">
+            <aside className="hidden lg:block shrink-0 pl-4 sm:pl-6 lg:pl-8 py-3.5 sticky top-24 self-start z-30 print:hidden">
               <AdminSidebar />
             </aside>
           )}

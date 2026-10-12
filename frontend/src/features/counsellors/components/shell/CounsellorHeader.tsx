@@ -57,7 +57,7 @@ export function CounsellorHeader({
   const pendingCount = overview?.stats?.pendingRequestsCount || 0;
 
   return (
-    <header className="mx-4 sm:mx-6 lg:mx-8 mt-3.5 sm:mt-4 mb-1 h-16 sm:h-[68px] px-4 sm:px-6 bg-white/95 dark:bg-[#112423]/95 backdrop-blur-xl border border-[#E3ECEA] dark:border-white/10 rounded-2xl sm:rounded-[22px] shadow-sm shadow-[#172B2A]/5 dark:shadow-black/25 sticky top-3 sm:top-4 z-30 flex items-center justify-between text-[#172B2A] dark:text-[#F7FAF9] select-none transition-all duration-200">
+    <header className="mx-4 sm:mx-6 lg:mx-8 mt-3.5 sm:mt-4 mb-1 h-16 sm:h-[68px] px-4 sm:px-6 bg-white/95 dark:bg-[#112423]/95 backdrop-blur-xl border border-[#E3ECEA] dark:border-white/10 rounded-2xl sm:rounded-[22px] shadow-sm shadow-[#172B2A]/5 dark:shadow-black/25 sticky top-3 sm:top-4 z-40 flex items-center justify-between text-[#172B2A] dark:text-[#F7FAF9] select-none transition-all duration-200">
       {/* 1. Left: Brand Logo & Mobile Trigger */}
       <div className="flex items-center gap-3 sm:gap-4 shrink-0">
         <button
