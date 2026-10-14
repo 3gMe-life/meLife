@@ -1,8 +1,10 @@
 "use client";
 
-import React from "react";
-import { Sparkles, ArrowUpRight, Scale, Info, Compass, CheckCircle2, Zap } from "lucide-react";
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Sparkles, ArrowUpRight, Scale, Info, Compass, CheckCircle2, Zap, Layers, ArrowRight, Loader2 } from "lucide-react";
 import { StreamFinderResult, StreamName } from "../../../types/assessment.types";
+import { assessmentApi } from "../../../api/assessment.api";
 
 interface StreamResultHeroCardProps {
   result: StreamFinderResult;
@@ -20,6 +22,10 @@ const STREAM_DESCRIPTIONS: Record<StreamName, string> = {
 };
 
 export const StreamResultHeroCard: React.FC<StreamResultHeroCardProps> = ({ result }) => {
+  const router = useRouter();
+  const [isExtending, setIsExtending] = useState(false);
+  const [extendError, setExtendError] = useState<string | null>(null);
+
   const primaryStream = result.primaryStream || "Science";
   const secondaryStream = result.secondaryStream || "Commerce";
   const explanation =
@@ -28,6 +34,21 @@ export const StreamResultHeroCard: React.FC<StreamResultHeroCardProps> = ({ resu
     "Your responses indicate a distinct learning preference aligned with this academic discipline.";
 
   const isCloseScore = result.scoreGapPercentage <= 8;
+
+  const handleExtendAssessment = async () => {
+    try {
+      setIsExtending(true);
+      setExtendError(null);
+      const res = await assessmentApi.startStreamFinderExtension(result.attemptId);
+      if (res?.attemptId) {
+        router.push(`/participant/assessments/${res.attemptId}`);
+      }
+    } catch (err: any) {
+      console.error("Failed to start extension assessment:", err);
+      setExtendError(err.message || "Failed to start extension assessment. Please try again.");
+      setIsExtending(false);
+    }
+  };
 
   return (
     <div className="rounded-3xl bg-gradient-to-br from-[#0D2421] via-[#102B28] to-[#0A1615] border-2 border-[#00BFA5]/40 p-6 sm:p-8 text-white shadow-2xl relative overflow-hidden print:p-5 print:rounded-2xl print:bg-none print:bg-white print:text-[#172B2A] print:border-[#00BFA5] flex flex-col justify-between space-y-4 print:space-y-3">
@@ -41,9 +62,18 @@ export const StreamResultHeroCard: React.FC<StreamResultHeroCardProps> = ({ resu
             <Sparkles className="w-3.5 h-3.5" />
             <span>01. Your Result • Strongest Academic Alignment</span>
           </span>
-          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-white/10 text-white/90 border border-white/15 print:border-[#E3ECEA] print:text-[#526866]">
-            Relative Alignment Profile
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-white/10 text-white/90 border border-white/15 print:border-[#E3ECEA] print:text-[#526866]">
+              {result.assessmentMode === "CORE"
+                ? "Core Form • 48 Questions"
+                : result.assessmentMode === "EXTENDED"
+                ? "Extended Battery • 80 Questions"
+                : "80 Questions"}
+            </span>
+            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-white/10 text-white/90 border border-white/15 print:border-[#E3ECEA] print:text-[#526866]">
+              Relative Alignment Profile
+            </span>
+          </div>
         </div>
 
         {/* Primary Result Headline */}
@@ -133,6 +163,67 @@ export const StreamResultHeroCard: React.FC<StreamResultHeroCardProps> = ({ resu
             </p>
           </div>
         </div>
+
+        {/* Stage 2 Extension Banner / Callout */}
+        {result.assessmentMode === "CORE" && (
+          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-[#00BFA5]/15 via-[#008F83]/10 to-white/[0.02] border border-[#00BFA5]/40 flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-[#00BFA5]/20 text-[#00C896] border border-[#00BFA5]/30">
+                  Stage 2 • Extended Diagnostic
+                </span>
+                {result.extensionRecommended && (
+                  <span className="text-[10px] font-bold text-amber-300">
+                    Recommended for your profile
+                  </span>
+                )}
+              </div>
+              <h3 className="text-sm sm:text-base font-bold text-white">
+                Gather 32 Additional Evidence Questions
+              </h3>
+              <p className="text-xs text-[#C5D6D3] max-w-xl leading-relaxed">
+                You have completed the 48-item Core Form. To gain higher resolution between your top streams, take the 32 extension questions without retaking the assessment from scratch.
+              </p>
+              {extendError && (
+                <p className="text-xs text-rose-400 font-semibold">{extendError}</p>
+              )}
+            </div>
+
+            <button
+              type="button"
+              disabled={isExtending}
+              onClick={handleExtendAssessment}
+              className="px-4 py-2.5 rounded-xl bg-[#00BFA5] hover:bg-[#00d8bc] text-[#0A1615] font-bold text-xs uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-[#00BFA5]/20 shrink-0 cursor-pointer disabled:opacity-50"
+            >
+              {isExtending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Launching...</span>
+                </>
+              ) : (
+                <>
+                  <Layers className="w-4 h-4" />
+                  <span>Start 32 Extension Items</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
+        {result.assessmentMode === "EXTENDED" && (
+          <div className="p-3 sm:p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-3 text-xs text-emerald-200 print:text-[#172B2A] print:bg-emerald-50 print:border-emerald-200">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-[#00C896] shrink-0" />
+              <span>
+                <strong>Comprehensive Profile:</strong> Scored across the full 80-question battery (48 Core + 32 Extension items).
+              </span>
+            </div>
+            <span className="text-[10.5px] font-mono px-2 py-0.5 rounded bg-white/10 text-white/90 border border-white/15 shrink-0 print:border-[#E3ECEA] print:text-[#526866]">
+              80 / 80 Evidence Points
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Non-Prescriptive Educational Safeguard Footer */}

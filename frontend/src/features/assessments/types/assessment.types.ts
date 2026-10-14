@@ -403,6 +403,14 @@ export interface StreamFinderResult {
   completionPercentage: number;
   isComplete: boolean;
 
+  // Two-Stage Architecture Evidence Metadata
+  assessmentMode?: "CORE" | "EXTENDED" | "V1_LEGACY";
+  coreAttemptId?: string;
+  extensionAttemptId?: string;
+  totalEvidenceQuestions?: number;
+  isExtensionAvailable?: boolean;
+  extensionRecommended?: boolean;
+
   streamScores: Record<StreamName, StreamScoreItem>;
   sortedStreams: StreamScoreItem[];
 

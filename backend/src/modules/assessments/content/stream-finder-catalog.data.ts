@@ -3582,12 +3582,82 @@ export const STREAM_FINDER_CAREER_CLUSTERS: StreamCareerClusterData[] = [
   }
 ];
 
-export const STREAM_MAX_POINTS = {
+export const STREAM_MAX_POINTS_V1 = {
   Science: 145,
   Commerce: 135,
   Humanities: 140,
   "Applied / Technical": 120,
 } as const;
+
+export const STREAM_MAX_POINTS_V2_CORE = {
+  Science: 88,
+  Commerce: 88,
+  Humanities: 88,
+  "Applied / Technical": 88,
+} as const;
+
+export const STREAM_MAX_POINTS = STREAM_MAX_POINTS_V1;
+
+/**
+ * 48-item balanced Core Stream Finder battery (Stage 1).
+ * Exactly 8 Likert items per stream (40 pts) + 16 forced-choice items (48 pts) = 88 max points per stream.
+ */
+export const STREAM_FINDER_CORE_QUESTION_NUMBERS: number[] = [
+  // Section 1: Academic Interest (12 items: 3 per stream)
+  1, 2, 4,
+  6, 7, 10,
+  11, 12, 14,
+  16, 17, 20,
+  // Section 2: Problem-Solving Style (7 items)
+  21, 23,
+  26, 28,
+  31, 32,
+  36,
+  // Section 3: Learning Style (5 items)
+  37,
+  41,
+  43,
+  46, 48,
+  // Section 4: Career Orientation (8 items: 2 per stream)
+  49, 51,
+  52, 53,
+  55, 56,
+  58, 59,
+  // Section 5: Aptitude Preference (8 forced-choice items)
+  61, 62, 63, 64, 65, 66, 67, 69,
+  // Section 6: Situational Indicators (8 forced-choice items)
+  71, 72, 73, 74, 75, 76, 77, 80,
+];
+
+/**
+ * 32-item complementary Extension battery (Stage 2).
+ * Administered when student has a mixed profile or moderate clarity to expand evidence to full 80 items.
+ */
+export const STREAM_FINDER_EXTENSION_QUESTION_NUMBERS: number[] = [
+  // Section 1: Academic Interest (8 items: 2 per stream)
+  3, 5,
+  8, 9,
+  13, 15,
+  18, 19,
+  // Section 2: Problem-Solving Style (9 items)
+  22, 24, 25,
+  27, 29, 30,
+  33, 34, 35,
+  // Section 3: Learning Style (7 items)
+  38, 39, 40,
+  42,
+  44, 45,
+  47,
+  // Section 4: Career Orientation (4 items: 1 per stream)
+  50,
+  54,
+  57,
+  60,
+  // Section 5: Aptitude Preference (2 forced-choice items)
+  68, 70,
+  // Section 6: Situational Indicators (2 forced-choice items)
+  78, 79,
+];
 
 export const STREAM_ITEM_KEY_MAP: Record<number, string> = {
   1: "Science",

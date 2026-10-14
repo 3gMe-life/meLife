@@ -54,16 +54,33 @@ export const StreamTechnicalAppendix: React.FC<StreamTechnicalAppendixProps> = (
 
         {/* 4-Stream Raw Points Matrix Table */}
         <div className="space-y-1.5">
-          <h4 className="text-[11px] font-black uppercase tracking-wider text-[#172B2A] dark:text-[#F7FAF9]">
-            4-Stream Raw Point Distribution Matrix
-          </h4>
+          <div className="flex items-center justify-between">
+            <h4 className="text-[11px] font-black uppercase tracking-wider text-[#172B2A] dark:text-[#F7FAF9]">
+              4-Stream Raw Point Distribution Matrix
+            </h4>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#00BFA5]/10 text-[#008F83] dark:text-[#00BFA5] border border-[#00BFA5]/20 font-bold">
+              {result.assessmentMode === "CORE"
+                ? "Core Form (48 items • 88 max/stream)"
+                : result.assessmentMode === "EXTENDED"
+                ? "Extended Battery (80 items • 120–145 max/stream)"
+                : "80 Items"}
+            </span>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="border-b border-[#E3ECEA] dark:border-white/10 text-[9.5px] font-bold uppercase tracking-wider text-[#526866] dark:text-white/50 bg-white dark:bg-white/5">
                   <th className="p-2 rounded-l-lg">Stream</th>
-                  <th className="p-2">Trait Points (Q1–60)</th>
-                  <th className="p-2">Choice Points (Q61–80)</th>
+                  <th className="p-2">
+                    {result.assessmentMode === "CORE"
+                      ? "Trait Points (Likert 32)"
+                      : "Trait Points (Likert 60)"}
+                  </th>
+                  <th className="p-2">
+                    {result.assessmentMode === "CORE"
+                      ? "Choice Points (FC 16)"
+                      : "Choice Points (FC 20)"}
+                  </th>
                   <th className="p-2">Total Raw Score</th>
                   <th className="p-2">Max Possible</th>
                   <th className="p-2 rounded-r-lg">Relative %</th>

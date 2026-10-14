@@ -285,6 +285,37 @@ export class AssessmentController {
   }
 
   /**
+   * POST /api/v1/assessments/:assessmentCode/extend
+   * Starts or resumes an Extension attempt (Stage 2) for Stream Finder (+32 questions).
+   */
+  async startExtension(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        throw AppError.unauthorized("Authentication required", "AUTH_UNAUTHORIZED");
+      }
+
+      const coreAttemptId = (req.body?.coreAttemptId as string) || undefined;
+
+      const result = await assessmentRunnerService.startExtensionAttempt(
+        userId,
+        coreAttemptId
+      );
+
+      res.status(HttpStatus.OK).json({
+        success: true,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
    * GET /api/v1/assessments/:assessmentCode/history
    * Retrieves full chronological assessment history for the participant.
    */

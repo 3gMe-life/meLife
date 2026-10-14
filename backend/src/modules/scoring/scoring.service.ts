@@ -1,3 +1,4 @@
+import { pool } from "../../config/database";
 import { assessmentContentRepository } from "../assessments/assessment-content.repository";
 import { AppError } from "../../common/errors/app-error";
 import { logger } from "../../common/utils/logger";
@@ -271,11 +272,45 @@ export class ScoringService {
         }
       );
     } else if (attempt.assessment_code === "STREAM_FINDER") {
-      result = streamFinderScoringService.computeStreamFinderResult(attemptId, userId, rawResponses, {
-        versionCode: attempt.version_code,
-        versionName: attempt.version_name,
-        languageCode,
-      });
+      if (attempt.version_code === "STREAM_FINDER_V2_EXTENDED") {
+        // Locate completed Core attempt for this participant
+        const coreAttemptRes = await pool.query(
+          `SELECT a.id FROM assessment_attempts a
+           JOIN assessment_versions v ON a.version_id = v.id
+           WHERE a.participant_id = $1 AND v.version_code = 'STREAM_FINDER_V2_CORE' AND a.status = 'COMPLETED'
+           ORDER BY a.completed_at DESC NULLS LAST, a.created_at DESC
+           LIMIT 1`,
+          [userId]
+        );
+        const coreAttemptId = coreAttemptRes.rows[0]?.id;
+        let combinedResponses = rawResponses;
+        if (coreAttemptId) {
+          const coreResponses = await assessmentContentRepository.loadAttemptResponsesForScoring(coreAttemptId);
+          const respMap = new Map<number, any>();
+          for (const r of coreResponses) {
+            respMap.set(parseInt(String(r.question_number), 10), r);
+          }
+          for (const r of rawResponses) {
+            respMap.set(parseInt(String(r.question_number), 10), r);
+          }
+          combinedResponses = Array.from(respMap.values());
+        }
+
+        result = streamFinderScoringService.computeStreamFinderResult(attemptId, userId, combinedResponses, {
+          versionCode: attempt.version_code,
+          versionName: attempt.version_name,
+          languageCode,
+          coreAttemptId,
+          extensionAttemptId: attemptId,
+          assessmentMode: "EXTENDED",
+        });
+      } else {
+        result = streamFinderScoringService.computeStreamFinderResult(attemptId, userId, rawResponses, {
+          versionCode: attempt.version_code,
+          versionName: attempt.version_name,
+          languageCode,
+        });
+      }
     } else {
       result = this.computeSkillFinderResult(attemptId, userId, rawResponses, {
         versionCode: attempt.version_code,

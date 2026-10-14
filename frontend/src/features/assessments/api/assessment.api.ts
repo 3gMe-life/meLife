@@ -138,6 +138,38 @@ export const assessmentApi = {
   },
 
   /**
+   * Starts or resumes a Stream Finder Extension attempt (Stage 2, +32 questions).
+   * Combines new responses with the Core assessment evidence for 80-item scoring.
+   */
+  async startStreamFinderExtension(
+    coreAttemptId?: string
+  ): Promise<{
+    attemptId: string;
+    status: string;
+    isNew: boolean;
+    isExtension: boolean;
+    coreAttemptId: string;
+    totalQuestions: number;
+    redirectUrl?: string;
+  }> {
+    const res = await fetchApi<
+      ApiResponse<{
+        attemptId: string;
+        status: string;
+        isNew: boolean;
+        isExtension: boolean;
+        coreAttemptId: string;
+        totalQuestions: number;
+        redirectUrl?: string;
+      }>
+    >(`/assessments/STREAM_FINDER/extend`, {
+      method: "POST",
+      body: JSON.stringify({ coreAttemptId }),
+    });
+    return res.data;
+  },
+
+  /**
    * Fetches the complete longitudinal assessment history ledger for an assessment code.
    */
   async getAssessmentHistory(

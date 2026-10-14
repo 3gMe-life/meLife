@@ -1,7 +1,8 @@
 import {
   STREAM_FINDER_SECTIONS,
   STREAM_FINDER_CAREER_CLUSTERS,
-  STREAM_MAX_POINTS,
+  STREAM_MAX_POINTS_V1,
+  STREAM_MAX_POINTS_V2_CORE,
   STREAM_ITEM_KEY_MAP,
   StreamCareerClusterData,
 } from "../content/stream-finder-catalog.data";
@@ -57,9 +58,17 @@ export interface StreamFinderResultDTO {
   versionCode: string | null;
   versionName: string | null;
   completedQuestions: number;
-  totalQuestions: 80;
+  totalQuestions: number;
   completionPercentage: number;
   isComplete: boolean;
+
+  // Two-Stage Architecture Evidence Metadata
+  assessmentMode?: "CORE" | "EXTENDED" | "V1_LEGACY";
+  coreAttemptId?: string;
+  extensionAttemptId?: string;
+  totalEvidenceQuestions?: number;
+  isExtensionAvailable?: boolean;
+  extensionRecommended?: boolean;
 
   // Stream scores
   streamScores: Record<StreamName, StreamScoreDetails>;
@@ -113,7 +122,9 @@ export interface StreamFinderResultDTO {
 
 export class StreamFinderScoringService {
   /**
-   * Calculates the complete Stream Finder result based strictly on Excel Scoring Engine methodology.
+   * Calculates the complete Stream Finder result based on psychometric methodology
+   * supporting both Stage 1 Core (48 items, balanced 88 max pts per stream)
+   * and Stage 2 Extended (80 items evidence base, 145/135/140/120 max pts).
    */
   computeStreamFinderResult(
     attemptId: string,
@@ -123,16 +134,28 @@ export class StreamFinderScoringService {
       versionCode?: string | null;
       versionName?: string | null;
       languageCode?: string;
+      coreAttemptId?: string;
+      extensionAttemptId?: string;
+      assessmentMode?: "CORE" | "EXTENDED" | "V1_LEGACY";
     }
   ): StreamFinderResultDTO {
-    const totalQuestions = 80;
+    const rawVersionCode = options?.versionCode;
+    const isV2Core =
+      rawVersionCode === "STREAM_FINDER_V2_CORE" ||
+      (!rawVersionCode && rawResponses.length === 48);
+
+    const isExtended =
+      rawVersionCode === "STREAM_FINDER_V2_EXTENDED" ||
+      options?.assessmentMode === "EXTENDED";
+
+    const expectedQuestions = isV2Core ? 48 : 80;
     const answeredCount = rawResponses.length;
-    const completionPercentage = Math.round((answeredCount / totalQuestions) * 100);
-    const isComplete = answeredCount >= totalQuestions;
+    const completionPercentage = Math.round((answeredCount / expectedQuestions) * 100);
+    const isComplete = answeredCount >= expectedQuestions;
 
     if (!isComplete) {
       throw AppError.badRequest(
-        `Complete all 80 responses to generate your final Stream Finder result. Currently answered: ${answeredCount}/80.`,
+        `Complete all ${expectedQuestions} responses to generate your final Stream Finder result. Currently answered: ${answeredCount}/${expectedQuestions}.`,
         "INCOMPLETE_ASSESSMENT_RESPONSES"
       );
     }
@@ -170,37 +193,36 @@ export class StreamFinderScoringService {
       }
     }
 
-    // 1. Calculate Likert Trait Points (Q1–Q60)
+    // 1. Calculate Likert Trait Points
     let traitSci = 0;
     let traitComm = 0;
     let traitHum = 0;
     let traitApp = 0;
 
-    for (let q = 1; q <= 60; q++) {
-      const resp = responsesByQNum[q];
-      const val = typeof resp?.value === "number" ? resp.value : 0;
-      const targetStream = STREAM_ITEM_KEY_MAP[q];
-
-      if (targetStream === "Science") traitSci += val;
-      else if (targetStream === "Commerce") traitComm += val;
-      else if (targetStream === "Humanities") traitHum += val;
-      else if (targetStream === "Applied / Technical") traitApp += val;
-    }
-
-    // 2. Calculate Forced Choice Points (Q61–Q80)
+    // 2. Calculate Forced Choice Points
     let choiceCountSci = 0;
     let choiceCountComm = 0;
     let choiceCountHum = 0;
     let choiceCountApp = 0;
 
-    for (let q = 61; q <= 80; q++) {
-      const resp = responsesByQNum[q];
-      const choice = String(resp?.value || "").toUpperCase();
+    for (const [qStr, item] of Object.entries(responsesByQNum)) {
+      const q = parseInt(qStr, 10);
+      if (q <= 60) {
+        const val = typeof item.value === "number" ? item.value : 0;
+        const targetStream = STREAM_ITEM_KEY_MAP[q];
 
-      if (choice === "A") choiceCountSci++;
-      else if (choice === "B") choiceCountComm++;
-      else if (choice === "C") choiceCountHum++;
-      else if (choice === "D") choiceCountApp++;
+        if (targetStream === "Science") traitSci += val;
+        else if (targetStream === "Commerce") traitComm += val;
+        else if (targetStream === "Humanities") traitHum += val;
+        else if (targetStream === "Applied / Technical") traitApp += val;
+      } else {
+        const choice = String(item.value || "").toUpperCase();
+
+        if (choice === "A") choiceCountSci++;
+        else if (choice === "B") choiceCountComm++;
+        else if (choice === "C") choiceCountHum++;
+        else if (choice === "D") choiceCountApp++;
+      }
     }
 
     const choicePointsSci = choiceCountSci * 3;
@@ -214,11 +236,20 @@ export class StreamFinderScoringService {
     const rawHum = traitHum + choicePointsHum;
     const rawApp = traitApp + choicePointsApp;
 
-    // 4. Compatibility Percentages
-    const compSci = rawSci / STREAM_MAX_POINTS.Science;
-    const compComm = rawComm / STREAM_MAX_POINTS.Commerce;
-    const compHum = rawHum / STREAM_MAX_POINTS.Humanities;
-    const compApp = rawApp / STREAM_MAX_POINTS["Applied / Technical"];
+    // 4. Max Points based on version mode
+    const maxPointsMap = isV2Core ? STREAM_MAX_POINTS_V2_CORE : STREAM_MAX_POINTS_V1;
+    const traitMaxPoints = isV2Core
+      ? { Science: 40, Commerce: 40, Humanities: 40, "Applied / Technical": 40 }
+      : { Science: 85, Commerce: 75, Humanities: 80, "Applied / Technical": 60 };
+    const choiceMaxPoints = isV2Core
+      ? { Science: 48, Commerce: 48, Humanities: 48, "Applied / Technical": 48 }
+      : { Science: 60, Commerce: 60, Humanities: 60, "Applied / Technical": 60 };
+
+    // 5. Compatibility Percentages
+    const compSci = rawSci / maxPointsMap.Science;
+    const compComm = rawComm / maxPointsMap.Commerce;
+    const compHum = rawHum / maxPointsMap.Humanities;
+    const compApp = rawApp / maxPointsMap["Applied / Technical"];
 
     // Alignment Band Helper
     const getAlignment = (score: number): AlignmentBand => {
@@ -233,11 +264,11 @@ export class StreamFinderScoringService {
       Science: {
         stream: "Science",
         traitPoints: traitSci,
-        maxTraitPoints: 85,
+        maxTraitPoints: traitMaxPoints.Science,
         choicePoints: choicePointsSci,
-        maxChoicePoints: 60,
+        maxChoicePoints: choiceMaxPoints.Science,
         totalRaw: rawSci,
-        maxTotal: STREAM_MAX_POINTS.Science,
+        maxTotal: maxPointsMap.Science,
         compatibilityPercentage: compSci,
         displayPercentage: Math.round(compSci * 100),
         alignment: getAlignment(compSci),
@@ -245,11 +276,11 @@ export class StreamFinderScoringService {
       Commerce: {
         stream: "Commerce",
         traitPoints: traitComm,
-        maxTraitPoints: 75,
+        maxTraitPoints: traitMaxPoints.Commerce,
         choicePoints: choicePointsComm,
-        maxChoicePoints: 60,
+        maxChoicePoints: choiceMaxPoints.Commerce,
         totalRaw: rawComm,
-        maxTotal: STREAM_MAX_POINTS.Commerce,
+        maxTotal: maxPointsMap.Commerce,
         compatibilityPercentage: compComm,
         displayPercentage: Math.round(compComm * 100),
         alignment: getAlignment(compComm),
@@ -257,11 +288,11 @@ export class StreamFinderScoringService {
       Humanities: {
         stream: "Humanities",
         traitPoints: traitHum,
-        maxTraitPoints: 80,
+        maxTraitPoints: traitMaxPoints.Humanities,
         choicePoints: choicePointsHum,
-        maxChoicePoints: 60,
+        maxChoicePoints: choiceMaxPoints.Humanities,
         totalRaw: rawHum,
-        maxTotal: STREAM_MAX_POINTS.Humanities,
+        maxTotal: maxPointsMap.Humanities,
         compatibilityPercentage: compHum,
         displayPercentage: Math.round(compHum * 100),
         alignment: getAlignment(compHum),
@@ -269,11 +300,11 @@ export class StreamFinderScoringService {
       "Applied / Technical": {
         stream: "Applied / Technical",
         traitPoints: traitApp,
-        maxTraitPoints: 60,
+        maxTraitPoints: traitMaxPoints["Applied / Technical"],
         choicePoints: choicePointsApp,
-        maxChoicePoints: 60,
+        maxChoicePoints: choiceMaxPoints["Applied / Technical"],
         totalRaw: rawApp,
-        maxTotal: STREAM_MAX_POINTS["Applied / Technical"],
+        maxTotal: maxPointsMap["Applied / Technical"],
         compatibilityPercentage: compApp,
         displayPercentage: Math.round(compApp * 100),
         alignment: getAlignment(compApp),
@@ -302,7 +333,7 @@ export class StreamFinderScoringService {
       isMixedProfile = false;
     }
 
-    // 5. Match Career Clusters
+    // 6. Match Career Clusters
     const primaryCluster =
       STREAM_FINDER_CAREER_CLUSTERS.find((c) => c.profileKey === primary.stream) ||
       STREAM_FINDER_CAREER_CLUSTERS[0];
@@ -328,10 +359,9 @@ export class StreamFinderScoringService {
 
     const mixedProfileCluster = matchCombo(comboKey1) || matchCombo(comboKey2);
 
-    // 6. Section Breakdowns
+    // 7. Section Breakdowns
     const sectionBreakdown: SectionStreamBreakdown[] = STREAM_FINDER_SECTIONS.map((sec) => {
       const [start, end] = sec.questionRange;
-      let qCount = end - start + 1;
       let ansCount = 0;
       let sSci = 0;
       let sComm = 0;
@@ -359,6 +389,14 @@ export class StreamFinderScoringService {
         }
       }
 
+      const qCount = isV2Core
+        ? (sec.code === "ACADEMIC_INTEREST" ? 12 :
+           sec.code === "PROBLEM_SOLVING" ? 7 :
+           sec.code === "LEARNING_STYLE" ? 5 :
+           sec.code === "CAREER_ORIENTATION" ? 8 :
+           sec.code === "APTITUDE_PREFERENCE" ? 8 : 8)
+        : (end - start + 1);
+
       return {
         sectionCode: sec.code,
         sectionName: sec.name,
@@ -371,18 +409,46 @@ export class StreamFinderScoringService {
       };
     });
 
+    const isExtensionAvailable = isV2Core;
+    const extensionRecommended = isV2Core && (isMixedProfile || scoreGap < 0.15);
+    const assessmentMode: "CORE" | "EXTENDED" | "V1_LEGACY" = isV2Core
+      ? "CORE"
+      : isExtended
+      ? "EXTENDED"
+      : "V1_LEGACY";
+    const totalEvidenceQuestions = isV2Core ? 48 : 80;
+
     return {
       resultId: "",
       attemptId,
       participantId,
       assessmentCode: "STREAM_FINDER",
       assessmentName: "Stream Finder",
-      versionCode: options?.versionCode || "STREAM_FINDER_V1",
-      versionName: options?.versionName || "Stream Finder Secondary Edition (Class 9-10)",
+      versionCode:
+        rawVersionCode ||
+        (isV2Core
+          ? "STREAM_FINDER_V2_CORE"
+          : isExtended
+          ? "STREAM_FINDER_V2_EXTENDED"
+          : "STREAM_FINDER_V1"),
+      versionName:
+        options?.versionName ||
+        (isV2Core
+          ? "Stream Finder — Core Edition (Class 9-10)"
+          : isExtended
+          ? "Stream Finder — Extension Battery (+32 Items)"
+          : "Stream Finder Secondary Edition (Class 9-10)"),
       completedQuestions: answeredCount,
-      totalQuestions: 80,
+      totalQuestions: expectedQuestions,
       completionPercentage,
       isComplete: true,
+
+      assessmentMode,
+      coreAttemptId: options?.coreAttemptId,
+      extensionAttemptId: options?.extensionAttemptId,
+      totalEvidenceQuestions,
+      isExtensionAvailable,
+      extensionRecommended,
 
       streamScores,
       sortedStreams,

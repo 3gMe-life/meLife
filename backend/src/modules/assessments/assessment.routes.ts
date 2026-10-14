@@ -21,6 +21,7 @@ assessmentRouter.get("/available", assessmentController.getParticipantAssessment
 assessmentRouter.get("/compare/latest", assessmentController.compareLatestResults);
 assessmentRouter.get("/compare", assessmentController.compareResults);
 assessmentRouter.post("/:assessmentCode/retake", assessmentController.startRetake);
+assessmentRouter.post("/:assessmentCode/extend", assessmentController.startExtension);
 assessmentRouter.get("/:assessmentCode/history", assessmentController.getAssessmentHistory);
 
 /**

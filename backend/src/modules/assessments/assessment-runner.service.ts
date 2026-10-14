@@ -118,12 +118,19 @@ export class AssessmentRunnerService {
       ? await skillFinderQuestionSelectionService.getVersionByCode(assessment.id, versionCode)
       : await skillFinderQuestionSelectionService.getDefaultVersion(assessment.id);
 
-    // Fallback to default student edition if no specific version requested
+    // Fallback if no specific version resolved
     if (!targetVersion && !versionCode) {
-      targetVersion = await skillFinderQuestionSelectionService.getVersionByCode(
-        assessment.id,
-        "STUDENT_STANDARD"
-      );
+      if (assessment.code === "STREAM_FINDER") {
+        targetVersion = await skillFinderQuestionSelectionService.getVersionByCode(
+          assessment.id,
+          "STREAM_FINDER_V2_CORE"
+        );
+      } else {
+        targetVersion = await skillFinderQuestionSelectionService.getVersionByCode(
+          assessment.id,
+          "STUDENT_STANDARD"
+        );
+      }
     }
 
     // 5. Check for existing active attempt (status = 'IN_PROGRESS')
@@ -392,7 +399,15 @@ export class AssessmentRunnerService {
       ? await skillFinderQuestionSelectionService.getVersionByCode(assessment.id, versionCode)
       : await skillFinderQuestionSelectionService.getDefaultVersion(assessment.id);
 
-    if (!targetVersion && !versionCode) {
+    // Safeguard: Retakes for Stream Finder must strictly launch the 48-item Core Form, never the extension battery
+    if (assessment.code === "STREAM_FINDER") {
+      if (!versionCode || versionCode === "STREAM_FINDER_V2_EXTENDED") {
+        targetVersion = await skillFinderQuestionSelectionService.getVersionByCode(
+          assessment.id,
+          "STREAM_FINDER_V2_CORE"
+        );
+      }
+    } else if (!targetVersion && !versionCode) {
       targetVersion = await skillFinderQuestionSelectionService.getVersionByCode(
         assessment.id,
         "STUDENT_STANDARD"
@@ -435,6 +450,138 @@ export class AssessmentRunnerService {
       attemptNumber,
       versionCode: targetVersion?.version_code || null,
       versionName: targetVersion?.name || null,
+    };
+  }
+
+  /**
+   * Starts an Extension attempt (Stage 2) for Stream Finder (+32 questions).
+   * Verifies that the student has completed a valid Core Form attempt,
+   * preserving attempt boundaries and combining evidence for 80-question scoring.
+   */
+  async startExtensionAttempt(
+    userId: string,
+    coreAttemptId?: string
+  ): Promise<{
+    attemptId: string;
+    status: string;
+    isNew: boolean;
+    isExtension: boolean;
+    coreAttemptId: string;
+    totalQuestions: number;
+    redirectUrl?: string;
+    versionCode?: string | null;
+    versionName?: string | null;
+  }> {
+    const user = await userRepository.findById(userId);
+    if (!user) {
+      throw AppError.notFound("Participant user not found.", "AUTH_USER_NOT_FOUND");
+    }
+
+    const assessment = await assessmentRepository.findByCode("STREAM_FINDER");
+    if (!assessment) {
+      throw AppError.notFound("Stream Finder assessment not found.", "ASSESSMENT_NOT_FOUND");
+    }
+
+    // 1. Resolve parent Core attempt
+    let resolvedCoreAttempt: any = null;
+    if (coreAttemptId) {
+      resolvedCoreAttempt = await assessmentContentRepository.findAttemptById(coreAttemptId);
+      if (!resolvedCoreAttempt || resolvedCoreAttempt.participant_id !== userId) {
+        throw AppError.forbidden("Access denied to the specified Core attempt.", "AUTH_FORBIDDEN");
+      }
+    } else {
+      // Find latest completed Core attempt
+      const coreRes = await pool.query(
+        `SELECT a.* FROM assessment_attempts a
+         JOIN assessment_versions v ON a.version_id = v.id
+         WHERE a.participant_id = $1 AND v.version_code = 'STREAM_FINDER_V2_CORE' AND a.status = 'COMPLETED'
+         ORDER BY a.completed_at DESC NULLS LAST, a.created_at DESC
+         LIMIT 1`,
+        [userId]
+      );
+      resolvedCoreAttempt = coreRes.rows[0];
+    }
+
+    if (!resolvedCoreAttempt || resolvedCoreAttempt.status !== "COMPLETED") {
+      throw AppError.badRequest(
+        "A completed Core Stream Finder assessment (48 items) is required before launching the Extension Battery.",
+        "CORE_ATTEMPT_REQUIRED"
+      );
+    }
+
+    // 2. Resolve Extended version
+    const extendedVersion = await skillFinderQuestionSelectionService.getVersionByCode(
+      assessment.id,
+      "STREAM_FINDER_V2_EXTENDED"
+    );
+    if (!extendedVersion) {
+      throw AppError.notFound("Stream Finder Extension version not configured.", "VERSION_NOT_FOUND");
+    }
+
+    // 3. Check for existing active or completed extension attempt
+    const existingExtRes = await pool.query(
+      `SELECT id, status FROM assessment_attempts
+       WHERE participant_id = $1 AND version_id = $2
+       ORDER BY created_at DESC LIMIT 1`,
+      [userId, extendedVersion.id]
+    );
+
+    const existingExt = existingExtRes.rows[0];
+    if (existingExt) {
+      if (existingExt.status === "COMPLETED") {
+        const existingResult = await assessmentContentRepository.findResultByAttemptId(existingExt.id);
+        return {
+          attemptId: existingExt.id,
+          status: "COMPLETED",
+          isNew: false,
+          isExtension: true,
+          coreAttemptId: resolvedCoreAttempt.id,
+          totalQuestions: extendedVersion.question_count || 32,
+          redirectUrl: `/participant/results/${existingExt.id}${existingResult ? `?resultId=${existingResult.id}` : ""}`,
+          versionCode: extendedVersion.version_code,
+          versionName: extendedVersion.name,
+        };
+      } else {
+        return {
+          attemptId: existingExt.id,
+          status: existingExt.status,
+          isNew: false,
+          isExtension: true,
+          coreAttemptId: resolvedCoreAttempt.id,
+          totalQuestions: extendedVersion.question_count || 32,
+          versionCode: extendedVersion.version_code,
+          versionName: extendedVersion.name,
+        };
+      }
+    }
+
+    // 4. Create new extension attempt (32 questions)
+    const newAttempt = await assessmentContentRepository.createAttempt(
+      userId,
+      assessment.id,
+      extendedVersion.id,
+      extendedVersion.question_count || 32
+    );
+
+    logger.info(
+      {
+        userId,
+        attemptId: newAttempt.id,
+        coreAttemptId: resolvedCoreAttempt.id,
+        version: extendedVersion.version_code,
+      },
+      "Initiated Stream Finder Extension attempt (+32 questions)"
+    );
+
+    return {
+      attemptId: newAttempt.id,
+      status: newAttempt.status,
+      isNew: true,
+      isExtension: true,
+      coreAttemptId: resolvedCoreAttempt.id,
+      totalQuestions: extendedVersion.question_count || 32,
+      versionCode: extendedVersion.version_code,
+      versionName: extendedVersion.name,
     };
   }
 
