@@ -27,7 +27,7 @@ export function DashboardSidebar({
   const { data: authData } = useCurrentUserQuery();
   const effectiveFeatures = dashboardFeatures || authData?.data?.dashboardFeatures;
   const navigation = getNavigationForRole(role, effectiveFeatures);
-  const [isPinned, setIsPinned] = useState(false);
+  const [isPinned, setIsPinned] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -75,19 +75,17 @@ export function DashboardSidebar({
   return (
     <div
       className={`relative transition-[width] duration-300 ease-[cubic-bezier(0.2,0,0,1)] ${
-        isPinned ? "w-[260px]" : "w-[68px]"
+        isExpanded ? "w-[260px]" : "w-[68px]"
       }`}
     >
       <nav
         aria-label="Sidebar Navigation"
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className={`bg-[#172B2A] dark:bg-[#112423] py-3.5 px-2 flex flex-col rounded-[22px] border border-white/10 dark:border-white/10 select-none transition-[width,box-shadow,background-color] duration-300 ease-[cubic-bezier(0.2,0,0,1)] ${
-          isPinned
-            ? "relative w-[260px] shadow-2xl shadow-black/40"
-            : isHovered
-            ? "absolute left-0 top-0 w-[260px] shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-50 ring-1 ring-white/10"
-            : "relative w-[68px] shadow-xl shadow-[#172B2A]/20 dark:shadow-black/40"
+        className={`bg-[#172B2A] dark:bg-[#112423] py-3.5 px-2 flex flex-col rounded-[22px] border border-white/10 dark:border-white/10 select-none transition-[width,box-shadow,background-color] duration-300 ease-[cubic-bezier(0.2,0,0,1)] relative ${
+          isExpanded
+            ? "w-[260px] shadow-2xl shadow-black/40"
+            : "w-[68px] shadow-xl shadow-[#172B2A]/20 dark:shadow-black/40"
         }`}
       >
         {/* 1. Sidebar Top Header & Toggle/Pin Control */}

@@ -31,17 +31,30 @@ export default function AssessmentResultDetailPage() {
     <ProtectedRouteGuard allowedRoles={["PARTICIPANT"]}>
       <DashboardShell allowedRoles={["PARTICIPANT"]}>
         <div className="space-y-6 print:space-y-0 print:p-0 print:m-0">
-          {/* Back Action Bar */}
+          {/* Breadcrumb & Navigation Bar */}
           <div className="flex items-center justify-between print:hidden">
-            <button
-              onClick={() => router.push("/participant/dashboard")}
-              className="inline-flex items-center gap-2 text-xs font-semibold text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-              </svg>
-              <span>Back to Dashboard</span>
-            </button>
+            <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-semibold text-text-secondary">
+              <button
+                onClick={() => router.push("/participant/dashboard")}
+                className="inline-flex items-center gap-1.5 hover:text-text-primary transition-colors cursor-pointer"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                </svg>
+                <span>Dashboard</span>
+              </button>
+              <span className="text-border-default/70">/</span>
+              <button
+                onClick={() => router.push("/participant/assessments")}
+                className="hover:text-text-primary transition-colors cursor-pointer"
+              >
+                Assessments
+              </button>
+              <span className="text-border-default/70">/</span>
+              <span className="text-text-primary font-bold truncate max-w-[240px] sm:max-w-none">
+                {result?.assessmentName || "Report Details"}
+              </span>
+            </nav>
           </div>
 
           {isLoading ? (
