@@ -48,6 +48,12 @@ export const PARTICIPANT_NAVIGATION: NavSection[] = [
         featureKey: "dashboard.counsellors",
       },
       {
+        id: "messages",
+        label: "Messages",
+        href: "/participant/messages",
+        icon: "MessageSquare",
+      },
+      {
         id: "parent-connect",
         label: "Parent Connect",
         href: "/participant/parent-connect",

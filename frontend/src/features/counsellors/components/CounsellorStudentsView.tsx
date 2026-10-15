@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import Link from "next/link";
 import {
   GraduationCap,
   Search,
@@ -13,6 +14,7 @@ import {
   ChevronRight,
   BookOpen,
   Award,
+  MessageSquare,
 } from "lucide-react";
 import { useAssignedStudents } from "../hooks/useCounsellorQueries";
 import { StudentPsychometricSummaryModal } from "./StudentPsychometricSummaryModal";
@@ -198,18 +200,28 @@ export const CounsellorStudentsView: React.FC = () => {
                   </td>
 
                   <td className="px-5 py-4 text-right">
-                    <button
-                      onClick={() =>
-                        setSelectedStudentForSummary({
-                          id: stu.student_id,
-                          name: stu.student_name,
-                        })
-                      }
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 shadow-xs hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-900/60 transition"
-                    >
-                      <Brain className="h-3.5 w-3.5" />
-                      <span>Psychometric Profile</span>
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <Link
+                        href={`/counsellor/messages?studentId=${stu.student_id}`}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-[#00BFA5]/15 px-3 py-1.5 text-xs font-bold text-[#172B2A] dark:text-[#00BFA5] hover:bg-[#00BFA5]/25 transition"
+                      >
+                        <MessageSquare className="h-3.5 w-3.5" />
+                        <span>Message</span>
+                      </Link>
+
+                      <button
+                        onClick={() =>
+                          setSelectedStudentForSummary({
+                            id: stu.student_id,
+                            name: stu.student_name,
+                          })
+                        }
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 shadow-xs hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-900/60 transition"
+                      >
+                        <Brain className="h-3.5 w-3.5" />
+                        <span>Psychometric Profile</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

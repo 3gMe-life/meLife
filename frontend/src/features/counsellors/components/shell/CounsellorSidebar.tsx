@@ -22,10 +22,12 @@ import {
   Inbox,
   CalendarCheck,
   History,
+  MessageSquare,
 } from "lucide-react";
 import { authApi } from "@/features/auth/api/auth.api";
 import { useCurrentUserQuery } from "@/features/auth/hooks/useCurrentUserQuery";
 import { useCounsellorOverview } from "../../hooks/useCounsellorQueries";
+import { useUnreadCount } from "@/features/messaging/hooks/useMessagingQueries";
 
 const STORAGE_KEY = "melife_counsellor_sidebar_pinned";
 
@@ -56,6 +58,7 @@ export function CounsellorSidebar({ className = "" }: CounsellorSidebarProps) {
 
   const { data: overview } = useCounsellorOverview();
   const pendingRequestsCount = overview?.stats?.pendingRequestsCount || 0;
+  const { data: unreadMessagesCount = 0 } = useUnreadCount();
 
   const handleMouseEnter = () => {
     if (hoverTimeoutRef.current) {
@@ -160,6 +163,14 @@ export function CounsellorSidebar({ className = "" }: CounsellorSidebarProps) {
       label: "Students",
       href: "/counsellor/students",
       icon: GraduationCap,
+    },
+    {
+      id: "messages",
+      featureKey: "dashboard.messages",
+      label: "Messages",
+      href: "/counsellor/messages",
+      icon: MessageSquare,
+      badge: unreadMessagesCount > 0 ? `${unreadMessagesCount}` : undefined,
     },
     {
       id: "calendar",

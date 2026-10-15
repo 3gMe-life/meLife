@@ -24,6 +24,7 @@ import {
   Sparkles,
   Info,
   ShieldAlert,
+  MessageSquare,
 } from "lucide-react";
 import {
   useSessionDetail,
@@ -394,6 +395,13 @@ export const CounsellorSessionDetailView: React.FC<CounsellorSessionDetailViewPr
               <Clock className="h-4 w-4 text-indigo-500" />
               <span>{session.sessionTime}</span>
             </div>
+            <Link
+              href={`/counsellor/messages?studentId=${session.studentId}`}
+              className="mt-2 flex items-center justify-center gap-1.5 rounded-xl bg-[#00BFA5] px-3 py-1.5 text-xs font-bold text-[#172B2A] shadow-xs hover:bg-[#00BFA5]/90 transition"
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+              <span>Message Student</span>
+            </Link>
           </div>
         </div>
 

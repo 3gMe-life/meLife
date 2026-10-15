@@ -31,6 +31,8 @@ import { parentRepository } from "./modules/parent/parent.repository";
 import { institutionRepository } from "./modules/institution/institution.repository";
 import { institutionInvitationQueueWorker } from "./modules/institution/institution-invitation.worker";
 import { adminRepository } from "./modules/admin/admin.repository";
+import { messagingRepository } from "./modules/messaging/messaging.repository";
+import { initMessagingSocket, closeMessagingSocket } from "./modules/messaging/messaging.socket";
 import http from "http";
 
 const bootstrap = async () => {
@@ -52,10 +54,14 @@ const bootstrap = async () => {
     await counsellingRepository.initSchema();
     await institutionRepository.initSchema();
     await adminRepository.initInstitutionApplicationsSchema();
+    await messagingRepository.initSchema();
 
     // 3. Initialize Express application & HTTP Server
     const app = createApp();
     const server = http.createServer(app);
+
+    // Initialize real-time Socket.IO gateway attached to HTTP server
+    initMessagingSocket(server);
 
     // 4. Start HTTP server immediately so frontend requests never get connection refused
     server.listen(env.PORT, () => {
@@ -109,6 +115,12 @@ const bootstrap = async () => {
     const shutdown = async (signal: string) => {
       logger.warn(`Received ${signal}. Starting graceful shutdown...`);
       institutionInvitationQueueWorker.stop();
+
+      try {
+        await closeMessagingSocket();
+      } catch (socketErr) {
+        logger.error({ err: socketErr }, "Error closing Socket.IO");
+      }
 
       server.close(async (err) => {
         if (err) {

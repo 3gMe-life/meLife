@@ -19,7 +19,8 @@ export type NotificationType =
   | "SESSION_REMINDER"
   | "SESSION_COMPLETED"
   | "NOTES_ADDED"
-  | "CONSENT_UPDATED";
+  | "CONSENT_UPDATED"
+  | "NEW_MESSAGE";
 
 export interface CounsellorAvailability {
   id?: string;

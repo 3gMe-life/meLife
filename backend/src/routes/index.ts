@@ -14,6 +14,7 @@ import { counsellorsRouter, counsellingRouter, notificationRouter } from "../mod
 import { parentRouter } from "../modules/parent/parent.routes";
 import { institutionRouter } from "../modules/institution/institution.routes";
 import { companyRouter } from "../modules/company/company.routes";
+import { messagingRouter } from "../modules/messaging/messaging.routes";
 import { authenticate } from "../middleware/authenticate.middleware";
 import { requireRole } from "../middleware/authorization.middleware";
 
@@ -65,6 +66,9 @@ apiRouter.use("/institutions", institutionRouter);
 
 // Mount user notifications routes (/api/v1/notifications)
 apiRouter.use("/notifications", notificationRouter);
+
+// Mount real-time student-counsellor messaging routes (/api/v1/messaging)
+apiRouter.use("/messaging", messagingRouter);
 
 // Mount attempt routes (/api/v1/attempts)
 const attemptRouter = Router();
