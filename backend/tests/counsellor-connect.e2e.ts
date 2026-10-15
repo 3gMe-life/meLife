@@ -149,7 +149,7 @@ async function runCounsellorConnectE2ETests() {
       body: JSON.stringify({
         counsellorId: firstCounsellor.id,
         sessionType: "CAREER_GUIDANCE",
-        sessionDate: "2026-09-15",
+        sessionDate: new Date(Date.now() + 86400000 * 7).toISOString().split("T")[0],
         sessionTime: "10:00 AM",
         studentNotes: "Looking for guidance on choosing between Computer Science and AI Robotics engineering streams.",
         grantConsent: true,
@@ -276,7 +276,7 @@ async function runCounsellorConnectE2ETests() {
           "Shortlist 5 Tier-1 Engineering Institutes offering AI specialisations",
           "Follow up in 4 weeks to review progress on competitive prep",
         ],
-        followUpDate: "2026-10-15",
+        followUpDate: new Date(Date.now() + 86400000 * 30).toISOString().split("T")[0],
       }),
     });
     const notesData = (await notesRes.json()) as any;

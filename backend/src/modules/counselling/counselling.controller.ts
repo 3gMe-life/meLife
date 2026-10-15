@@ -426,13 +426,18 @@ export class CounsellingController {
       const sessionId = String(req.params.id);
       const { summary, observations, recommendations, actionPlan, followUpDate } = req.body;
 
-      const note = await counsellingService.saveSessionNotes(req.user.id, sessionId, {
-        summary,
-        observations,
-        recommendations,
-        actionPlan,
-        followUpDate,
-      });
+      const note = await counsellingService.saveSessionNotes(
+        req.user.id,
+        sessionId,
+        {
+          summary,
+          observations,
+          recommendations,
+          actionPlan,
+          followUpDate,
+        },
+        req.user.role
+      );
 
       res.status(HttpStatus.OK).json({
         success: true,

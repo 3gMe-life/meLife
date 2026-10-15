@@ -1,5 +1,7 @@
 import { pool } from "../../config/database";
 import { logger } from "../../common/utils/logger";
+import { hashPassword } from "../../common/utils/crypto";
+import { SEED_COUNSELLORS } from "./counselling.seed-data";
 import {
   CounsellorEntity,
   CounsellorAvailability,
@@ -174,6 +176,108 @@ export class CounsellingRepository {
       await client.query("ROLLBACK");
       logger.error({ err }, "Error initializing Counsellor Connect schema");
       throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Seeds 4 verified certified counsellors and their availability schedules.
+   */
+  async seedCounsellors(): Promise<void> {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const defaultPasswordHash = await hashPassword("Password123!");
+
+      for (const seed of SEED_COUNSELLORS) {
+        // 1. Check or create User
+        let userId: string;
+        const userRes = await client.query(
+          "SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1",
+          [seed.userEmail]
+        );
+
+        if (userRes.rows.length > 0) {
+          userId = userRes.rows[0].id;
+          await client.query(
+            "UPDATE users SET password_hash = $1 WHERE id = $2",
+            [defaultPasswordHash, userId]
+          );
+        } else {
+          const newUserRes = await client.query(
+            `INSERT INTO users (email, password_hash, first_name, last_name, status, email_verified_at)
+             VALUES ($1, $2, $3, $4, 'ACTIVE', NOW())
+             RETURNING id`,
+            [seed.userEmail, defaultPasswordHash, seed.firstName, seed.lastName]
+          );
+          userId = newUserRes.rows[0].id;
+        }
+
+        // Assign CAREER_COUNSELLOR role
+        await client.query(
+          `INSERT INTO user_roles (user_id, role_id, is_primary)
+           SELECT $1, r.id, true
+           FROM roles r
+           WHERE r.name = 'CAREER_COUNSELLOR'
+           ON CONFLICT DO NOTHING`,
+          [userId]
+        );
+
+        // 2. Upsert Counsellor Profile
+        const counsellorRes = await client.query(
+          `INSERT INTO counsellors (
+             user_id, qualification, experience_years, bio, specialisations,
+             languages, guidance_areas, profile_image, rating, review_count, reviews, approval_status
+           )
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'APPROVED')
+           ON CONFLICT (user_id) DO UPDATE
+           SET qualification = EXCLUDED.qualification,
+               experience_years = EXCLUDED.experience_years,
+               bio = EXCLUDED.bio,
+               specialisations = EXCLUDED.specialisations,
+               languages = EXCLUDED.languages,
+               guidance_areas = EXCLUDED.guidance_areas,
+               profile_image = EXCLUDED.profile_image,
+               rating = EXCLUDED.rating,
+               review_count = EXCLUDED.review_count,
+               reviews = EXCLUDED.reviews,
+               updated_at = NOW()
+           RETURNING id`,
+          [
+            userId,
+            seed.qualification,
+            seed.experienceYears,
+            seed.bio,
+            JSON.stringify(seed.specialisations),
+            JSON.stringify(seed.languages),
+            JSON.stringify(seed.guidanceAreas),
+            seed.profileImage,
+            seed.rating,
+            seed.reviewCount,
+            JSON.stringify(seed.reviews),
+          ]
+        );
+
+        const counsellorId = counsellorRes.rows[0].id;
+
+        // 3. Insert Availability slots
+        await client.query("DELETE FROM counsellor_availability WHERE counsellor_id = $1", [counsellorId]);
+        for (const slot of seed.availability) {
+          await client.query(
+            `INSERT INTO counsellor_availability (counsellor_id, day, start_time, end_time, is_active)
+             VALUES ($1, $2, $3, $4, true)`,
+            [counsellorId, slot.day, slot.startTime, slot.endTime]
+          );
+        }
+      }
+
+      await client.query("COMMIT");
+      logger.info(`✨ Successfully seeded ${SEED_COUNSELLORS.length} certified career counsellors.`);
+    } catch (err) {
+      await client.query("ROLLBACK");
+      logger.error({ err }, "Error seeding counsellors");
     } finally {
       client.release();
     }

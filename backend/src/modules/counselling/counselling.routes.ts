@@ -99,7 +99,11 @@ counsellingRouter.get(
 );
 
 // Counselling notes
-counsellingRouter.post("/sessions/:id/notes", counsellingController.saveSessionNotes);
+counsellingRouter.post(
+  "/sessions/:id/notes",
+  requireRole("CAREER_COUNSELLOR", "PLATFORM_ADMIN", "SUPER_ADMIN"),
+  counsellingController.saveSessionNotes
+);
 counsellingRouter.get("/sessions/:id/notes", counsellingController.getSessionNotes);
 
 // Notifications routes

@@ -751,17 +751,29 @@ export class CounsellingService {
   async saveSessionNotes(
     counsellorUserIdOrId: string,
     sessionId: string,
-    dto: SaveCounsellingNoteDTO
+    dto: SaveCounsellingNoteDTO,
+    userRole?: string
   ): Promise<CounsellingNoteDTO> {
-    const counsellor = await this.resolveCounsellor(counsellorUserIdOrId);
     const session = await counsellingRepository.findSessionById(sessionId);
 
     if (!session) {
       throw AppError.notFound("Session not found", "SESSION_NOT_FOUND");
     }
 
-    if (session.counsellorId !== counsellor.id) {
-      throw AppError.forbidden("Unauthorized: Session does not belong to this counsellor", "SESSION_UNAUTHORIZED");
+    const isAdmin = userRole === "PLATFORM_ADMIN" || userRole === "SUPER_ADMIN";
+    let counsellor: CounsellorDetailDTO | null = null;
+
+    if (!isAdmin) {
+      // Look up existing counsellor profile directly without creating an orphan profile
+      counsellor = await counsellingRepository.findCounsellorById(counsellorUserIdOrId);
+      if (!counsellor || session.counsellorId !== counsellor.id) {
+        throw AppError.forbidden("Unauthorized: Session does not belong to this counsellor", "SESSION_UNAUTHORIZED");
+      }
+    } else {
+      counsellor = await counsellingRepository.findCounsellorById(session.counsellorId);
+      if (!counsellor) {
+        throw AppError.notFound("Assigned counsellor not found for session", "COUNSELLOR_NOT_FOUND");
+      }
     }
 
     if (!dto.summary || !dto.recommendations) {

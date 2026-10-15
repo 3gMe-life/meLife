@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "seed:admin": "tsx scripts/seed-admin-user.ts",
-    "seed:institution": "tsx scripts/seed-institution-test-user.ts"
+    "seed:institution": "tsx scripts/seed-institution-test-user.ts",
+    "seed:counsellor": "tsx scripts/seed-counsellor-test-user.ts",
+    "seed:test-counsellor": "tsx scripts/seed-counsellor-test-user.ts"
   },
   "keywords": [
     "psychometrics",
