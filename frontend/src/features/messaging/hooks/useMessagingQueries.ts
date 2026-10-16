@@ -2,6 +2,7 @@
  * TanStack Query hooks for real-time messaging
  */
 
+import { useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { messagingApi } from "../api/messaging.api";
 import {
@@ -101,7 +102,7 @@ export function useCreateConversation() {
 export function useMarkConversationRead() {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  const mutation = useMutation({
     mutationFn: (vars: { conversationId: string; readThroughMessageId?: string }) =>
       messagingApi.markAsRead(vars.conversationId, vars.readThroughMessageId),
     onSuccess: (data, vars) => {
@@ -154,6 +155,18 @@ export function useMarkConversationRead() {
       }
     },
   });
+
+  const { mutateAsync } = mutation;
+  const markAsRead = useCallback(
+    (conversationId: string, readThroughMessageId?: string) =>
+      mutateAsync({ conversationId, readThroughMessageId }),
+    [mutateAsync]
+  );
+
+  return {
+    ...mutation,
+    markAsRead,
+  };
 }
 
 /**

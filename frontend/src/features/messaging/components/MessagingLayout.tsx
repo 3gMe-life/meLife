@@ -75,7 +75,7 @@ export const MessagingLayout: React.FC<MessagingLayoutProps> = ({
   const { data: activeConversation } = useConversation(selectedConversationId);
   const { data: messagesData, isLoading: isLoadingMessages } = useMessages(selectedConversationId);
   const sendMessageMutation = useSendMessage();
-  const markReadMutation = useMarkConversationRead();
+  const { markAsRead } = useMarkConversationRead();
   const createConversationMutation = useCreateConversation();
 
   // Socket Hook
@@ -189,18 +189,16 @@ export const MessagingLayout: React.FC<MessagingLayoutProps> = ({
     const currentConvId = selectedConversationId;
     const msgId = targetMessageId;
 
-    markReadMutation.mutate(
-      { conversationId: currentConvId, readThroughMessageId: msgId },
-      {
-        onSuccess: () => {
-          lastAcknowledgedMessageIdRef.current[currentConvId] = msgId;
-          readRequestInFlightRef.current = false;
-        },
-        onError: () => {
-          readRequestInFlightRef.current = false;
-        },
-      }
-    );
+    markAsRead(currentConvId, msgId)
+      .then(() => {
+        lastAcknowledgedMessageIdRef.current[currentConvId] = msgId;
+      })
+      .catch(() => {
+        // failed or aborted, will allow retry
+      })
+      .finally(() => {
+        readRequestInFlightRef.current = false;
+      });
     // Dependencies are strictly primitive IDs to prevent render/mutation loops
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedConversationId, latestUnreadIncomingMessageId, isTabVisible, currentUser?.id]);
