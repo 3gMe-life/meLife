@@ -359,6 +359,63 @@ async function runMessagingTests() {
   assert.ok(readRes.markedCount >= 0, "Mark as read executed");
   console.log(`✅ Passed: Read receipts verified.`);
 
+  // --------------------------------------------------------------------------
+  // TEST 10: READ ENDPOINT IDEMPOTENCY & BATCH BOUNDARY
+  // --------------------------------------------------------------------------
+  console.log("\n[TEST 10] Testing read idempotency, batch boundaries, and zero-change safety...");
+  // Student sends two new messages
+  const msg1 = await messagingService.sendMessage(
+    canonicalConvId,
+    pendingStudentId,
+    "PARTICIPANT",
+    { content: "Batch message 1", messageType: "TEXT" }
+  );
+  const msg2 = await messagingService.sendMessage(
+    canonicalConvId,
+    pendingStudentId,
+    "PARTICIPANT",
+    { content: "Batch message 2", messageType: "TEXT" }
+  );
+
+  // Mark read through msg1 only
+  const batchRead1 = await messagingService.markAsRead(
+    canonicalConvId,
+    testCounsellor.user_id,
+    "CAREER_COUNSELLOR",
+    msg1.id
+  );
+  assert.strictEqual(batchRead1.markedCount, 1, "Should mark exactly 1 message through batch marker");
+  assert.deepStrictEqual(batchRead1.messageIds, [msg1.id], "Marked message must be msg1");
+
+  // Idempotency: re-marking through msg1 should result in 0 changes
+  const repeatRead = await messagingService.markAsRead(
+    canonicalConvId,
+    testCounsellor.user_id,
+    "CAREER_COUNSELLOR",
+    msg1.id
+  );
+  assert.strictEqual(repeatRead.markedCount, 0, "Re-marking already read message must return markedCount = 0");
+  assert.deepStrictEqual(repeatRead.messageIds, [], "No message IDs returned on zero change");
+
+  // Mark read through msg2
+  const batchRead2 = await messagingService.markAsRead(
+    canonicalConvId,
+    testCounsellor.user_id,
+    "CAREER_COUNSELLOR",
+    msg2.id
+  );
+  assert.strictEqual(batchRead2.markedCount, 1, "Should mark remaining message read");
+  assert.deepStrictEqual(batchRead2.messageIds, [msg2.id], "Marked message must be msg2");
+
+  // Final idempotency check
+  const finalZeroRead = await messagingService.markAsRead(
+    canonicalConvId,
+    testCounsellor.user_id,
+    "CAREER_COUNSELLOR"
+  );
+  assert.strictEqual(finalZeroRead.markedCount, 0, "Calling markAsRead with no unread messages must return markedCount = 0");
+  console.log("✅ Passed: Read endpoint idempotency, batch boundaries, and zero-change safety verified.");
+
   console.log("\n=================================================");
   console.log("🎉 ALL CANONICAL MESSAGING SECURITY TESTS PASSED!");
   console.log("=================================================\n");

@@ -18,6 +18,7 @@ class MessagingSocketService {
   private socket: Socket | null = null;
   private connectionState: SocketConnectionState = "OFFLINE";
   private stateListeners: Set<(state: SocketConnectionState) => void> = new Set();
+  private activeConversationId: string | null = null;
 
   /**
    * Returns or initializes the authenticated socket singleton.
@@ -48,7 +49,7 @@ class MessagingSocketService {
       path: "/socket.io",
       auth: { token },
       withCredentials: true,
-      transports: ["websocket", "polling"],
+      transports: ["polling", "websocket"],
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: 10,
@@ -58,6 +59,9 @@ class MessagingSocketService {
 
     this.socket.on("connect", () => {
       this.updateState("CONNECTED");
+      if (this.activeConversationId) {
+        this.socket?.emit("conversation:join", { conversationId: this.activeConversationId });
+      }
     });
 
     this.socket.on("disconnect", (reason) => {
@@ -69,7 +73,14 @@ class MessagingSocketService {
       }
     });
 
-    this.socket.on("connect_error", () => {
+    this.socket.on("connect_error", (err) => {
+      if (
+        err?.message &&
+        (err.message.includes("AUTH_UNAUTHORIZED") || err.message.includes("AUTH_FORBIDDEN"))
+      ) {
+        this.disconnect();
+        return;
+      }
       this.updateState("RECONNECTING");
     });
 
@@ -132,12 +143,16 @@ class MessagingSocketService {
   // --- Room Actions ---
 
   joinConversation(conversationId: string): void {
+    this.activeConversationId = conversationId;
     if (this.socket && this.socket.connected) {
       this.socket.emit("conversation:join", { conversationId });
     }
   }
 
   leaveConversation(conversationId: string): void {
+    if (this.activeConversationId === conversationId) {
+      this.activeConversationId = null;
+    }
     if (this.socket && this.socket.connected) {
       this.socket.emit("conversation:leave", { conversationId });
     }

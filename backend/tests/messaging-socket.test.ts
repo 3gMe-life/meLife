@@ -14,7 +14,7 @@ import assert from "node:assert";
 import http from "http";
 import { io as Client, Socket } from "socket.io-client";
 import { createApp } from "../src/app";
-import { pool, closeDatabasePool } from "../src/config/database";
+import { pool, connectDatabase, closeDatabasePool } from "../src/config/database";
 import { authTokenService } from "../src/modules/auth/auth.token.service";
 import { initMessagingSocket, closeMessagingSocket } from "../src/modules/messaging/messaging.socket";
 import { messagingService } from "../src/modules/messaging/messaging.service";
@@ -23,6 +23,8 @@ async function runSocketIntegrationTest() {
   console.log("=================================================");
   console.log("🧪 Real-Time Socket.IO Integration Test");
   console.log("=================================================\n");
+
+  await connectDatabase();
 
   // 1. Boot up in-memory HTTP server with Socket.IO for the test on a random port
   const app = createApp();

@@ -39,14 +39,20 @@ export const initMessagingSocket = (server: http.Server): SocketIOServer => {
     cors: {
       origin: (origin, callback) => {
         if (!origin) return callback(null, true);
-        if (origin === env.FRONTEND_URL || env.NODE_ENV === "development" || env.NODE_ENV === "test") {
+        const normalizedOrigin = origin.replace(/\/+$/, "");
+        const normalizedFrontend = (env.FRONTEND_URL || "").replace(/\/+$/, "");
+        if (
+          normalizedOrigin === normalizedFrontend ||
+          env.NODE_ENV === "development" ||
+          env.NODE_ENV === "test"
+        ) {
           return callback(null, true);
         }
         return callback(new Error(`Origin ${origin} not permitted by Socket.IO CORS`));
       },
       credentials: true,
     },
-    transports: ["websocket", "polling"],
+    transports: ["polling", "websocket"],
     pingTimeout: 20000,
     pingInterval: 25000,
   });
@@ -109,7 +115,10 @@ export const initMessagingSocket = (server: http.Server): SocketIOServer => {
     const extSocket = socket as ExtendedSocket;
     const { userId, role, email } = extSocket.data.user;
 
-    logger.info({ userId, role, socketId: socket.id }, "Real-time socket client connected");
+    logger.info(
+      { userId, role, socketId: socket.id, clientsCount: io.engine.clientsCount },
+      "Real-time socket client connected"
+    );
 
     // Join personal user room for direct user-targeted events
     const userRoom = `user:${userId}`;
@@ -211,8 +220,11 @@ export const initMessagingSocket = (server: http.Server): SocketIOServer => {
     });
 
     // Handle Disconnect
-    socket.on("disconnect", () => {
-      logger.info({ userId, socketId: socket.id }, "Real-time socket client disconnected");
+    socket.on("disconnect", (reason) => {
+      logger.info(
+        { userId, socketId: socket.id, reason, clientsCount: io.engine.clientsCount },
+        "Real-time socket client disconnected"
+      );
 
       // Check if user has other active sockets
       const userSockets = io.sockets.adapter.rooms.get(userRoom);

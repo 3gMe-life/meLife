@@ -10,6 +10,7 @@ import {
   createConversationSchema,
   sendMessageSchema,
   getMessagesQuerySchema,
+  markReadSchema,
 } from "./messaging.schema";
 
 export class MessagingController {
@@ -154,10 +155,13 @@ export class MessagingController {
   ): Promise<void> {
     try {
       const conversationId = req.params.conversationId as string;
+      const parsed = markReadSchema.safeParse(req.body);
+      const readThroughMessageId = parsed.success ? parsed.data.readThroughMessageId : undefined;
       const result = await messagingService.markAsRead(
         conversationId,
         req.user!.id,
-        req.user!.role
+        req.user!.role,
+        readThroughMessageId
       );
 
       res.status(200).json({

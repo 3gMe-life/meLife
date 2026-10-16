@@ -101,12 +101,14 @@ export const messagingApi = {
    * Marks unread messages in a conversation as read.
    */
   async markAsRead(
-    conversationId: string
+    conversationId: string,
+    readThroughMessageId?: string
   ): Promise<{ markedCount: number; messageIds: string[] }> {
     const res = await fetchApi<ApiResponse<{ markedCount: number; messageIds: string[] }>>(
       `/messaging/conversations/${conversationId}/read`,
       {
         method: "PATCH",
+        body: JSON.stringify({ readThroughMessageId }),
       }
     );
     return res.data;

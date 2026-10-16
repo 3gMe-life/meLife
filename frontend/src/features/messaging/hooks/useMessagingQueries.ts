@@ -102,9 +102,18 @@ export function useMarkConversationRead() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (conversationId: string) => messagingApi.markAsRead(conversationId),
-    onSuccess: (_data, conversationId) => {
-      // Optimistically clear unread count for this conversation in list
+    mutationFn: (vars: { conversationId: string; readThroughMessageId?: string }) =>
+      messagingApi.markAsRead(vars.conversationId, vars.readThroughMessageId),
+    onSuccess: (data, vars) => {
+      const { conversationId } = vars;
+
+      // 1. Directly update active conversation in cache
+      queryClient.setQueryData<ConversationDTO>(
+        messagingKeys.conversation(conversationId),
+        (old) => (old ? { ...old, unreadCount: 0 } : old)
+      );
+
+      // 2. Directly update conversation list in cache
       queryClient.setQueryData<ConversationDTO[]>(
         messagingKeys.conversations(),
         (old) => {
@@ -114,8 +123,35 @@ export function useMarkConversationRead() {
           );
         }
       );
-      // Invalidate total unread badge
-      queryClient.invalidateQueries({ queryKey: messagingKeys.unreadCount() });
+
+      // 3. Directly update messages thread cache
+      queryClient.setQueryData<MessagesResponse>(
+        messagingKeys.messages(conversationId),
+        (old) => {
+          if (!old) return old;
+          const markedSet = new Set(data.messageIds || []);
+          return {
+            ...old,
+            items: old.items.map((m) =>
+              markedSet.has(m.id) || (vars.readThroughMessageId && m.id === vars.readThroughMessageId)
+                ? { ...m, status: "READ" as const, readAt: new Date().toISOString() }
+                : m
+            ),
+          };
+        }
+      );
+
+      // 4. Update total unread counter
+      if (data.markedCount > 0) {
+        queryClient.setQueryData<number>(
+          messagingKeys.unreadCount(),
+          (old) => Math.max(0, (old || 0) - data.markedCount)
+        );
+        queryClient.setQueryData<import("../types/messaging.types").MessagingAccessDTO>(
+          messagingKeys.access(),
+          (old) => (old ? { ...old, unreadCount: Math.max(0, old.unreadCount - data.markedCount) } : old)
+        );
+      }
     },
   });
 }

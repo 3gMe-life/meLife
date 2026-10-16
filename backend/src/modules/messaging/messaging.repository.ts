@@ -567,8 +567,27 @@ export class MessagingRepository {
    */
   async markConversationMessagesRead(
     conversationId: string,
-    readerUserId: string
+    readerUserId: string,
+    readThroughMessageId?: string
   ): Promise<string[]> {
+    if (readThroughMessageId) {
+      const query = `
+        UPDATE message_receipts mr
+        SET read_at = NOW()
+        FROM messages m
+        WHERE mr.message_id = m.id
+          AND mr.conversation_id = $1
+          AND mr.user_id = $2
+          AND mr.read_at IS NULL
+          AND m.created_at <= (
+            SELECT created_at FROM messages WHERE id = $3
+          )
+        RETURNING mr.message_id;
+      `;
+      const res = await pool.query(query, [conversationId, readerUserId, readThroughMessageId]);
+      return res.rows.map((r) => r.message_id);
+    }
+
     const query = `
       UPDATE message_receipts
       SET read_at = NOW()

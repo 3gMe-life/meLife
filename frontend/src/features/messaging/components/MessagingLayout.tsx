@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useCurrentUserQuery } from "@/features/auth/hooks/useCurrentUserQuery";
 import {
@@ -132,12 +132,96 @@ export const MessagingLayout: React.FC<MessagingLayoutProps> = ({
     createConversationMutation,
   ]);
 
-  // Mark messages as read when active conversation changes or new unread messages arrive
-  useEffect(() => {
-    if (selectedConversationId && activeConversation && activeConversation.unreadCount > 0) {
-      markReadMutation.mutate(selectedConversationId);
+  // Deduplicated Read Receipt Refs
+  const lastAcknowledgedMessageIdRef = useRef<Record<string, string>>({});
+  const readRequestInFlightRef = useRef(false);
+
+  // Identify the newest incoming unread message from the other participant
+  const latestUnreadIncomingMessage = useMemo(() => {
+    if (!messagesData?.items || !currentUser) return null;
+    for (let i = messagesData.items.length - 1; i >= 0; i--) {
+      const msg = messagesData.items[i];
+      if (msg.senderUserId !== currentUser.id && msg.status !== "READ") {
+        return msg;
+      }
     }
-  }, [selectedConversationId, activeConversation, markReadMutation]);
+    return null;
+  }, [messagesData?.items, currentUser]);
+
+  const attemptMarkRead = useCallback(() => {
+    if (!selectedConversationId || !currentUser) return;
+
+    // 1. Tab/window must be visible
+    if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+      return;
+    }
+
+    // 2. Identify target message to acknowledge
+    let targetMessageId: string | null = null;
+    if (latestUnreadIncomingMessage) {
+      targetMessageId = latestUnreadIncomingMessage.id;
+    } else if (
+      activeConversation &&
+      activeConversation.unreadCount > 0 &&
+      activeConversation.lastMessage &&
+      activeConversation.lastMessage.senderUserId !== currentUser.id
+    ) {
+      targetMessageId = activeConversation.lastMessage.id;
+    }
+
+    if (!targetMessageId) return;
+
+    // 3. Deduplicate: must be newer than the last message already acknowledged for this conversation
+    const lastAckId = lastAcknowledgedMessageIdRef.current[selectedConversationId];
+    if (lastAckId === targetMessageId) {
+      return;
+    }
+
+    // 4. Request must not already be in flight
+    if (readRequestInFlightRef.current) {
+      return;
+    }
+
+    // Execute edge-triggered read write
+    readRequestInFlightRef.current = true;
+    const currentConvId = selectedConversationId;
+    const msgId = targetMessageId;
+
+    markReadMutation.mutate(
+      { conversationId: currentConvId, readThroughMessageId: msgId },
+      {
+        onSuccess: () => {
+          lastAcknowledgedMessageIdRef.current[currentConvId] = msgId;
+          readRequestInFlightRef.current = false;
+        },
+        onError: () => {
+          readRequestInFlightRef.current = false;
+        },
+      }
+    );
+  }, [selectedConversationId, currentUser, latestUnreadIncomingMessage, activeConversation, markReadMutation]);
+
+  // Edge-triggered: Fires when the newest unread incoming message ID changes
+  useEffect(() => {
+    attemptMarkRead();
+  }, [selectedConversationId, latestUnreadIncomingMessage?.id, attemptMarkRead]);
+
+  // Edge-triggered: Fires when the tab returns to focus/visible
+  useEffect(() => {
+    const handleVisibilityOrFocus = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        attemptMarkRead();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityOrFocus);
+    window.addEventListener("focus", handleVisibilityOrFocus);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
+      window.removeEventListener("focus", handleVisibilityOrFocus);
+    };
+  }, [attemptMarkRead]);
 
   // Send message handler
   const handleSendMessage = async (content: string) => {

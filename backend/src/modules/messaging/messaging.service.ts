@@ -318,7 +318,8 @@ export class MessagingService {
   async markAsRead(
     conversationId: string,
     readerUserId: string,
-    readerRole: UserRole
+    readerRole: UserRole,
+    readThroughMessageId?: string
   ): Promise<{ markedCount: number; messageIds: string[] }> {
     const conversation = await messagingRepository.findConversationById(
       conversationId,
@@ -336,10 +337,15 @@ export class MessagingService {
 
     const messageIds = await messagingRepository.markConversationMessagesRead(
       conversationId,
-      readerUserId
+      readerUserId,
+      readThroughMessageId
     );
 
     if (messageIds.length > 0) {
+      logger.info(
+        { userId: readerUserId, conversationId, markedCount: messageIds.length, readThroughMessageId },
+        "Marked messages read"
+      );
       const readAt = new Date().toISOString();
       broadcastMessageRead(conversationId, {
         conversationId,
@@ -348,7 +354,7 @@ export class MessagingService {
         messageIds,
       });
 
-      // Update unread count for reader
+      // Update unread count for participants
       const participantUserIds = [
         conversation.studentId,
         conversation.counsellor.userId,

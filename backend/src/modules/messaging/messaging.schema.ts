@@ -36,6 +36,11 @@ export const getMessagesQuerySchema = z.object({
     .default(30),
 });
 
+export const markReadSchema = z.object({
+  readThroughMessageId: z.string().uuid("Invalid message UUID").optional(),
+});
+
 export type CreateConversationInput = z.infer<typeof createConversationSchema>;
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;
 export type GetMessagesQueryInput = z.infer<typeof getMessagesQuerySchema>;
+export type MarkReadInput = z.infer<typeof markReadSchema>;

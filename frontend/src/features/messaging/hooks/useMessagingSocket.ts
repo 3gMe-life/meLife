@@ -36,7 +36,7 @@ export function useMessagingSocket(options: UseMessagingSocketOptions = {}) {
     });
 
     const socket = messagingSocketService.getSocket();
-    if (socket && !socket.connected) {
+    if (socket && !socket.connected && !socket.active) {
       socket.connect();
     }
 
@@ -193,7 +193,11 @@ export function useMessagingSocket(options: UseMessagingSocketOptions = {}) {
     };
 
     // Handle conversation updated event (e.g. read count changes)
-    const handleConversationUpdated = () => {
+    const handleConversationUpdated = (payload?: { conversationId?: string }) => {
+      if (payload?.conversationId && payload.conversationId === activeConversationId) {
+        queryClient.invalidateQueries({ queryKey: messagingKeys.unreadCount() });
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: messagingKeys.conversations() });
       queryClient.invalidateQueries({ queryKey: messagingKeys.unreadCount() });
     };
