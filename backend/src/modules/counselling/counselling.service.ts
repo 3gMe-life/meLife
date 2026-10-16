@@ -902,6 +902,7 @@ export class CounsellingService {
   /**
    * Marks a notification as read.
    */
+  
   async markNotificationAsRead(notificationId: string, userId: string): Promise<void> {
     await counsellingRepository.markNotificationAsRead(notificationId, userId);
   }

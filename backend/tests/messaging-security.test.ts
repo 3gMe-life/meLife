@@ -17,7 +17,7 @@
  */
 
 import assert from "node:assert";
-import { pool, closeDatabasePool } from "../src/config/database";
+import { pool, connectDatabase, closeDatabasePool } from "../src/config/database";
 import { messagingRepository } from "../src/modules/messaging/messaging.repository";
 import { messagingService } from "../src/modules/messaging/messaging.service";
 import { counsellingService } from "../src/modules/counselling/counselling.service";
@@ -28,6 +28,7 @@ async function runMessagingTests() {
   console.log("🧪 Comprehensive Messaging Security & Logic Tests");
   console.log("=================================================\n");
 
+  await connectDatabase();
   await messagingRepository.initSchema();
 
   // 1. Fetch our test counsellor: counsellor.test@3gmelife.com

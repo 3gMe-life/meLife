@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { useCurrentUserQuery } from "@/features/auth/hooks/useCurrentUserQuery";
 import {
@@ -132,9 +132,22 @@ export const MessagingLayout: React.FC<MessagingLayoutProps> = ({
     createConversationMutation,
   ]);
 
-  // Deduplicated Read Receipt Refs
+  // Deduplicated Read Receipt State & Refs
   const lastAcknowledgedMessageIdRef = useRef<Record<string, string>>({});
   const readRequestInFlightRef = useRef(false);
+  const [isTabVisible, setIsTabVisible] = useState(true);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      setIsTabVisible(typeof document !== "undefined" && document.visibilityState === "visible");
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleVisibility);
+    };
+  }, []);
 
   // Identify the newest incoming unread message from the other participant
   const latestUnreadIncomingMessage = useMemo(() => {
@@ -148,19 +161,15 @@ export const MessagingLayout: React.FC<MessagingLayoutProps> = ({
     return null;
   }, [messagesData?.items, currentUser]);
 
-  const attemptMarkRead = useCallback(() => {
-    if (!selectedConversationId || !currentUser) return;
+  const latestUnreadIncomingMessageId = latestUnreadIncomingMessage?.id || null;
 
-    // 1. Tab/window must be visible
-    if (typeof document !== "undefined" && document.visibilityState !== "visible") {
-      return;
-    }
+  // Edge-triggered read receipt: Only fires when active conversation, unread message ID, or tab visibility changes
+  useEffect(() => {
+    if (!selectedConversationId || !currentUser || !isTabVisible) return;
 
-    // 2. Identify target message to acknowledge
-    let targetMessageId: string | null = null;
-    if (latestUnreadIncomingMessage) {
-      targetMessageId = latestUnreadIncomingMessage.id;
-    } else if (
+    let targetMessageId: string | null = latestUnreadIncomingMessageId;
+    if (
+      !targetMessageId &&
       activeConversation &&
       activeConversation.unreadCount > 0 &&
       activeConversation.lastMessage &&
@@ -171,18 +180,11 @@ export const MessagingLayout: React.FC<MessagingLayoutProps> = ({
 
     if (!targetMessageId) return;
 
-    // 3. Deduplicate: must be newer than the last message already acknowledged for this conversation
     const lastAckId = lastAcknowledgedMessageIdRef.current[selectedConversationId];
-    if (lastAckId === targetMessageId) {
-      return;
-    }
+    if (lastAckId === targetMessageId) return;
 
-    // 4. Request must not already be in flight
-    if (readRequestInFlightRef.current) {
-      return;
-    }
+    if (readRequestInFlightRef.current) return;
 
-    // Execute edge-triggered read write
     readRequestInFlightRef.current = true;
     const currentConvId = selectedConversationId;
     const msgId = targetMessageId;
@@ -199,29 +201,9 @@ export const MessagingLayout: React.FC<MessagingLayoutProps> = ({
         },
       }
     );
-  }, [selectedConversationId, currentUser, latestUnreadIncomingMessage, activeConversation, markReadMutation]);
-
-  // Edge-triggered: Fires when the newest unread incoming message ID changes
-  useEffect(() => {
-    attemptMarkRead();
-  }, [selectedConversationId, latestUnreadIncomingMessage?.id, attemptMarkRead]);
-
-  // Edge-triggered: Fires when the tab returns to focus/visible
-  useEffect(() => {
-    const handleVisibilityOrFocus = () => {
-      if (typeof document !== "undefined" && document.visibilityState === "visible") {
-        attemptMarkRead();
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityOrFocus);
-    window.addEventListener("focus", handleVisibilityOrFocus);
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
-      window.removeEventListener("focus", handleVisibilityOrFocus);
-    };
-  }, [attemptMarkRead]);
+    // Dependencies are strictly primitive IDs to prevent render/mutation loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedConversationId, latestUnreadIncomingMessageId, isTabVisible, currentUser?.id]);
 
   // Send message handler
   const handleSendMessage = async (content: string) => {
