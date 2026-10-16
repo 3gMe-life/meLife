@@ -10,6 +10,7 @@ import {
   useSendMessage,
   useMarkConversationRead,
   useCreateConversation,
+  useMessagingAccess,
 } from "../hooks/useMessagingQueries";
 import { useMessagingSocket } from "../hooks/useMessagingSocket";
 import { ConversationList } from "./ConversationList";
@@ -17,6 +18,7 @@ import { ConversationHeader } from "./ConversationHeader";
 import { MessageThread } from "./MessageThread";
 import { MessageComposer } from "./MessageComposer";
 import { EmptyConversationState } from "./EmptyConversationState";
+import { LockedMessagingState } from "./LockedMessagingState";
 import { MessageDTO } from "../types/messaging.types";
 
 interface MessagingLayoutProps {
@@ -36,6 +38,15 @@ export const MessagingLayout: React.FC<MessagingLayoutProps> = ({
 
   // Queries & Mutations
   const { data: conversations = [], isLoading: isLoadingConversations } = useConversations();
+  const { data: messagingAccess, isLoading: isLoadingAccess } = useMessagingAccess(!isCounsellorView);
+
+  const isStudentLocked =
+    !isCounsellorView &&
+    !isLoadingAccess &&
+    !isLoadingConversations &&
+    messagingAccess !== undefined &&
+    !messagingAccess.hasAccess &&
+    conversations.length === 0;
 
   // Derive the active conversation ID without synchronous setState inside effects
   const paramConvId = searchParams.get("conversationId");
@@ -93,7 +104,12 @@ export const MessagingLayout: React.FC<MessagingLayoutProps> = ({
           },
         }
       );
-    } else if (paramCounsellorId && !isCounsellorView && !conversations.some((c) => c.counsellorId === paramCounsellorId)) {
+    } else if (
+      paramCounsellorId &&
+      !isCounsellorView &&
+      messagingAccess?.hasAccess &&
+      !conversations.some((c) => c.counsellorId === paramCounsellorId)
+    ) {
       if (processedParamRef.current === `counsellor:${paramCounsellorId}`) return;
       processedParamRef.current = `counsellor:${paramCounsellorId}`;
 
@@ -111,6 +127,7 @@ export const MessagingLayout: React.FC<MessagingLayoutProps> = ({
     paramStudentId,
     paramCounsellorId,
     isCounsellorView,
+    messagingAccess?.hasAccess,
     conversations,
     createConversationMutation,
   ]);
@@ -148,6 +165,30 @@ export const MessagingLayout: React.FC<MessagingLayoutProps> = ({
 
   const currentUserName =
     currentUser ? `${currentUser.firstName || ""} ${currentUser.lastName || ""}`.trim() : "Me";
+
+  if (isStudentLocked) {
+    return (
+      <div className="mx-auto max-w-7xl px-2 sm:px-4 py-4 sm:py-6 h-[calc(100vh-100px)]">
+        <div className="h-full rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl overflow-hidden flex items-center justify-center">
+          <LockedMessagingState />
+        </div>
+      </div>
+    );
+  }
+
+  if (!isCounsellorView && (isLoadingAccess || isLoadingConversations)) {
+    return (
+      <div className="mx-auto max-w-7xl px-2 sm:px-4 py-4 sm:py-6 h-[calc(100vh-100px)]">
+        <div className="h-full rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl overflow-hidden flex items-center justify-center p-8">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-12 w-12 rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
+            <div className="h-4 w-40 rounded-lg bg-slate-100 dark:bg-slate-800 animate-pulse" />
+            <div className="h-3 w-64 rounded-lg bg-slate-100 dark:bg-slate-800 animate-pulse" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-2 sm:px-4 py-4 sm:py-6 h-[calc(100vh-100px)]">

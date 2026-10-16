@@ -12,6 +12,7 @@ import {
 
 export const messagingKeys = {
   all: ["messaging"] as const,
+  access: () => [...messagingKeys.all, "access"] as const,
   conversations: () => [...messagingKeys.all, "conversations"] as const,
   conversation: (id: string) => [...messagingKeys.all, "conversation", id] as const,
   messages: (id: string) => [...messagingKeys.all, "messages", id] as const,
@@ -60,6 +61,18 @@ export function useUnreadCount() {
     queryKey: messagingKeys.unreadCount(),
     queryFn: () => messagingApi.getUnreadCount(),
     staleTime: 1000 * 30,
+  });
+}
+
+/**
+ * Hook to retrieve messaging access eligibility and counters.
+ */
+export function useMessagingAccess(enabled = true) {
+  return useQuery({
+    queryKey: messagingKeys.access(),
+    queryFn: () => messagingApi.getAccess(),
+    staleTime: 1000 * 30,
+    enabled,
   });
 }
 

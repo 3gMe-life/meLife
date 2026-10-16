@@ -62,6 +62,12 @@ export interface MessageCursorPage<T> {
   hasMore: boolean;
 }
 
+export interface MessagingAccessDTO {
+  hasAccess: boolean;
+  eligibleCounsellorCount: number;
+  unreadCount: number;
+}
+
 export interface SocketUserContext {
   userId: string;
   email: string;

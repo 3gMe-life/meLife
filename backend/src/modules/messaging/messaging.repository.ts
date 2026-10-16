@@ -5,6 +5,7 @@
  */
 
 import { pool } from "../../config/database";
+import type { PoolClient } from "pg";
 import { UserRole } from "../users/user.types";
 import {
   ConversationDTO,
@@ -14,6 +15,7 @@ import {
   MessageDeliveryStatus,
   ConversationRow,
   MessageRow,
+  MessagingAccessDTO,
 } from "./messaging.types";
 import { logger } from "../../common/utils/logger";
 
@@ -94,21 +96,122 @@ export class MessagingRepository {
 
   /**
    * Verifies if a student and counsellor have an eligible counselling relationship.
-   * Allowed statuses: PENDING, CONFIRMED, COMPLETED.
+   * Canonical rule:
+   * - student user status = ACTIVE
+   * - counsellor user status = ACTIVE
+   * - counsellor profile approval_status = APPROVED
+   * - EXISTS counselling_sessions with status IN ('CONFIRMED', 'COMPLETED')
+   * PENDING, REJECTED, and CANCELLED-only relationships evaluate to false.
    */
   async hasEligibleCounsellingRelationship(
     studentId: string,
-    counsellorId: string
+    counsellorId: string,
+    client?: PoolClient
   ): Promise<boolean> {
     const query = `
-      SELECT 1 FROM counselling_sessions
-      WHERE student_id = $1
-        AND counsellor_id = $2
-        AND status IN ('PENDING', 'CONFIRMED', 'COMPLETED')
+      SELECT 1
+      FROM counselling_sessions cs
+      JOIN users u_stu ON cs.student_id = u_stu.id
+      JOIN counsellors c ON cs.counsellor_id = c.id
+      JOIN users u_coun ON c.user_id = u_coun.id
+      WHERE cs.student_id = $1
+        AND cs.counsellor_id = $2
+        AND u_stu.status = 'ACTIVE'
+        AND u_coun.status = 'ACTIVE'
+        AND c.approval_status = 'APPROVED'
+        AND cs.status IN ('CONFIRMED', 'COMPLETED')
       LIMIT 1;
     `;
-    const res = await pool.query(query, [studentId, counsellorId]);
+    const db = client || pool;
+    const res = await db.query(query, [studentId, counsellorId]);
     return res.rows.length > 0;
+  }
+
+  /**
+   * Evaluates messaging access summary for a user based on the canonical eligibility rule.
+   */
+  async getMessagingAccessSummary(
+    userId: string,
+    role: UserRole
+  ): Promise<MessagingAccessDTO> {
+    if (role === "PARTICIPANT") {
+      const query = `
+        SELECT 
+          COUNT(DISTINCT cs.counsellor_id)::int AS eligible_counsellor_count,
+          COALESCE(
+            (SELECT COUNT(*)::int FROM message_receipts mr WHERE mr.user_id = $1 AND mr.read_at IS NULL),
+            0
+          ) AS unread_count
+        FROM counselling_sessions cs
+        JOIN users u_stu ON cs.student_id = u_stu.id
+        JOIN counsellors c ON cs.counsellor_id = c.id
+        JOIN users u_coun ON c.user_id = u_coun.id
+        WHERE cs.student_id = $1
+          AND u_stu.status = 'ACTIVE'
+          AND u_coun.status = 'ACTIVE'
+          AND c.approval_status = 'APPROVED'
+          AND cs.status IN ('CONFIRMED', 'COMPLETED');
+      `;
+      const res = await pool.query(query, [userId]);
+      const eligibleCount = res.rows[0]?.eligible_counsellor_count || 0;
+      const unreadCount = res.rows[0]?.unread_count || 0;
+
+      return {
+        hasAccess: eligibleCount > 0,
+        eligibleCounsellorCount: eligibleCount,
+        unreadCount,
+      };
+    } else if (role === "CAREER_COUNSELLOR") {
+      const query = `
+        SELECT 
+          c.id AS counsellor_id,
+          c.approval_status,
+          u.status AS user_status,
+          (
+            SELECT COUNT(DISTINCT cs.student_id)::int
+            FROM counselling_sessions cs
+            JOIN users stu ON cs.student_id = stu.id
+            WHERE cs.counsellor_id = c.id
+              AND stu.status = 'ACTIVE'
+              AND cs.status IN ('CONFIRMED', 'COMPLETED')
+          ) AS eligible_student_count,
+          COALESCE(
+            (SELECT COUNT(*)::int FROM message_receipts mr WHERE mr.user_id = $1 AND mr.read_at IS NULL),
+            0
+          ) AS unread_count
+        FROM counsellors c
+        JOIN users u ON c.user_id = u.id
+        WHERE c.user_id = $1
+        LIMIT 1;
+      `;
+      const res = await pool.query(query, [userId]);
+      if (res.rows.length === 0) {
+        return { hasAccess: false, eligibleCounsellorCount: 0, unreadCount: 0 };
+      }
+      const r = res.rows[0];
+      const isApprovedAndActive = r.approval_status === "APPROVED" && r.user_status === "ACTIVE";
+      const eligibleCount = r.eligible_student_count || 0;
+      const unreadCount = r.unread_count || 0;
+
+      return {
+        hasAccess: isApprovedAndActive,
+        eligibleCounsellorCount: eligibleCount,
+        unreadCount,
+      };
+    } else if (role === "SUPER_ADMIN" || role === "PLATFORM_ADMIN") {
+      const unreadCount = await this.getUnreadCountForUser(userId);
+      return {
+        hasAccess: true,
+        eligibleCounsellorCount: 999,
+        unreadCount,
+      };
+    }
+
+    return {
+      hasAccess: false,
+      eligibleCounsellorCount: 0,
+      unreadCount: 0,
+    };
   }
 
   /**
@@ -168,7 +271,8 @@ export class MessagingRepository {
    */
   async getOrCreateConversation(
     studentId: string,
-    counsellorId: string
+    counsellorId: string,
+    client?: PoolClient
   ): Promise<string> {
     const query = `
       INSERT INTO conversations (student_id, counsellor_id, status)
@@ -177,7 +281,8 @@ export class MessagingRepository {
       DO UPDATE SET updated_at = NOW()
       RETURNING id;
     `;
-    const res = await pool.query(query, [studentId, counsellorId]);
+    const db = client || pool;
+    const res = await db.query(query, [studentId, counsellorId]);
     return res.rows[0].id;
   }
 

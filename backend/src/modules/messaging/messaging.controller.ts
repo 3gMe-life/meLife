@@ -170,6 +170,29 @@ export class MessagingController {
   }
 
   /**
+   * GET /api/v1/messaging/access
+   */
+  async getAccess(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const access = await messagingService.getMessagingAccess(
+        req.user!.id,
+        req.user!.role
+      );
+
+      res.status(200).json({
+        success: true,
+        data: access,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
    * GET /api/v1/messaging/unread-count
    */
   async getUnreadCount(

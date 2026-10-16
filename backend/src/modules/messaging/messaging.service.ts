@@ -19,6 +19,7 @@ import {
   ConversationDTO,
   MessageDTO,
   MessageCursorPage,
+  MessagingAccessDTO,
 } from "./messaging.types";
 import {
   CreateConversationInput,
@@ -39,7 +40,17 @@ export class MessagingService {
   }
 
   /**
-   * Retrieves a single conversation by ID with membership authorization.
+   * Retrieves messaging access summary for the authenticated user.
+   */
+  async getMessagingAccess(
+    userId: string,
+    role: UserRole
+  ): Promise<MessagingAccessDTO> {
+    return messagingRepository.getMessagingAccessSummary(userId, role);
+  }
+
+  /**
+   * Retrieves a single conversation by ID with membership and relationship authorization.
    */
   async getConversationById(
     conversationId: string,
@@ -58,7 +69,7 @@ export class MessagingService {
       );
     }
 
-    this.assertConversationMembership(conversation, userId, role);
+    await this.assertConversationAccess(conversation, userId, role);
     return conversation;
   }
 
@@ -193,7 +204,7 @@ export class MessagingService {
       );
     }
 
-    this.assertConversationMembership(conversation, userId, role);
+    await this.assertConversationAccess(conversation, userId, role);
 
     return messagingRepository.getMessagesByConversationId(
       conversationId,
@@ -223,7 +234,7 @@ export class MessagingService {
       );
     }
 
-    this.assertConversationMembership(conversation, senderUserId, senderRole);
+    await this.assertConversationAccess(conversation, senderUserId, senderRole);
 
     if (conversation.status === "CLOSED") {
       throw AppError.badRequest(
@@ -321,7 +332,7 @@ export class MessagingService {
       );
     }
 
-    this.assertConversationMembership(conversation, readerUserId, readerRole);
+    await this.assertConversationAccess(conversation, readerUserId, readerRole);
 
     const messageIds = await messagingRepository.markConversationMessagesRead(
       conversationId,
@@ -359,6 +370,69 @@ export class MessagingService {
   }
 
   // --- Security Helpers ---
+
+  /**
+   * Authorizes that a user is an active participant AND has an eligible counselling relationship.
+   */
+  async assertConversationAccess(
+    conversation: ConversationDTO,
+    userId: string,
+    role: UserRole
+  ): Promise<void> {
+    this.assertConversationMembership(conversation, userId, role);
+
+    if (role !== "SUPER_ADMIN") {
+      const isEligible = await messagingRepository.hasEligibleCounsellingRelationship(
+        conversation.studentId,
+        conversation.counsellorId
+      );
+      if (!isEligible) {
+        logger.warn(
+          { userId, role, conversationId: conversation.id },
+          "Blocked messaging access: Ineligible counselling relationship"
+        );
+        throw AppError.forbidden(
+          "Messaging is locked. An accepted counselling session is required.",
+          "MESSAGING_RELATIONSHIP_REQUIRED"
+        );
+      }
+    }
+  }
+
+  /**
+   * Verifies socket membership and counselling relationship eligibility for Socket.IO actions.
+   */
+  async verifyConversationSocketAccess(
+    conversationId: string,
+    userId: string,
+    role: UserRole
+  ): Promise<{ conversation: ConversationDTO | null; eligible: boolean }> {
+    const conversation = await messagingRepository.findConversationById(
+      conversationId,
+      userId
+    );
+    if (!conversation) {
+      return { conversation: null, eligible: false };
+    }
+
+    if (role === "SUPER_ADMIN") {
+      return { conversation, eligible: true };
+    }
+
+    const isMember =
+      conversation.studentId === userId ||
+      conversation.counsellor.userId === userId;
+    if (!isMember) {
+      return { conversation, eligible: false };
+    }
+
+    const isEligible = await messagingRepository.hasEligibleCounsellingRelationship(
+      conversation.studentId,
+      conversation.counsellorId
+    );
+
+    return { conversation, eligible: isEligible };
+  }
 
   private assertConversationMembership(
     conversation: ConversationDTO,

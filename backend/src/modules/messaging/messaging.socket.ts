@@ -11,6 +11,7 @@ import { logger } from "../../common/utils/logger";
 import { authTokenService } from "../auth/auth.token.service";
 import { userRepository } from "../users/user.repository";
 import { messagingRepository } from "./messaging.repository";
+import { messagingService } from "./messaging.service";
 import { SOCKET_EVENTS } from "./messaging.events";
 import {
   MessageDTO,
@@ -118,19 +119,19 @@ export const initMessagingSocket = (server: http.Server): SocketIOServer => {
     onlineUserIds.add(userId);
     io.emit(SOCKET_EVENTS.PRESENCE_UPDATE, { userId, isOnline: true });
 
-    // Handle Conversation Room Join with Authorization Guard
+    // Handle Conversation Room Join with Authoritative Relationship & Membership Guard
     socket.on(SOCKET_EVENTS.CONVERSATION_JOIN, async (data: { conversationId: string }) => {
       try {
         const { conversationId } = data || {};
         if (!conversationId) return;
 
-        // Authorize conversation membership
-        const conversation = await messagingRepository.findConversationById(
+        const access = await messagingService.verifyConversationSocketAccess(
           conversationId,
-          userId
+          userId,
+          role
         );
 
-        if (!conversation) {
+        if (!access.conversation) {
           socket.emit(SOCKET_EVENTS.ERROR, {
             code: "MESSAGING_CONVERSATION_NOT_FOUND",
             message: "Conversation not found",
@@ -138,17 +139,14 @@ export const initMessagingSocket = (server: http.Server): SocketIOServer => {
           return;
         }
 
-        const isStudent = conversation.studentId === userId;
-        const isCounsellor = conversation.counsellor.userId === userId;
-
-        if (!isStudent && !isCounsellor && role !== "SUPER_ADMIN") {
+        if (!access.eligible) {
           logger.warn(
             { userId, conversationId },
-            "Unauthorized socket conversation:join attempt blocked"
+            "Unauthorized socket conversation:join attempt blocked: Ineligible counselling relationship"
           );
           socket.emit(SOCKET_EVENTS.ERROR, {
-            code: "MESSAGING_NOT_PARTICIPANT",
-            message: "Access denied. You are not a member of this conversation.",
+            code: "MESSAGING_RELATIONSHIP_REQUIRED",
+            message: "Messaging is locked. An accepted counselling session is required.",
           });
           return;
         }
@@ -168,18 +166,16 @@ export const initMessagingSocket = (server: http.Server): SocketIOServer => {
       }
     });
 
-    // Handle Typing Start (Ephemeral)
+    // Handle Typing Start (Ephemeral) - Re-checking relationship authorization
     socket.on(SOCKET_EVENTS.TYPING_START, async (data: { conversationId: string; userName: string }) => {
       try {
         if (!data?.conversationId) return;
-        const conv = await messagingRepository.findConversationById(data.conversationId, userId);
-        if (!conv) return;
-
-        const isMember =
-          conv.studentId === userId ||
-          conv.counsellor.userId === userId ||
-          role === "SUPER_ADMIN";
-        if (!isMember) return;
+        const access = await messagingService.verifyConversationSocketAccess(
+          data.conversationId,
+          userId,
+          role
+        );
+        if (!access.eligible) return;
 
         socket.to(`conversation:${data.conversationId}`).emit(SOCKET_EVENTS.USER_TYPING, {
           conversationId: data.conversationId,
@@ -192,10 +188,17 @@ export const initMessagingSocket = (server: http.Server): SocketIOServer => {
       }
     });
 
-    // Handle Typing Stop (Ephemeral)
+    // Handle Typing Stop (Ephemeral) - Re-checking relationship authorization
     socket.on(SOCKET_EVENTS.TYPING_STOP, async (data: { conversationId: string }) => {
       try {
         if (!data?.conversationId) return;
+        const access = await messagingService.verifyConversationSocketAccess(
+          data.conversationId,
+          userId,
+          role
+        );
+        if (!access.eligible) return;
+
         socket.to(`conversation:${data.conversationId}`).emit(SOCKET_EVENTS.USER_TYPING, {
           conversationId: data.conversationId,
           userId,
@@ -280,6 +283,22 @@ export const broadcastConversationUpdated = (
   for (const uid of participantUserIds) {
     ioInstance.to(`user:${uid}`).emit(SOCKET_EVENTS.CONVERSATION_UPDATED, { conversationId });
   }
+};
+
+export const broadcastAccessChanged = (
+  userId: string,
+  hasAccess: boolean
+): void => {
+  if (!ioInstance) return;
+  ioInstance.to(`user:${userId}`).emit(SOCKET_EVENTS.ACCESS_CHANGED, { hasAccess });
+};
+
+export const broadcastConversationAvailable = (
+  userId: string,
+  conversationId: string
+): void => {
+  if (!ioInstance) return;
+  ioInstance.to(`user:${userId}`).emit(SOCKET_EVENTS.CONVERSATION_AVAILABLE, { conversationId });
 };
 
 export const isUserOnline = (userId: string): boolean => {

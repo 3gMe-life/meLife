@@ -21,6 +21,10 @@ import {
   CounsellorSessionFilterParams,
 } from "./counselling.types";
 import { SkillFinderFullResultDTO } from "../scoring/scoring.types";
+import {
+  broadcastAccessChanged,
+  broadcastConversationAvailable,
+} from "../messaging/messaging.socket";
 
 export class CounsellingService {
   /**
@@ -415,11 +419,24 @@ export class CounsellingService {
       resolvedMeetingLink = `https://meet.3gmelife.com/session-${sessionId.slice(0, 8)}`;
     }
 
-    const updated = await counsellingRepository.updateSessionStatus(
-      sessionId,
-      status,
-      resolvedMeetingLink
-    );
+    let updated: CounsellingSessionDTO;
+    let createdConversationId: string | undefined;
+
+    if (status === "CONFIRMED") {
+      const result = await counsellingRepository.confirmSessionAndEnsureConversation(
+        sessionId,
+        counsellor.id,
+        resolvedMeetingLink
+      );
+      updated = result.session;
+      createdConversationId = result.conversationId;
+    } else {
+      updated = await counsellingRepository.updateSessionStatus(
+        sessionId,
+        status,
+        resolvedMeetingLink
+      );
+    }
 
     // Notify student of session status change
     try {
@@ -428,7 +445,7 @@ export class CounsellingService {
 
       if (status === "CONFIRMED") {
         title = "Counselling Session Confirmed! 📅";
-        message = `Dr./Mr. ${counsellor.name} confirmed your session on ${existingSession.sessionDate} at ${existingSession.sessionTime}. Link: ${resolvedMeetingLink || "Online Portal"}`;
+        message = `Dr./Mr. ${counsellor.name} confirmed your session on ${existingSession.sessionDate} at ${existingSession.sessionTime}. Messaging is now available.`;
       } else if (status === "COMPLETED") {
         title = "Counselling Session Completed";
         message = `Your session with ${counsellor.name} has concluded. You can review recommendations and notes in your dashboard.`;
@@ -448,6 +465,18 @@ export class CounsellingService {
           meetingLink: resolvedMeetingLink,
         },
       });
+
+      // Emit live unlock socket events ONLY AFTER database transaction commit
+      if (status === "CONFIRMED") {
+        try {
+          broadcastAccessChanged(existingSession.studentId, true);
+          if (createdConversationId) {
+            broadcastConversationAvailable(existingSession.studentId, createdConversationId);
+          }
+        } catch (socketErr) {
+          logger.warn({ err: socketErr }, "Non-fatal error broadcasting session confirmation socket event");
+        }
+      }
     } catch (notifErr) {
       logger.warn({ err: notifErr }, "Non-fatal error sending session update notification");
     }
@@ -484,7 +513,7 @@ export class CounsellingService {
     return {
       ...existingSession,
       status: updated.status,
-      meetingLink: updated.meeting_link,
+      meetingLink: updated.meetingLink,
     };
   }
 

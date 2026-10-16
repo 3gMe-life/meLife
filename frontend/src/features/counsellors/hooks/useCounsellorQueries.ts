@@ -201,6 +201,7 @@ export function useUpdateSessionStatus() {
       queryClient.invalidateQueries({ queryKey: counsellorKeys.counsellorOverview() });
       queryClient.invalidateQueries({ queryKey: ["counsellor-sessions"] });
       queryClient.invalidateQueries({ queryKey: counsellorKeys.studentSessions() });
+      queryClient.invalidateQueries({ queryKey: ["messaging"] });
     },
   });
 }
@@ -251,7 +252,7 @@ export function useCounsellorAvailability() {
 export function useUpdateCounsellorAvailability() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (availability: any[]) => counsellorApi.updateCounsellorAvailability(availability),
+    mutationFn: (availability: CounsellorAvailability[]) => counsellorApi.updateCounsellorAvailability(availability),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["counsellor-availability"] });
       queryClient.invalidateQueries({ queryKey: counsellorKeys.counsellorOverview() });
@@ -276,7 +277,7 @@ export function useCounsellorReviews() {
 export function useUpdateCounsellorProfile() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (dto: any) => counsellorApi.updateCounsellorProfile(dto),
+    mutationFn: (dto: UpdateCounsellorProfileDTO) => counsellorApi.updateCounsellorProfile(dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: counsellorKeys.counsellorOverview() });
     },

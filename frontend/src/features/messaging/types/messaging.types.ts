@@ -67,3 +67,9 @@ export interface TypingState {
   isTyping: boolean;
   userName?: string;
 }
+
+export interface MessagingAccessDTO {
+  hasAccess: boolean;
+  eligibleCounsellorCount: number;
+  unreadCount: number;
+}

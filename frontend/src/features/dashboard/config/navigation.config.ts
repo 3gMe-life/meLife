@@ -224,6 +224,13 @@ export const COUNSELLOR_NAVIGATION: NavSection[] = [
         featureKey: "dashboard.students",
       },
       {
+        id: "messages",
+        label: "Messages",
+        href: "/counsellor/messages",
+        icon: "MessageSquare",
+        featureKey: "dashboard.messages",
+      },
+      {
         id: "reviews",
         label: "Reviews & Feedback",
         href: "/counsellor/reviews",

@@ -1,6 +1,7 @@
 import { pool } from "../../config/database";
 import { logger } from "../../common/utils/logger";
 import { hashPassword } from "../../common/utils/crypto";
+import { AppError } from "../../common/errors/app-error";
 import { SEED_COUNSELLORS } from "./counselling.seed-data";
 import {
   CounsellorEntity,
@@ -915,6 +916,105 @@ export class CounsellingRepository {
     `;
     const res = await pool.query(query, [status, meetingLink || null, sessionId]);
     return res.rows[0] || null;
+  }
+
+  /**
+   * Transaction-safe session acceptance and canonical conversation initialization.
+   * Atomically:
+   * 1. Locks and verifies session ownership
+   * 2. Updates session status to CONFIRMED
+   * 3. Ensures canonical conversation (UNIQUE student_id, counsellor_id)
+   * 4. Commits transaction
+   */
+  async confirmSessionAndEnsureConversation(
+    sessionId: string,
+    counsellorId: string,
+    meetingLink?: string | null
+  ): Promise<{
+    session: CounsellingSessionDTO;
+    conversationId: string;
+  }> {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      // Verify session exists and is owned by this counsellor
+      const sessionRes = await client.query(
+        `SELECT s.id, s.student_id, s.counsellor_id, s.session_type, s.duration_minutes,
+                TO_CHAR(s.session_date, 'YYYY-MM-DD') as session_date, s.session_time,
+                s.status, s.meeting_link, s.student_notes, s.created_at, s.updated_at,
+                EXISTS(
+                  SELECT 1 FROM student_counsellor_consent con
+                  WHERE con.student_id = s.student_id
+                    AND con.counsellor_id = s.counsellor_id
+                    AND con.permission = 'VIEW_ASSESSMENT_SUMMARY'
+                ) as has_consent
+         FROM counselling_sessions s
+         WHERE s.id = $1 FOR UPDATE`,
+        [sessionId]
+      );
+
+      if (sessionRes.rows.length === 0) {
+        throw AppError.notFound("Session not found", "SESSION_NOT_FOUND");
+      }
+
+      const existing = sessionRes.rows[0];
+      if (existing.counsellor_id !== counsellorId) {
+        throw AppError.forbidden("Unauthorized: Session is not assigned to this counsellor", "SESSION_UNAUTHORIZED");
+      }
+
+      const resolvedMeetingLink = meetingLink || existing.meeting_link || `https://meet.3gmelife.com/session-${sessionId.slice(0, 8)}`;
+
+      // Update session to CONFIRMED
+      const updateRes = await client.query(
+        `UPDATE counselling_sessions
+         SET status = 'CONFIRMED',
+             meeting_link = $1,
+             updated_at = NOW()
+         WHERE id = $2
+         RETURNING id, student_id, counsellor_id, session_type, duration_minutes,
+                   TO_CHAR(session_date, 'YYYY-MM-DD') as session_date, session_time,
+                   status, meeting_link, student_notes, created_at, updated_at`,
+        [resolvedMeetingLink, sessionId]
+      );
+
+      // Ensure canonical conversation exists
+      const convRes = await client.query(
+        `INSERT INTO conversations (student_id, counsellor_id, status)
+         VALUES ($1, $2, 'ACTIVE')
+         ON CONFLICT (student_id, counsellor_id)
+         DO UPDATE SET updated_at = NOW()
+         RETURNING id`,
+        [existing.student_id, counsellorId]
+      );
+
+      await client.query("COMMIT");
+
+      const row = updateRes.rows[0];
+      return {
+        session: {
+          id: row.id,
+          studentId: row.student_id,
+          counsellorId: row.counsellor_id,
+          sessionType: row.session_type,
+          durationMinutes: row.duration_minutes,
+          sessionDate: row.session_date,
+          sessionTime: row.session_time,
+          status: row.status,
+          meetingLink: row.meeting_link,
+          studentNotes: row.student_notes,
+          hasConsent: Boolean(existing.has_consent),
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+        },
+        conversationId: convRes.rows[0].id,
+      };
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 
   /**

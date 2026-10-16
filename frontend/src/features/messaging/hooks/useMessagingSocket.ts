@@ -198,16 +198,33 @@ export function useMessagingSocket(options: UseMessagingSocketOptions = {}) {
       queryClient.invalidateQueries({ queryKey: messagingKeys.unreadCount() });
     };
 
+    // Handle real-time access unlock / change event
+    const handleAccessChanged = () => {
+      queryClient.invalidateQueries({ queryKey: messagingKeys.access() });
+      queryClient.invalidateQueries({ queryKey: messagingKeys.conversations() });
+    };
+
+    // Handle real-time conversation available event
+    const handleConversationAvailable = (payload: { conversationId: string }) => {
+      queryClient.invalidateQueries({ queryKey: messagingKeys.access() });
+      queryClient.invalidateQueries({ queryKey: messagingKeys.conversations() });
+      queryClient.invalidateQueries({ queryKey: messagingKeys.conversation(payload.conversationId) });
+    };
+
     socket.on("message:new", handleNewMessage);
     socket.on("message:read", handleReadReceipt);
     socket.on("user:typing", handleUserTyping);
     socket.on("conversation:updated", handleConversationUpdated);
+    socket.on("messaging:access-changed", handleAccessChanged);
+    socket.on("conversation:available", handleConversationAvailable);
 
     return () => {
       socket.off("message:new", handleNewMessage);
       socket.off("message:read", handleReadReceipt);
       socket.off("user:typing", handleUserTyping);
       socket.off("conversation:updated", handleConversationUpdated);
+      socket.off("messaging:access-changed", handleAccessChanged);
+      socket.off("conversation:available", handleConversationAvailable);
     };
   }, [activeConversationId, currentUserId, queryClient]);
 

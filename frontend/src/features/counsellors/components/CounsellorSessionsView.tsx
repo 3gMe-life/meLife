@@ -11,16 +11,15 @@ import {
   Brain,
   Search,
   Users,
-  AlertCircle,
   RefreshCw,
   Eye,
-  ExternalLink,
   ChevronLeft,
   ChevronRight,
   SlidersHorizontal,
   X,
   CheckCircle2,
   AlertTriangle,
+  MessageSquare,
 } from "lucide-react";
 import {
   useCounsellorSessions,
@@ -660,6 +659,18 @@ export const CounsellorSessionsView: React.FC = () => {
                               </>
                             )}
 
+                            {/* Confirmed / Completed Messaging */}
+                            {(isConfirmed || isCompleted) && (
+                              <Link
+                                href={`/counsellor/messages?studentId=${session.studentId}`}
+                                className="inline-flex items-center gap-1 rounded-xl border border-indigo-200 bg-indigo-50/70 px-2.5 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300"
+                                title="Message Student"
+                              >
+                                <MessageSquare className="h-3.5 w-3.5" />
+                                <span>Message</span>
+                              </Link>
+                            )}
+
                             {/* Confirmed Actions */}
                             {isConfirmed && (
                               <>
@@ -834,6 +845,13 @@ export const CounsellorSessionsView: React.FC = () => {
 
                       {isConfirmed && (
                         <>
+                          <Link
+                            href={`/counsellor/messages?studentId=${session.studentId}`}
+                            className="inline-flex items-center gap-1 rounded-xl border border-indigo-200 bg-indigo-50/70 px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300"
+                          >
+                            <MessageSquare className="h-3.5 w-3.5" />
+                            <span>Message</span>
+                          </Link>
                           {session.meetingLink && (
                             <a
                               href={session.meetingLink}

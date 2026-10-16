@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, ChevronLeft } from "lucide-react";
+import { ChevronRight, ChevronLeft, Lock } from "lucide-react";
 import { DashboardIcon } from "../common/DashboardIcon";
 import { getNavigationForRole } from "../../config/navigation.config";
 import type { UserRole } from "../../../auth/types/auth.types";
 
 import { useCurrentUserQuery } from "../../../auth/hooks/useCurrentUserQuery";
+import { useMessagingAccess } from "@/features/messaging/hooks/useMessagingQueries";
 
 interface DashboardSidebarProps {
   role?: UserRole;
@@ -20,28 +21,25 @@ const STORAGE_KEY = "melife_sidebar_pinned";
 
 export function DashboardSidebar({
   role = "PARTICIPANT",
-  educationStage,
   dashboardFeatures,
 }: DashboardSidebarProps) {
   const pathname = usePathname();
   const { data: authData } = useCurrentUserQuery();
   const effectiveFeatures = dashboardFeatures || authData?.data?.dashboardFeatures;
   const navigation = getNavigationForRole(role, effectiveFeatures);
-  const [isPinned, setIsPinned] = useState(true);
-  const [isHovered, setIsHovered] = useState(false);
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Read pinned state preference from localStorage safely after mount
-  useEffect(() => {
+  const isMessagingRole = role === "PARTICIPANT" || role === "CAREER_COUNSELLOR";
+  const { data: messagingAccess } = useMessagingAccess(Boolean(authData?.data?.user && isMessagingRole));
+  const [isPinned, setIsPinned] = useState(() => {
+    if (typeof window === "undefined") return true;
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved !== null) {
-        setIsPinned(saved === "true");
-      }
+      return saved !== null ? saved === "true" : true;
     } catch {
-      // Ignore localStorage read errors if disabled
+      return true;
     }
-  }, []);
+  });
+  const [isHovered, setIsHovered] = useState(false);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleMouseEnter = () => {
     if (hoverTimeoutRef.current) {
@@ -168,6 +166,33 @@ export function DashboardSidebar({
                       (pathname.startsWith("/institution/classes") ||
                         pathname.startsWith("/institution/cohorts")));
 
+                const isMessagesItem = item.id === "messages";
+                const isParticipant = role === "PARTICIPANT";
+                const isMessagesLocked =
+                  isMessagesItem &&
+                  isParticipant &&
+                  messagingAccess !== undefined &&
+                  !messagingAccess.hasAccess;
+                const messagesUnreadCount = isMessagesItem
+                  ? messagingAccess?.unreadCount || 0
+                  : 0;
+
+                let activeBadge = item.badge;
+                let isBadgeLocked = false;
+                if (isMessagesItem) {
+                  if (isMessagesLocked) {
+                    activeBadge = "Locked";
+                    isBadgeLocked = true;
+                  } else if (messagesUnreadCount > 0) {
+                    activeBadge =
+                      messagesUnreadCount > 99
+                        ? "99+"
+                        : String(messagesUnreadCount);
+                  } else {
+                    activeBadge = undefined;
+                  }
+                }
+
                 return (
                   <div
                     key={item.id}
@@ -196,12 +221,14 @@ export function DashboardSidebar({
                       </div>
 
                       {/* Notification / Badge Dot for Collapsed Rail */}
-                      {!isExpanded && item.badge && (
+                      {!isExpanded && activeBadge && (
                         <span
-                          className={`absolute top-2.5 right-2.5 w-2 h-2 rounded-full ring-2 ${
-                            isActive
-                              ? "bg-[#172B2A] ring-[#00BFA5]"
-                              : "bg-[#00BFA5] ring-[#172B2A] animate-pulse"
+                          className={`absolute top-2.5 right-2.5 rounded-full ring-2 ${
+                            isBadgeLocked
+                              ? "w-2.5 h-2.5 bg-amber-400 ring-[#172B2A]"
+                              : isActive
+                              ? "w-2 h-2 bg-[#172B2A] ring-[#00BFA5]"
+                              : "w-2 h-2 bg-[#00BFA5] ring-[#172B2A] animate-pulse"
                           }`}
                           aria-hidden="true"
                         />
@@ -225,15 +252,20 @@ export function DashboardSidebar({
                           {item.label}
                         </span>
 
-                        {item.badge && (
+                        {activeBadge && (
                           <span
-                            className={`text-[10px] font-black px-2 py-0.5 rounded-full shrink-0 ml-2 ${
-                              isActive
+                            className={`text-[10px] font-black px-2 py-0.5 rounded-full shrink-0 ml-2 inline-flex items-center gap-1 ${
+                              isBadgeLocked
+                                ? "bg-amber-400/20 text-amber-300 border border-amber-400/30"
+                                : isActive
                                 ? "bg-[#172B2A] text-[#00BFA5]"
                                 : "bg-[#00BFA5]/20 text-[#00BFA5] border border-[#00BFA5]/30"
                             }`}
                           >
-                            {item.badge}
+                            {isBadgeLocked && (
+                              <Lock className="w-2.5 h-2.5 text-amber-300" />
+                            )}
+                            <span>{activeBadge}</span>
                           </span>
                         )}
                       </div>
@@ -246,9 +278,16 @@ export function DashboardSidebar({
                         className="absolute left-full ml-3 px-2.5 py-1.5 rounded-lg bg-[#172B2A] dark:bg-[#112423] text-white text-xs font-semibold whitespace-nowrap shadow-xl border border-white/15 pointer-events-none opacity-0 -translate-x-2 transition-all duration-150 ease-out z-50 flex items-center gap-2 group-hover:opacity-100 group-hover:translate-x-0 group-focus-within:opacity-100 group-focus-within:translate-x-0"
                       >
                         <span>{item.label}</span>
-                        {item.badge && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[#00BFA5] text-[#172B2A]">
-                            {item.badge}
+                        {activeBadge && (
+                          <span
+                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md inline-flex items-center gap-1 ${
+                              isBadgeLocked
+                                ? "bg-amber-400 text-slate-900"
+                                : "bg-[#00BFA5] text-[#172B2A]"
+                            }`}
+                          >
+                            {isBadgeLocked && <Lock className="w-2.5 h-2.5" />}
+                            <span>{activeBadge}</span>
                           </span>
                         )}
                         {/* Tooltip arrow pointing left */}

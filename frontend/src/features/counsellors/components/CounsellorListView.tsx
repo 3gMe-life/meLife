@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import {
   Sparkles,
   Calendar,
@@ -8,14 +9,11 @@ import {
   Video,
   FileText,
   ShieldCheck,
-  Search,
-  Filter,
   Users,
   CheckCircle2,
-  AlertCircle,
-  ExternalLink,
-  ChevronRight,
   ShieldAlert,
+  Lock,
+  MessageSquare,
 } from "lucide-react";
 import {
   CounsellorCardDTO,
@@ -244,7 +242,15 @@ export const CounsellorListView: React.FC = () => {
                               : "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400"
                           }`}
                         >
-                          {session.status}
+                          {isPending
+                            ? "Session Request Pending"
+                            : isConfirmed
+                            ? "Session Confirmed"
+                            : isCompleted
+                            ? "Session Completed"
+                            : isRejected
+                            ? "Session Rejected"
+                            : session.status}
                         </span>
 
                         <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
@@ -313,7 +319,27 @@ export const CounsellorListView: React.FC = () => {
                         )}
                       </button>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {isPending && (
+                          <span
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-1.5 text-xs font-semibold text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300"
+                            title="Messaging unlocks automatically once the counsellor accepts your session request"
+                          >
+                            <Lock className="h-3.5 w-3.5" />
+                            <span>Chat unlocks after session approval</span>
+                          </span>
+                        )}
+
+                        {(isConfirmed || isCompleted) && (
+                          <Link
+                            href={`/participant/messages?counsellorId=${session.counsellorId}`}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-indigo-500 active:scale-95"
+                          >
+                            <MessageSquare className="h-3.5 w-3.5" />
+                            <span>Message Counsellor</span>
+                          </Link>
+                        )}
+
                         {isConfirmed && session.meetingLink && (
                           <a
                             href={session.meetingLink}

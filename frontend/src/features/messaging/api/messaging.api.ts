@@ -7,6 +7,7 @@ import {
   ConversationDTO,
   MessageDTO,
   MessagesResponse,
+  MessagingAccessDTO,
 } from "../types/messaging.types";
 
 interface ApiResponse<T> {
@@ -119,5 +120,13 @@ export const messagingApi = {
       "/messaging/unread-count"
     );
     return res.data.unreadCount;
+  },
+
+  /**
+   * Fetches messaging access eligibility summary for current user.
+   */
+  async getAccess(): Promise<MessagingAccessDTO> {
+    const res = await fetchApi<ApiResponse<MessagingAccessDTO>>("/messaging/access");
+    return res.data;
   },
 };

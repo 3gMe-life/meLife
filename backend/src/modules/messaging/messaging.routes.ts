@@ -35,6 +35,11 @@ messagingRouter.use(
 );
 messagingRouter.use(messagingLimiter);
 
+// Access Check
+messagingRouter.get("/access", (req, res, next) =>
+  messagingController.getAccess(req, res, next)
+);
+
 // Conversations
 messagingRouter.get("/conversations", (req, res, next) =>
   messagingController.listConversations(req, res, next)

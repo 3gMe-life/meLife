@@ -15,6 +15,8 @@ export const SOCKET_EVENTS = {
   MESSAGE_DELIVERED: "message:delivered",
   MESSAGE_READ_RECEIPT: "message:read",
   CONVERSATION_UPDATED: "conversation:updated",
+  CONVERSATION_AVAILABLE: "conversation:available",
+  ACCESS_CHANGED: "messaging:access-changed",
   USER_TYPING: "user:typing",
   PRESENCE_UPDATE: "presence:update",
   ERROR: "error:event",
