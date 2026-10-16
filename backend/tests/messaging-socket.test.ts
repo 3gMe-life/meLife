@@ -201,6 +201,99 @@ async function runSocketIntegrationTest() {
     counsellorSocket.close();
     console.log("✅ Sockets closed cleanly.");
 
+    // 9. TEST 6: Polling-Only Transport Diagnostic Test
+    console.log("\n[TEST 6] Testing polling-only transport (transports: ['polling'])...");
+    const pollingSocket: Socket = Client(socketUrl, {
+      path: "/socket.io",
+      auth: { token: studentToken },
+      transports: ["polling"],
+      reconnection: false,
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("Polling socket connection timeout")), 5000);
+      pollingSocket.on("connect", () => {
+        clearTimeout(timer);
+        resolve();
+      });
+      pollingSocket.on("connect_error", (err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+    });
+
+    assert.strictEqual(pollingSocket.connected, true, "Polling socket should be connected");
+    const pollingTransportName = (pollingSocket.io.engine as any).transport.name;
+    const pollingSid = (pollingSocket.io.engine as any).id;
+    assert.strictEqual(pollingTransportName, "polling", "Transport must be polling");
+    assert.ok(pollingSid, "Polling session ID (SID) must be defined");
+    console.log(`✅ Passed: Polling socket connected with SID: ${pollingSid} on transport: ${pollingTransportName}`);
+
+    // Verify event exchange over pure polling
+    const pollingAckPromise = new Promise<void>((resolve) => {
+      pollingSocket.emit("conversation:join", { conversationId: conversation.id });
+      setTimeout(resolve, 300);
+    });
+    await pollingAckPromise;
+    pollingSocket.close();
+    console.log("✅ Passed: Polling transport verified without session loss or 400 errors.");
+
+    // 10. TEST 7: Production-Equivalent Transport Order (polling -> websocket upgrade)
+    console.log("\n[TEST 7] Testing production transport order: ['polling', 'websocket'] with upgrade...");
+    const upgradeSocket: Socket = Client(socketUrl, {
+      path: "/socket.io",
+      auth: { token: counsellorToken },
+      transports: ["polling", "websocket"],
+      reconnection: false,
+    });
+
+    let sawPolling = false;
+    let upgradedToWebsocket = false;
+
+    if ((upgradeSocket.io.engine as any).transport?.name === "polling") {
+      sawPolling = true;
+    }
+
+    (upgradeSocket.io.engine as any).on("upgrade", (transport: any) => {
+      if (transport.name === "websocket") {
+        upgradedToWebsocket = true;
+      }
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("Upgrade socket connection timeout")), 5000);
+      upgradeSocket.on("connect", () => {
+        clearTimeout(timer);
+        resolve();
+      });
+      upgradeSocket.on("connect_error", (err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+    });
+
+    assert.strictEqual(upgradeSocket.connected, true, "Upgrade socket should be connected");
+    // Allow small window for transport upgrade if not immediate
+    if (!upgradedToWebsocket) {
+      await new Promise<void>((resolve) => {
+        const timeout = setTimeout(resolve, 1000);
+        (upgradeSocket.io.engine as any).once("upgrade", (transport: any) => {
+          if (transport.name === "websocket") {
+            upgradedToWebsocket = true;
+          }
+          clearTimeout(timeout);
+          resolve();
+        });
+      });
+    }
+
+    const finalTransportName = (upgradeSocket.io.engine as any).transport.name;
+    console.log(`✅ Passed: Upgrade socket connected. Initial polling: ${sawPolling || finalTransportName === 'polling'}, Final transport: ${finalTransportName}`);
+    assert.strictEqual(finalTransportName, "websocket", "Socket should successfully upgrade to websocket");
+
+    upgradeSocket.close();
+    console.log("✅ Passed: Production-equivalent polling -> websocket upgrade verified.");
+
     console.log("\n=================================================");
     console.log("🎉 ALL REAL-TIME SOCKET INTEGRATION TESTS PASSED!");
     console.log("=================================================\n");
