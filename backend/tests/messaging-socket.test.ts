@@ -16,7 +16,7 @@ import { io as Client, Socket } from "socket.io-client";
 import { createApp } from "../src/app";
 import { pool, connectDatabase, closeDatabasePool } from "../src/config/database";
 import { authTokenService } from "../src/modules/auth/auth.token.service";
-import { initMessagingSocket, closeMessagingSocket } from "../src/modules/messaging/messaging.socket";
+import { initMessagingSocket, closeMessagingSocket, getMessagingIO } from "../src/modules/messaging/messaging.socket";
 import { messagingService } from "../src/modules/messaging/messaging.service";
 
 async function runSocketIntegrationTest() {
@@ -128,32 +128,73 @@ async function runSocketIntegrationTest() {
     counsellorSocket.emit("conversation:join", { conversationId: conversation.id });
     await new Promise((r) => setTimeout(r, 100)); // allow server to process joins
 
-    // 6. Test Live Message Emission (student sends, counsellor receives message:new)
-    console.log("\n[TEST 3] Testing live message broadcast (message:new)...");
-    const testMessageContent = "Live real-time test from socket test suite!";
-    const counsellorReceivedPromise = new Promise<any>((resolve) => {
-      counsellorSocket.on("message:new", (msg) => {
-        if (msg.content === testMessageContent) {
-          resolve(msg);
-        }
-      });
+    // 6. Test Personal User Rooms & Bidirectional Live Message Emission with Exact Single Delivery
+    console.log("\n[TEST 3] Testing recipient personal user rooms and bidirectional live message broadcast...");
+
+    const io = getMessagingIO();
+    const studentRoom = io?.sockets.adapter.rooms.get(`user:${connectedStudent.student_id}`);
+    const counsellorRoom = io?.sockets.adapter.rooms.get(`user:${testCounsellor.user_id}`);
+    const profileRoom = io?.sockets.adapter.rooms.get(`user:${testCounsellor.id}`);
+
+    assert.ok(studentRoom && studentRoom.size >= 1, "Student personal user room user:{studentUserId} must exist");
+    assert.ok(counsellorRoom && counsellorRoom.size >= 1, "Counsellor personal user room user:{counsellorUserId} must exist");
+    assert.strictEqual(profileRoom, undefined, "Counsellor personal room must NOT use profile ID");
+    console.log("✅ Passed: Recipient personal user rooms verified using users.id for both participants.");
+
+    let studentEventCount = 0;
+    let counsellorEventCount = 0;
+    let lastStudentReceivedMsg: any = null;
+    let lastCounsellorReceivedMsg: any = null;
+
+    studentSocket.on("message:new", (msg) => {
+      studentEventCount++;
+      lastStudentReceivedMsg = msg;
     });
 
-    // Send message via service (matches REST POST flow)
-    const sentMsg = await messagingService.sendMessage(
+    counsellorSocket.on("message:new", (msg) => {
+      counsellorEventCount++;
+      lastCounsellorReceivedMsg = msg;
+    });
+
+    // 6a. Direction 1: Student -> Counsellor
+    console.log("Testing Direction 1: Student -> Counsellor...");
+    const contentAtoB = "Direction A->B: Student to Counsellor " + Date.now();
+    const sentMsgAtoB = await messagingService.sendMessage(
       conversation.id,
       connectedStudent.student_id,
       "PARTICIPANT",
       {
-        content: testMessageContent,
+        content: contentAtoB,
         clientMessageId: crypto.randomUUID(),
       }
     );
 
-    const liveReceivedMsg = await counsellorReceivedPromise;
-    assert.strictEqual(liveReceivedMsg.id, sentMsg.id, "Live message ID must match stored ID");
-    assert.strictEqual(liveReceivedMsg.content, testMessageContent);
-    console.log(`✅ Passed: Counsellor socket received live message:new instantly: "${liveReceivedMsg.content}"`);
+    await new Promise((r) => setTimeout(r, 200));
+    assert.strictEqual(counsellorEventCount, 1, "Counsellor must receive exactly ONE message:new event");
+    assert.strictEqual(studentEventCount, 0, "Student (sender) must receive ZERO duplicate socket echoes");
+    assert.strictEqual(lastCounsellorReceivedMsg?.id, sentMsgAtoB.id);
+    assert.strictEqual(lastCounsellorReceivedMsg?.content, contentAtoB);
+    console.log("✅ Passed: Direction 1 (Student -> Counsellor) delivered exactly once with no duplicates.");
+
+    // 6b. Direction 2: Counsellor -> Student
+    console.log("Testing Direction 2: Counsellor -> Student...");
+    const contentBtoA = "Direction B->A: Counsellor to Student " + Date.now();
+    const sentMsgBtoA = await messagingService.sendMessage(
+      conversation.id,
+      testCounsellor.user_id,
+      "CAREER_COUNSELLOR",
+      {
+        content: contentBtoA,
+        clientMessageId: crypto.randomUUID(),
+      }
+    );
+
+    await new Promise((r) => setTimeout(r, 200));
+    assert.strictEqual(studentEventCount, 1, "Student must receive exactly ONE message:new event");
+    assert.strictEqual(counsellorEventCount, 1, "Counsellor (sender) must receive ZERO duplicate socket echoes");
+    assert.strictEqual(lastStudentReceivedMsg?.id, sentMsgBtoA.id);
+    assert.strictEqual(lastStudentReceivedMsg?.content, contentBtoA);
+    console.log("✅ Passed: Direction 2 (Counsellor -> Student) delivered exactly once with no duplicates.");
 
     // 7. Test Read Receipt Broadcast (counsellor marks read, student receives message:read)
     console.log("\n[TEST 4] Testing live read receipt broadcast (message:read)...");
@@ -173,7 +214,7 @@ async function runSocketIntegrationTest() {
 
     const liveReceipt = await studentReceivedReceiptPromise;
     assert.strictEqual(liveReceipt.conversationId, conversation.id);
-    assert.ok(liveReceipt.messageIds.includes(sentMsg.id), "Receipt should include our sent message ID");
+    assert.ok(liveReceipt.messageIds.includes(sentMsgAtoB.id), "Receipt should include our sent message ID");
     console.log(`✅ Passed: Student socket received live message:read receipt for ${liveReceipt.messageIds.length} messages.`);
 
     // 8. Test Ephemeral Typing Indicator
@@ -293,6 +334,52 @@ async function runSocketIntegrationTest() {
 
     upgradeSocket.close();
     console.log("✅ Passed: Production-equivalent polling -> websocket upgrade verified.");
+
+    // 11. TEST 8: Missed Socket Recovery (Offline -> Online REST History Sync)
+    console.log("\n[TEST 8] Testing missed socket recovery (REST synchronization when socket is offline)...");
+    // Connect temporary recipient socket
+    const offlineTestSocket = Client(socketUrl, {
+      path: "/socket.io",
+      auth: { token: counsellorToken },
+      transports: ["websocket"],
+      reconnection: false,
+    });
+    await new Promise<void>((r) => offlineTestSocket.on("connect", () => r()));
+    console.log("Recipient socket online. Simulating network disconnect/page close...");
+    offlineTestSocket.close();
+    await new Promise((r) => setTimeout(r, 100));
+
+    // Sender sends message while recipient socket is offline
+    const missedMessageContent = "Offline message sent while recipient socket was disconnected " + Date.now();
+    const missedMsg = await messagingService.sendMessage(
+      conversation.id,
+      connectedStudent.student_id,
+      "PARTICIPANT",
+      {
+        content: missedMessageContent,
+        clientMessageId: crypto.randomUUID(),
+      }
+    );
+
+    // Verify message persisted in PostgreSQL
+    const dbCheck = await pool.query(
+      "SELECT id, content FROM messages WHERE id = $1",
+      [missedMsg.id]
+    );
+    assert.strictEqual(dbCheck.rows.length, 1, "Missed message must be persisted in PostgreSQL");
+    assert.strictEqual(dbCheck.rows[0].content, missedMessageContent);
+    console.log("✅ Passed: Message successfully persisted in PostgreSQL while recipient was offline.");
+
+    // Recipient queries REST history (re-entering Messages page)
+    const restHistory = await messagingService.getMessages(
+      conversation.id,
+      testCounsellor.user_id,
+      "CAREER_COUNSELLOR",
+      { limit: 10 }
+    );
+    const foundInHistory = restHistory.items.some((m) => m.id === missedMsg.id);
+    assert.strictEqual(foundInHistory, true, "Missed message must be present in REST message history");
+    console.log("✅ Passed: Missed message retrieved via REST history without requiring live socket event.");
 
     console.log("\n=================================================");
     console.log("🎉 ALL REAL-TIME SOCKET INTEGRATION TESTS PASSED!");

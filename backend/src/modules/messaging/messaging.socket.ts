@@ -272,10 +272,23 @@ export const broadcastNewMessage = (
 ): void => {
   if (!ioInstance) return;
 
-  // Emit to conversation room (for users currently viewing the thread)
-  ioInstance.to(`conversation:${conversationId}`).emit(SOCKET_EVENTS.MESSAGE_NEW, message);
+  const recipientRoom = ioInstance.sockets.adapter.rooms.get(`user:${recipientUserId}`);
+  const recipientSocketCount = recipientRoom ? recipientRoom.size : 0;
 
-  // Also emit to recipient's personal user room (for unread count updates/toast notifications)
+  logger.info(
+    {
+      messageId: message.id,
+      conversationId,
+      senderUserId: message.senderUserId,
+      recipientUserId,
+      recipientSocketCount,
+      backendHostname: process.env.HOSTNAME || "localhost",
+      pid: process.pid,
+    },
+    "Live message broadcast to recipient user room"
+  );
+
+  // Emit strictly to recipient's personal user room (reliable 1:1 delivery, avoids duplicate echo)
   ioInstance.to(`user:${recipientUserId}`).emit(SOCKET_EVENTS.MESSAGE_NEW, message);
 };
 

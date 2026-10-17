@@ -29,6 +29,17 @@ export function useMessagingSocket(options: UseMessagingSocketOptions = {}) {
   const [typingState, setTypingState] = useState<TypingState>({ isTyping: false });
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const activeConvIdRef = useRef(activeConversationId);
+  const currentUserIdRef = useRef(currentUserId);
+
+  useEffect(() => {
+    activeConvIdRef.current = activeConversationId;
+  }, [activeConversationId]);
+
+  useEffect(() => {
+    currentUserIdRef.current = currentUserId;
+  }, [currentUserId]);
+
   // 1. Subscribe to Socket Connection State
   useEffect(() => {
     const unsubscribe = messagingSocketService.subscribeConnectionState((state) => {
@@ -45,7 +56,7 @@ export function useMessagingSocket(options: UseMessagingSocketOptions = {}) {
     };
   }, []);
 
-  // 2. Join/Leave Active Conversation Room
+  // 2. Join/Leave Active Conversation Room (for typing indicators & read receipts)
   useEffect(() => {
     if (!activeConversationId) return;
 
@@ -65,56 +76,57 @@ export function useMessagingSocket(options: UseMessagingSocketOptions = {}) {
     const socket = messagingSocketService.getSocket();
     if (!socket) return;
 
-    // Handle incoming new message
+    // Handle incoming new message across all conversations
     const handleNewMessage = (newMessage: MessageDTO) => {
-      // If message belongs to current active thread, append to messages cache
-      if (activeConversationId && newMessage.conversationId === activeConversationId) {
-        queryClient.setQueryData<MessagesResponse>(
-          messagingKeys.messages(activeConversationId),
-          (old) => {
-            if (!old) {
-              return {
-                items: [newMessage],
-                pagination: { nextCursor: null, hasMore: false },
-              };
-            }
+      const currentActiveId = activeConvIdRef.current;
+      const currentUid = currentUserIdRef.current;
 
-            // Prevent duplicate insertion if optimistic message or duplicate event
-            const alreadyExists = old.items.some(
-              (m) =>
-                m.id === newMessage.id ||
-                (m.clientMessageId && m.clientMessageId === newMessage.clientMessageId)
-            );
+      // 1. Update the message thread cache for the conversation this message belongs to
+      const targetQueryKey = messagingKeys.messages(newMessage.conversationId);
+      const cachedMessages = queryClient.getQueryData<MessagesResponse>(targetQueryKey);
 
-            if (alreadyExists) {
-              return {
-                ...old,
-                items: old.items.map((m) =>
-                  m.id === newMessage.id ||
-                  (m.clientMessageId && m.clientMessageId === newMessage.clientMessageId)
-                    ? newMessage
-                    : m
-                ),
-              };
-            }
+      if (cachedMessages) {
+        queryClient.setQueryData<MessagesResponse>(targetQueryKey, (old) => {
+          if (!old) return old;
 
+          const alreadyExists = old.items.some(
+            (m) =>
+              m.id === newMessage.id ||
+              (m.clientMessageId && m.clientMessageId === newMessage.clientMessageId)
+          );
+
+          if (alreadyExists) {
             return {
               ...old,
-              items: [...old.items, newMessage],
+              items: old.items.map((m) =>
+                m.id === newMessage.id ||
+                (m.clientMessageId && m.clientMessageId === newMessage.clientMessageId)
+                  ? newMessage
+                  : m
+              ),
             };
           }
-        );
+
+          return {
+            ...old,
+            items: [...old.items, newMessage],
+          };
+        });
+      } else {
+        // Query has never been loaded into cache yet:
+        // Invalidate so that opening this conversation immediately fetches the full history
+        queryClient.invalidateQueries({ queryKey: targetQueryKey });
       }
 
-      // Update conversation list item lastMessage and lastMessageAt
+      // 2. Update conversation list item lastMessage, lastMessageAt, and unreadCount
       queryClient.setQueryData<ConversationDTO[]>(
         messagingKeys.conversations(),
         (old) => {
           if (!old) return old;
           return old.map((c) => {
             if (c.id === newMessage.conversationId) {
-              const isCurrentActive = activeConversationId === c.id;
-              const isSelf = currentUserId && newMessage.senderUserId === currentUserId;
+              const isCurrentActive = currentActiveId === c.id;
+              const isSelf = currentUid && newMessage.senderUserId === currentUid;
               const newUnread = isCurrentActive || isSelf ? c.unreadCount : c.unreadCount + 1;
 
               return {
@@ -134,9 +146,9 @@ export function useMessagingSocket(options: UseMessagingSocketOptions = {}) {
         }
       );
 
-      // Invalidate total unread badge if message is from someone else and not active
-      if (!activeConversationId || activeConversationId !== newMessage.conversationId) {
-        if (currentUserId && newMessage.senderUserId !== currentUserId) {
+      // 3. Invalidate total unread badge if message is from someone else and not active
+      if (!currentActiveId || currentActiveId !== newMessage.conversationId) {
+        if (currentUid && newMessage.senderUserId !== currentUid) {
           queryClient.invalidateQueries({ queryKey: messagingKeys.unreadCount() });
         }
       }
@@ -149,34 +161,34 @@ export function useMessagingSocket(options: UseMessagingSocketOptions = {}) {
       readAt: string;
       messageIds: string[];
     }) => {
-      if (activeConversationId && payload.conversationId === activeConversationId) {
-        queryClient.setQueryData<MessagesResponse>(
-          messagingKeys.messages(activeConversationId),
-          (old) => {
-            if (!old) return old;
-            return {
-              ...old,
-              items: old.items.map((m) => {
-                if (payload.messageIds.includes(m.id)) {
-                  return { ...m, status: "READ", readAt: payload.readAt };
-                }
-                return m;
-              }),
-            };
-          }
-        );
-      }
+      const targetQueryKey = messagingKeys.messages(payload.conversationId);
+      queryClient.setQueryData<MessagesResponse>(targetQueryKey, (old) => {
+        if (!old) return old;
+        const msgSet = new Set(payload.messageIds);
+        return {
+          ...old,
+          items: old.items.map((m) => {
+            if (msgSet.has(m.id)) {
+              return { ...m, status: "READ" as const, readAt: payload.readAt };
+            }
+            return m;
+          }),
+        };
+      });
     };
 
-    // Handle typing events
+    // Handle typing events (ephemeral indicator for current active thread)
     const handleUserTyping = (payload: {
       conversationId: string;
       userId: string;
       userName: string;
       isTyping: boolean;
     }) => {
-      if (activeConversationId && payload.conversationId === activeConversationId) {
-        if (payload.userId !== currentUserId) {
+      const currentActiveId = activeConvIdRef.current;
+      const currentUid = currentUserIdRef.current;
+
+      if (currentActiveId && payload.conversationId === currentActiveId) {
+        if (payload.userId !== currentUid) {
           if (payload.isTyping) {
             setTypingState({ isTyping: true, userName: payload.userName });
             if (typingTimeoutRef.current) {
@@ -194,7 +206,8 @@ export function useMessagingSocket(options: UseMessagingSocketOptions = {}) {
 
     // Handle conversation updated event (e.g. read count changes)
     const handleConversationUpdated = (payload?: { conversationId?: string }) => {
-      if (payload?.conversationId && payload.conversationId === activeConversationId) {
+      const currentActiveId = activeConvIdRef.current;
+      if (payload?.conversationId && payload.conversationId === currentActiveId) {
         queryClient.invalidateQueries({ queryKey: messagingKeys.unreadCount() });
         return;
       }
@@ -230,7 +243,7 @@ export function useMessagingSocket(options: UseMessagingSocketOptions = {}) {
       socket.off("messaging:access-changed", handleAccessChanged);
       socket.off("conversation:available", handleConversationAvailable);
     };
-  }, [activeConversationId, currentUserId, queryClient]);
+  }, [queryClient]);
 
   // Typing helper emitters
   const emitTyping = useCallback(

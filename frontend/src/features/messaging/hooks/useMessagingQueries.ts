@@ -50,7 +50,8 @@ export function useMessages(conversationId: string | null) {
     queryKey: messagingKeys.messages(conversationId || ""),
     queryFn: () => messagingApi.getMessages(conversationId!),
     enabled: Boolean(conversationId),
-    staleTime: Infinity, // Rely on socket updates and manual loads
+    staleTime: 1000 * 15, // 15 seconds: efficient during active live socket chat
+    refetchOnMount: true, // Guarantees fresh sync with PostgreSQL source-of-truth when thread mounts
   });
 }
 
