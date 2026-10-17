@@ -237,9 +237,74 @@ async function runSocketIntegrationTest() {
     assert.strictEqual(typingPayload.userName, "Nifras Student");
     console.log(`✅ Passed: Counsellor received live typing indicator for "${typingPayload.userName}".`);
 
-    // Cleanup sockets
-    studentSocket.close();
+    // 8b. TEST 5b: Authoritative Initial Presence Snapshot & Multi-Tab Presence Synchronization
+    console.log("\n[TEST 5b] Testing Authoritative Initial Presence Snapshot & Multi-Tab Presence...");
+
+    // 1. Test Initial Snapshot upon conversation:join
+    const snapshotSocket: Socket = Client(socketUrl, {
+      path: "/socket.io",
+      auth: { token: studentToken },
+      transports: ["websocket"],
+      reconnection: false,
+    });
+    await new Promise<void>((r) => snapshotSocket.on("connect", () => r()));
+
+    const snapshotPromise = new Promise<{ userId: string; isOnline: boolean }>((resolve) => {
+      snapshotSocket.on("presence:update", (payload) => {
+        if (payload.userId === testCounsellor.user_id) {
+          resolve(payload);
+        }
+      });
+    });
+
+    snapshotSocket.emit("conversation:join", { conversationId: conversation.id });
+    const snapshotPayload = await snapshotPromise;
+    assert.strictEqual(snapshotPayload.userId, testCounsellor.user_id);
+    assert.strictEqual(snapshotPayload.isOnline, true, "Counsellor must be reported ONLINE in initial snapshot");
+    console.log("✅ Passed: Initial presence snapshot authoritatively returned counsellor as ONLINE upon join.");
+    snapshotSocket.close();
+
+    // 2. Multi-Tab Presence Test: Tab 2 connects, Tab 1 closes -> stays ONLINE; Tab 2 closes -> becomes OFFLINE
+    console.log("Testing Multi-Tab Presence: Opening second counsellor tab...");
+    const counsellorTab2: Socket = Client(socketUrl, {
+      path: "/socket.io",
+      auth: { token: counsellorToken },
+      transports: ["websocket"],
+      reconnection: false,
+    });
+    await new Promise<void>((r) => counsellorTab2.on("connect", () => r()));
+
+    let sawPrematureOffline = false;
+    const prematureOfflineListener = (payload: { userId: string; isOnline: boolean }) => {
+      if (payload.userId === testCounsellor.user_id && !payload.isOnline) {
+        sawPrematureOffline = true;
+      }
+    };
+    studentSocket.on("presence:update", prematureOfflineListener);
+
+    // Close Tab 1 - Tab 2 remains open
     counsellorSocket.close();
+    await new Promise((r) => setTimeout(r, 200));
+    assert.strictEqual(sawPrematureOffline, false, "Closing one of multiple tabs must NOT mark user OFFLINE");
+    console.log("✅ Passed: Counsellor remains ONLINE after closing 1 of 2 tabs.");
+
+    // Now listen for true OFFLINE when Tab 2 (last socket) closes
+    const finalOfflinePromise = new Promise<{ userId: string; isOnline: boolean }>((resolve) => {
+      studentSocket.on("presence:update", (payload) => {
+        if (payload.userId === testCounsellor.user_id && !payload.isOnline) {
+          resolve(payload);
+        }
+      });
+    });
+
+    counsellorTab2.close();
+    const finalOffline = await finalOfflinePromise;
+    assert.strictEqual(finalOffline.isOnline, false, "Closing the last active socket must mark user OFFLINE");
+    console.log("✅ Passed: Counsellor accurately transitioned to OFFLINE after last socket disconnected.");
+
+    // Cleanup sockets
+    studentSocket.off("presence:update", prematureOfflineListener);
+    studentSocket.close();
     console.log("✅ Sockets closed cleanly.");
 
     // 9. TEST 6: Polling-Only Transport Diagnostic Test

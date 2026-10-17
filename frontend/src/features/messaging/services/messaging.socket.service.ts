@@ -19,6 +19,7 @@ class MessagingSocketService {
   private connectionState: SocketConnectionState = "OFFLINE";
   private stateListeners: Set<(state: SocketConnectionState) => void> = new Set();
   private activeConversationId: string | null = null;
+  private refreshPromise: Promise<string | null> | null = null;
 
   /**
    * Returns or initializes the authenticated socket singleton.
@@ -73,18 +74,62 @@ class MessagingSocketService {
       }
     });
 
-    this.socket.on("connect_error", (err) => {
+    this.socket.on("connect_error", async (err) => {
       if (
         err?.message &&
-        (err.message.includes("AUTH_UNAUTHORIZED") || err.message.includes("AUTH_FORBIDDEN"))
+        err.message.includes("AUTH_UNAUTHORIZED")
       ) {
+        // Attempt controlled token refresh using HttpOnly session cookie
+        const refreshedToken = await this.attemptTokenRefresh();
+        if (refreshedToken && this.socket) {
+          this.socket.auth = { token: refreshedToken };
+          if (!this.socket.connected && !this.socket.active) {
+            this.socket.connect();
+          }
+          return;
+        }
+
+        // If refresh fails or no active session, disconnect cleanly
         this.disconnect();
         return;
       }
+
+      if (err?.message && err.message.includes("AUTH_FORBIDDEN")) {
+        this.disconnect();
+        return;
+      }
+
       this.updateState("RECONNECTING");
     });
 
     return this.socket;
+  }
+
+  /**
+   * Controlled single-flight token refresh to prevent concurrent or infinite attempts.
+   */
+  private async attemptTokenRefresh(): Promise<string | null> {
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.refreshPromise = (async () => {
+      try {
+        const { authApi } = await import("@/features/auth/api/auth.api");
+        const res = await authApi.refreshToken();
+        const newToken = res.data?.accessToken;
+        if (newToken) {
+          return newToken;
+        }
+        return null;
+      } catch {
+        return null;
+      } finally {
+        this.refreshPromise = null;
+      }
+    })();
+
+    return this.refreshPromise;
   }
 
   /**
@@ -98,7 +143,7 @@ class MessagingSocketService {
 
     if (this.socket) {
       this.socket.auth = { token };
-      if (!this.socket.connected) {
+      if (!this.socket.connected && !this.socket.active) {
         this.socket.connect();
       }
     } else {

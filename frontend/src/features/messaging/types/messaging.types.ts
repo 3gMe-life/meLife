@@ -6,6 +6,7 @@ export type ConversationStatus = "ACTIVE" | "CLOSED";
 export type MessageDeliveryStatus = "SENDING" | "SENT" | "DELIVERED" | "READ" | "FAILED";
 export type MessageType = "TEXT" | "SYSTEM";
 export type SocketConnectionState = "CONNECTING" | "CONNECTED" | "RECONNECTING" | "OFFLINE";
+export type PartnerPresenceState = "UNKNOWN" | "ONLINE" | "OFFLINE";
 
 export interface ConversationParticipantInfo {
   id: string;

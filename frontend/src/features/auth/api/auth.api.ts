@@ -120,6 +120,17 @@ export const authApi = {
   },
 
   /**
+   * Refresh Access Token using HttpOnly session cookie
+   */
+  async refreshToken(): Promise<AuthResponse> {
+    const res = await fetchApi<AuthResponse>("/auth/refresh", {
+      method: "POST",
+    });
+    storeAuthToken(res);
+    return res;
+  },
+
+  /**
    * User Logout
    */
   async logout(): Promise<{ success: boolean }> {

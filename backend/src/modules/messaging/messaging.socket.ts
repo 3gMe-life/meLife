@@ -163,6 +163,18 @@ export const initMessagingSocket = (server: http.Server): SocketIOServer => {
         const convRoom = `conversation:${conversationId}`;
         socket.join(convRoom);
         logger.debug({ userId, conversationId }, "Socket joined conversation room");
+
+        // Authoritatively derive partner user ID from the verified conversation
+        const partnerUserId =
+          access.conversation.studentId === userId
+            ? access.conversation.counsellor.userId
+            : access.conversation.studentId;
+
+        // Emit initial partner presence snapshot directly to the joining socket
+        socket.emit(SOCKET_EVENTS.PRESENCE_UPDATE, {
+          userId: partnerUserId,
+          isOnline: isUserOnline(partnerUserId),
+        });
       } catch (err) {
         logger.error({ err }, "Error during conversation:join");
       }

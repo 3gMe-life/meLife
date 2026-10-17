@@ -12,25 +12,35 @@ import {
   ConversationDTO,
   SocketConnectionState,
   TypingState,
+  PartnerPresenceState,
 } from "../types/messaging.types";
 
 interface UseMessagingSocketOptions {
   activeConversationId?: string | null;
   currentUserId?: string;
+  partnerUserId?: string;
 }
 
 export function useMessagingSocket(options: UseMessagingSocketOptions = {}) {
-  const { activeConversationId, currentUserId } = options;
+  const { activeConversationId, currentUserId, partnerUserId } = options;
   const queryClient = useQueryClient();
 
   const [connectionState, setConnectionState] = useState<SocketConnectionState>(
     messagingSocketService.getConnectionState()
   );
+  const [partnerPresence, setPartnerPresence] = useState<PartnerPresenceState>("UNKNOWN");
+  const [prevPartnerUserId, setPrevPartnerUserId] = useState(partnerUserId);
   const [typingState, setTypingState] = useState<TypingState>({ isTyping: false });
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  if (prevPartnerUserId !== partnerUserId) {
+    setPrevPartnerUserId(partnerUserId);
+    setPartnerPresence("UNKNOWN");
+  }
+
   const activeConvIdRef = useRef(activeConversationId);
   const currentUserIdRef = useRef(currentUserId);
+  const partnerUserIdRef = useRef(partnerUserId);
 
   useEffect(() => {
     activeConvIdRef.current = activeConversationId;
@@ -39,6 +49,10 @@ export function useMessagingSocket(options: UseMessagingSocketOptions = {}) {
   useEffect(() => {
     currentUserIdRef.current = currentUserId;
   }, [currentUserId]);
+
+  useEffect(() => {
+    partnerUserIdRef.current = partnerUserId;
+  }, [partnerUserId]);
 
   // 1. Subscribe to Socket Connection State
   useEffect(() => {
@@ -228,9 +242,18 @@ export function useMessagingSocket(options: UseMessagingSocketOptions = {}) {
       queryClient.invalidateQueries({ queryKey: messagingKeys.conversation(payload.conversationId) });
     };
 
+    // Handle partner presence update event
+    const handlePresenceUpdate = (payload: { userId: string; isOnline: boolean }) => {
+      const targetPartnerId = partnerUserIdRef.current;
+      if (targetPartnerId && payload.userId === targetPartnerId) {
+        setPartnerPresence(payload.isOnline ? "ONLINE" : "OFFLINE");
+      }
+    };
+
     socket.on("message:new", handleNewMessage);
     socket.on("message:read", handleReadReceipt);
     socket.on("user:typing", handleUserTyping);
+    socket.on("presence:update", handlePresenceUpdate);
     socket.on("conversation:updated", handleConversationUpdated);
     socket.on("messaging:access-changed", handleAccessChanged);
     socket.on("conversation:available", handleConversationAvailable);
@@ -239,6 +262,7 @@ export function useMessagingSocket(options: UseMessagingSocketOptions = {}) {
       socket.off("message:new", handleNewMessage);
       socket.off("message:read", handleReadReceipt);
       socket.off("user:typing", handleUserTyping);
+      socket.off("presence:update", handlePresenceUpdate);
       socket.off("conversation:updated", handleConversationUpdated);
       socket.off("messaging:access-changed", handleAccessChanged);
       socket.off("conversation:available", handleConversationAvailable);
@@ -263,6 +287,7 @@ export function useMessagingSocket(options: UseMessagingSocketOptions = {}) {
 
   return {
     connectionState,
+    partnerPresence,
     typingState,
     emitTyping,
     emitStopTyping,

@@ -78,15 +78,21 @@ export const MessagingLayout: React.FC<MessagingLayoutProps> = ({
   const { markAsRead } = useMarkConversationRead();
   const createConversationMutation = useCreateConversation();
 
+  const partnerUserId = isCounsellorView
+    ? activeConversation?.student.id
+    : activeConversation?.counsellor.userId;
+
   // Socket Hook
   const {
     connectionState,
+    partnerPresence,
     typingState,
     emitTyping,
     emitStopTyping,
   } = useMessagingSocket({
     activeConversationId: selectedConversationId,
     currentUserId: currentUser?.id,
+    partnerUserId,
   });
 
   // Handle on-demand conversation auto-creation if not already existing
@@ -287,6 +293,7 @@ export const MessagingLayout: React.FC<MessagingLayoutProps> = ({
                 conversation={activeConversation}
                 isCounsellorView={isCounsellorView}
                 connectionState={connectionState}
+                partnerPresence={partnerPresence}
                 onBackMobile={() => {
                   setMobileClosed(true);
                   setManualSelectedId(null);
